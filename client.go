@@ -17,7 +17,7 @@ type Client struct {
 	configuration ClientConfiguration
 }
 
-func NewClient(baseUrl string, options ClientOptions) Client {
+func NewClientWithOptions(baseUrl string, options ClientOptions) Client {
 	defaultOptions := GetDefaultClientOptions()
 	configuration := ClientConfiguration{
 		baseUrl:         baseUrl,
@@ -33,10 +33,14 @@ func NewClient(baseUrl string, options ClientOptions) Client {
 		configuration.accessToken = options.AccessToken
 	}
 	if options.ProtocolVersion != "" {
-		configuration.protocolVersion = *semver.MustParse(options.AccessToken)
+		configuration.protocolVersion = *semver.MustParse(options.ProtocolVersion)
 	}
 
 	client := Client{configuration}
 
 	return client
+}
+
+func NewClient(baseUrl string) Client {
+	return NewClientWithOptions(baseUrl, GetDefaultClientOptions())
 }
