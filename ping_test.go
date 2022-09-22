@@ -8,15 +8,15 @@ import (
 )
 
 func TestPing(t *testing.T) {
-	t.Run("Returns nil when the database is reachable.", func(t *testing.T) {
+	t.Run("returns nil if EventSourcingDB is reachable.", func(t *testing.T) {
 		client := eventsourcingdb.NewClient(baseUrl)
 		err := client.Ping()
 
 		assert.NoError(t, err)
 	})
 
-	t.Run("Returns ErrPingFailed when the database is not reachable.", func(t *testing.T) {
-		client := eventsourcingdb.NewClient("http://lokalhorst.invalid")
+	t.Run("returns an error if an invalid url is given.", func(t *testing.T) {
+		client := eventsourcingdb.NewClient("http://localhost.invalid")
 		err := client.Ping()
 
 		assert.Error(t, err)
