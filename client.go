@@ -13,20 +13,6 @@ type ClientConfiguration struct {
 	protocolVersion semver.Version
 }
 
-type ClientOptions struct {
-	Timeout         time.Duration
-	AccessToken     string
-	ProtocolVersion string
-}
-
-func GetDefaultClientOptions() ClientOptions {
-	return ClientOptions{
-		Timeout:         10 * time.Second,
-		AccessToken:     "",
-		ProtocolVersion: "1.0.0",
-	}
-}
-
 type Client struct {
 	configuration ClientConfiguration
 }
