@@ -1,0 +1,8 @@
+# Build directory
+build/
+
+# Coverage directory
+coverage/
+
+# OS generated files and directories
+.DS_Store
