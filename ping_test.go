@@ -14,6 +14,7 @@ func TestPing(t *testing.T) {
 
 		assert.NoError(t, err)
 	})
+
 	t.Run("Returns ErrPingFailed when the database is not reachable.", func(t *testing.T) {
 		client := eventsourcingdb.NewClient("http://lokalhorst.invalid")
 		err := client.Ping()
