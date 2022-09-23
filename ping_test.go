@@ -8,17 +8,17 @@ import (
 )
 
 func TestPing(t *testing.T) {
-	t.Run("returns nil if EventSourcingDB is reachable.", func(t *testing.T) {
-		client := eventsourcingdb.NewClient(baseURLWithoutAuthorization)
+	t.Run("supports authorization.", func(t *testing.T) {
+		client := eventsourcingdb.NewClientWithOptions(baseURLWithAuthorization, eventsourcingdb.ClientOptions{
+			AccessToken: accessToken,
+		})
 		err := client.Ping()
 
 		assert.NoError(t, err)
 	})
 
-	t.Run("supports authorization.", func(t *testing.T) {
-		client := eventsourcingdb.NewClientWithOptions(baseURLWithAuthorization, eventsourcingdb.ClientOptions{
-			AccessToken: accessToken,
-		})
+	t.Run("returns nil if EventSourcingDB is reachable.", func(t *testing.T) {
+		client := eventsourcingdb.NewClient(baseURLWithoutAuthorization)
 		err := client.Ping()
 
 		assert.NoError(t, err)
