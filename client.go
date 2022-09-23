@@ -1,29 +1,36 @@
 package eventsourcingdb
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/Masterminds/semver"
 )
 
 type ClientConfiguration struct {
-	baseUrl         string
+	baseURL         string
 	timeout         time.Duration
 	accessToken     string
 	protocolVersion semver.Version
+	maxTries        int
 }
 
 type Client struct {
 	configuration ClientConfiguration
 }
 
-func NewClientWithOptions(baseUrl string, options ClientOptions) Client {
+func NewClientWithOptions(baseURL string, options ClientOptions) Client {
+	if strconv.IntSize != 64 {
+		panic("64-bit architecture required")
+	}
+
 	defaultOptions := GetDefaultClientOptions()
 	configuration := ClientConfiguration{
-		baseUrl:         baseUrl,
+		baseURL:         baseURL,
 		timeout:         defaultOptions.Timeout,
 		accessToken:     defaultOptions.AccessToken,
 		protocolVersion: *semver.MustParse(defaultOptions.ProtocolVersion),
+		maxTries:        10,
 	}
 
 	if options.Timeout != 0 {
@@ -41,6 +48,6 @@ func NewClientWithOptions(baseUrl string, options ClientOptions) Client {
 	return client
 }
 
-func NewClient(baseUrl string) Client {
-	return NewClientWithOptions(baseUrl, GetDefaultClientOptions())
+func NewClient(baseURL string) Client {
+	return NewClientWithOptions(baseURL, GetDefaultClientOptions())
 }

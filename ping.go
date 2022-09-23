@@ -12,7 +12,7 @@ func (client *Client) Ping() error {
 	httpClient := &http.Client{
 		Timeout: client.configuration.timeout,
 	}
-	url := client.configuration.baseUrl + "/ping"
+	url := client.configuration.baseURL + "/ping"
 
 	response, err := httpClient.Get(url)
 	if err != nil {
