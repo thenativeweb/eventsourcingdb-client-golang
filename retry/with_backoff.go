@@ -22,7 +22,7 @@ func WithBackoff(fn func() error, tries int, context context.Context) error {
 	var retryError retryError
 
 	for triesCount := 0; triesCount < tries; triesCount++ {
-		// On the first iteration, triesCount is 0, so we the timeout is 0, and we do not wait.
+		// On the first iteration triesCount is 0, so the timeout is 0, and we do not wait.
 		timeout := getRandomizedDuration(100, 25) * time.Duration(triesCount)
 
 		select {

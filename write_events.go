@@ -36,7 +36,7 @@ type writeEventsRequestBodyEventCandidate struct {
 }
 
 type writeEventsRequestBody struct {
-	Preconditions []writeEventsRequestBodyPrecondition   `json:"preconditions"`
+	Preconditions []writeEventsRequestBodyPrecondition   `json:"preconditions,omitempty"`
 	Events        []writeEventsRequestBodyEventCandidate `json:"events"`
 }
 
@@ -88,7 +88,7 @@ func (client *Client) WriteEventsWithPreconditions(preconditions []interface{}, 
 	httpClient := &http.Client{
 		Timeout: client.configuration.timeout,
 	}
-	url := client.configuration.baseUrl + "/write-events"
+	url := client.configuration.baseUrl + "/api/write-events"
 	request, err := http.NewRequest("POST", url, bytes.NewReader(requestBodyAsJson))
 	if err != nil {
 		return err
