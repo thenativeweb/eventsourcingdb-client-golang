@@ -4,8 +4,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-
-	"github.com/thenativeweb/eventsourcingdb-client-golang/network"
 )
 
 var ErrPingFailed = errors.New("ping failed")
@@ -16,9 +14,7 @@ func (client *Client) Ping() error {
 	}
 	url := client.configuration.baseUrl + "/ping"
 
-	response, err := network.Retry(func() (*http.Response, error) {
-		return httpClient.Get(url)
-	}, 10)
+	response, err := httpClient.Get(url)
 	if err != nil {
 		return err
 	}

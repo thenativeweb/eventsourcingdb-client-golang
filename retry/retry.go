@@ -1,9 +1,7 @@
-package network
+package retry
 
 import (
-	"errors"
 	"math/rand"
-	"net/http"
 	"time"
 )
 
@@ -25,7 +23,7 @@ func (retryError *retryError) AppendError(err error) {
 	retryError.errors = append(retryError.errors, err)
 }
 
-func Retry(fn func() (*http.Response, error), tries int) (*http.Response, error) {
+func WithBackoff(fn func() error, tries int) error {
 	var retryError retryError
 
 	for retryCount := 0; retryCount < tries; retryCount++ {
@@ -37,19 +35,14 @@ func Retry(fn func() (*http.Response, error), tries int) (*http.Response, error)
 		// unless we are in an actual retry situation.
 		time.Sleep(timeout)
 
-		response, err := fn()
+		err := fn()
 		if err != nil {
 			retryError.AppendError(err)
 			continue
 		}
-		if response.StatusCode == http.StatusGatewayTimeout {
-			response.Body.Close()
-			retryError.AppendError(errors.New(http.StatusText(http.StatusGatewayTimeout)))
-			continue
-		}
 
-		return response, nil
+		return nil
 	}
 
-	return nil, &retryError
+	return &retryError
 }

@@ -6,7 +6,9 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/thenativeweb/eventsourcingdb-client-golang"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/docker"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/retry"
 )
 
 var baseUrl = ""
@@ -39,6 +41,14 @@ func TestMain(m *testing.M) {
 	}
 
 	baseUrl = "http://localhost:" + strconv.Itoa(port)
+	client := eventsourcingdb.NewClient(baseUrl)
+
+	err = retry.WithBackoff(func() error {
+		return client.Ping()
+	}, 10)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	exitCode = m.Run()
 }
