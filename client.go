@@ -8,7 +8,7 @@ import (
 )
 
 type ClientConfiguration struct {
-	baseUrl         string
+	baseURL         string
 	timeout         time.Duration
 	accessToken     string
 	protocolVersion semver.Version
@@ -19,14 +19,14 @@ type Client struct {
 	configuration ClientConfiguration
 }
 
-func NewClientWithOptions(baseUrl string, options ClientOptions) Client {
+func NewClientWithOptions(baseURL string, options ClientOptions) Client {
 	if strconv.IntSize != 64 {
 		panic("64-bit architecture required")
 	}
 
 	defaultOptions := GetDefaultClientOptions()
 	configuration := ClientConfiguration{
-		baseUrl:         baseUrl,
+		baseURL:         baseURL,
 		timeout:         defaultOptions.Timeout,
 		accessToken:     defaultOptions.AccessToken,
 		protocolVersion: *semver.MustParse(defaultOptions.ProtocolVersion),
@@ -48,6 +48,6 @@ func NewClientWithOptions(baseUrl string, options ClientOptions) Client {
 	return client
 }
 
-func NewClient(baseUrl string) Client {
-	return NewClientWithOptions(baseUrl, GetDefaultClientOptions())
+func NewClient(baseURL string) Client {
+	return NewClientWithOptions(baseURL, GetDefaultClientOptions())
 }

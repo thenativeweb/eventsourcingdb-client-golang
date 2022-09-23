@@ -80,7 +80,7 @@ func (client *Client) WriteEventsWithPreconditions(preconditions []interface{}, 
 		})
 	}
 
-	requestBodyAsJson, err := json.Marshal(requestBody)
+	requestBodyAsJSON, err := json.Marshal(requestBody)
 	if err != nil {
 		return err
 	}
@@ -88,8 +88,8 @@ func (client *Client) WriteEventsWithPreconditions(preconditions []interface{}, 
 	httpClient := &http.Client{
 		Timeout: client.configuration.timeout,
 	}
-	url := client.configuration.baseUrl + "/api/write-events"
-	request, err := http.NewRequest("POST", url, bytes.NewReader(requestBodyAsJson))
+	url := client.configuration.baseURL + "/api/write-events"
+	request, err := http.NewRequest("POST", url, bytes.NewReader(requestBodyAsJSON))
 	if err != nil {
 		return err
 	}
