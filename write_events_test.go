@@ -1,10 +1,11 @@
 package eventsourcingdb_test
 
 import (
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/thenativeweb/eventsourcingdb-client-golang"
-	"testing"
 )
 
 type testPayload struct {
@@ -25,7 +26,7 @@ func TestWriteEvents(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("writes a single event to the database.", func(t *testing.T) {
+	t.Run("writes a single event.", func(t *testing.T) {
 		client := eventsourcingdb.NewClient(baseURLWithoutAuthorization)
 		streamName := "/" + uuid.New().String()
 
@@ -36,7 +37,7 @@ func TestWriteEvents(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("writes events to the database.", func(t *testing.T) {
+	t.Run("writes multiple events.", func(t *testing.T) {
 		client := eventsourcingdb.NewClient(baseURLWithoutAuthorization)
 		streamName := "/" + uuid.New().String()
 
@@ -50,8 +51,8 @@ func TestWriteEvents(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("returns an error when trying to write events to a nonexistent database.", func(t *testing.T) {
-		client := eventsourcingdb.NewClient("schwibbedi.invalid")
+	t.Run("returns an error when trying to write to a non-reachable server.", func(t *testing.T) {
+		client := eventsourcingdb.NewClient("http://localhost.invalid")
 		streamName := "/" + uuid.New().String()
 
 		err := client.WriteEvents([]eventsourcingdb.EventCandidate{
