@@ -1,6 +1,7 @@
 package eventsourcingdb_test
 
 import (
+	"context"
 	"log"
 	"os"
 	"strconv"
@@ -45,7 +46,7 @@ func TestMain(m *testing.M) {
 
 	err = retry.WithBackoff(func() error {
 		return client.Ping()
-	}, 10)
+	}, 10, context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
