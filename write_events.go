@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/authorization"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/retry"
 	"io"
 	"net/http"
@@ -93,6 +94,8 @@ func (client *Client) WriteEventsWithPreconditions(preconditions []interface{}, 
 	if err != nil {
 		return err
 	}
+
+	authorization.AddAccessToken(request, client.configuration.accessToken)
 
 	var response *http.Response
 	err = retry.WithBackoff(func() error {

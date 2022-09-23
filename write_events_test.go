@@ -12,6 +12,30 @@ type testPayload struct {
 }
 
 func TestWriteEvents(t *testing.T) {
+	t.Run("supports authorization.", func(t *testing.T) {
+		client := eventsourcingdb.NewClientWithOptions(baseURLWithAuthorization, eventsourcingdb.ClientOptions{
+			AccessToken: accessToken,
+		})
+		streamName := "/" + uuid.New().String()
+
+		err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+			eventsourcingdb.NewEventCandidate(streamName, "testEvent", testPayload{TestData: "1"}),
+		})
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("writes a single event to the database.", func(t *testing.T) {
+		client := eventsourcingdb.NewClient(baseURLWithoutAuthorization)
+		streamName := "/" + uuid.New().String()
+
+		err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+			eventsourcingdb.NewEventCandidate(streamName, "testEvent", testPayload{TestData: "1"}),
+		})
+
+		assert.NoError(t, err)
+	})
+
 	t.Run("writes events to the database.", func(t *testing.T) {
 		client := eventsourcingdb.NewClient(baseURLWithoutAuthorization)
 		streamName := "/" + uuid.New().String()
