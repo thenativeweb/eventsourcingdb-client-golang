@@ -1,12 +1,12 @@
 package eventsourcingdb_test
 
 import (
-	"fmt"
 	"log"
 	"os"
-	"os/exec"
-	"strings"
+	"strconv"
 	"testing"
+
+	"github.com/thenativeweb/eventsourcingdb-client-golang/docker"
 )
 
 var baseUrl = ""
@@ -14,23 +14,18 @@ var baseUrl = ""
 func TestMain(m *testing.M) {
 	exitCode := 0
 
-	cmd := exec.Command("docker", "pull", "ghcr.io/thenativeweb/eventsourcingdb:latest")
-	err := cmd.Run()
+	err := docker.PullImage("ghcr.io/thenativeweb/eventsourcingdb", "latest")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	cmd = exec.Command("docker", "run", "--rm", "-d", "-P", "ghcr.io/thenativeweb/eventsourcingdb:latest", "server", "--dev")
-	stdout, err := cmd.Output()
+	containerID, err := docker.RunContainer("ghcr.io/thenativeweb/eventsourcingdb", "latest", "server", true, true, "--dev")
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	containerID := strings.TrimSpace(string(stdout))
 
 	defer func() {
-		cmd = exec.Command("docker", "kill", containerID)
-		err = cmd.Run()
+		err := docker.KillContainer(containerID)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -38,15 +33,12 @@ func TestMain(m *testing.M) {
 		os.Exit(exitCode)
 	}()
 
-	cmd = exec.Command("docker", "inspect", "--format='{{(index (index .NetworkSettings.Ports \"3000/tcp\") 0).HostPort}}'", containerID)
-	stdout, err = cmd.Output()
+	port, err := docker.GetExposedPort(containerID, 3000)
 	if err != nil {
-		fmt.Println(stdout)
 		log.Fatal(err)
 	}
 
-	port := strings.Trim(string(stdout), " '\n\r")
-	baseUrl = "http://localhost:" + port
+	baseUrl = "http://localhost:" + strconv.Itoa(port)
 
 	exitCode = m.Run()
 }
