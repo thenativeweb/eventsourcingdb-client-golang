@@ -17,7 +17,7 @@ func (client *Client) validateProtocolVersion(response *http.Response) error {
 	}
 
 	errorMessage := fmt.Sprintf(
-		"protocol version does not match, server uses '%s', client expects '%s'",
+		"protocol version mismatch, server '%s', client '%s'",
 		serverProtocolVersion,
 		client.configuration.protocolVersion.String(),
 	)
