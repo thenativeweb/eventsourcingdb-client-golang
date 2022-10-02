@@ -22,7 +22,7 @@ func Setup() (Database, error) {
 
 	accessToken := uuid.New().String()
 	container, baseURL, client, err := runDatabase(func() (docker.Container, error) {
-		return docker.RunContainer(image, "server", true, true, "--dev", "--access-token", accessToken)
+		return docker.RunContainer(image, "server", true, true, "--dev", "--ui", "--access-token", accessToken)
 	}, eventsourcingdb.ClientOptions{
 		AccessToken: accessToken,
 	})
@@ -32,7 +32,7 @@ func Setup() (Database, error) {
 	withAuthorization := WithAuthorization{container, baseURL, accessToken, client}
 
 	container, baseURL, client, err = runDatabase(func() (docker.Container, error) {
-		return docker.RunContainer(image, "server", true, true, "--dev")
+		return docker.RunContainer(image, "server", true, true, "--dev", "--ui")
 	}, eventsourcingdb.ClientOptions{})
 	if err != nil {
 		return Database{}, err
