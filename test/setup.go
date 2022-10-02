@@ -20,8 +20,6 @@ func Setup() (Database, error) {
 		return Database{}, err
 	}
 
-	database := Database{}
-
 	accessToken := uuid.New().String()
 	container, baseURL, client, err := runDatabase(func() (docker.Container, error) {
 		return docker.RunContainer(image, "server", true, true, "--dev", "--access-token", accessToken)
@@ -29,17 +27,27 @@ func Setup() (Database, error) {
 		AccessToken: accessToken,
 	})
 	if err != nil {
-		return database, err
+		return Database{}, err
 	}
-	database.WithAuthorization = WithAuthorization{container, baseURL, accessToken, client}
+	withAuthorization := WithAuthorization{container, baseURL, accessToken, client}
 
 	container, baseURL, client, err = runDatabase(func() (docker.Container, error) {
 		return docker.RunContainer(image, "server", true, true, "--dev")
 	}, eventsourcingdb.ClientOptions{})
 	if err != nil {
-		return database, err
+		return Database{}, err
 	}
-	database.WithoutAuthorization = WithoutAuthorization{container, baseURL, client}
+	withoutAuthorization := WithoutAuthorization{container, baseURL, client}
+
+	baseURL = "http://localhost.invalid"
+	client = eventsourcingdb.NewClient(baseURL)
+	withInvalidURL := WithInvalidURL{baseURL, client}
+
+	database := Database{
+		withAuthorization,
+		withoutAuthorization,
+		withInvalidURL,
+	}
 
 	return database, nil
 }
