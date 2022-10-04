@@ -17,3 +17,18 @@ updates:
   commit-message:
     prefix: chore
     prefix-development: chore
+
+- package-ecosystem: docker
+  directory: "/docker/eventsourcingdb"
+  schedule:
+    interval: weekly
+  open-pull-requests-limit: 10
+  assignees:
+  - dotKuro
+  - goloroden
+  - strangedev
+  - yeldiRium
+  labels:
+  - Dependencies
+  commit-message:
+    prefix: chore
