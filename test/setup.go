@@ -15,33 +15,49 @@ func Setup() (Database, error) {
 		Tag:  "latest",
 	}
 
-	err := docker.BuildImage(dockerfilePath, image)
+	err := image.Build(dockerfilePath)
 	if err != nil {
 		return Database{}, err
 	}
 
 	accessToken := uuid.New().String()
-	container, baseURL, client, err := runDatabase(func() (docker.Container, error) {
-		return docker.RunContainer(image, "server", true, true, "--dev", "--ui", "--access-token", accessToken)
-	}, eventsourcingdb.ClientOptions{
+	clientOptions := eventsourcingdb.ClientOptions{
 		AccessToken: accessToken,
-	})
+	}
+	container, baseURL, client, err := runDatabase(
+		func() (docker.Container, error) {
+			return image.Run("server", true, true, "--dev", "--ui", "--access-token", accessToken)
+		},
+		clientOptions,
+	)
 	if err != nil {
 		return Database{}, err
 	}
-	withAuthorization := WithAuthorization{container, baseURL, accessToken, client}
+	withAuthorization := WithAuthorization{
+		NewContainerizedTestingDatabase(clientOptions, client, baseURL, container),
+		accessToken,
+	}
 
-	container, baseURL, client, err = runDatabase(func() (docker.Container, error) {
-		return docker.RunContainer(image, "server", true, true, "--dev", "--ui")
-	}, eventsourcingdb.ClientOptions{})
+	clientOptions = eventsourcingdb.ClientOptions{}
+	container, baseURL, client, err = runDatabase(
+		func() (docker.Container, error) {
+			return image.Run("server", true, true, "--dev", "--ui")
+		},
+		clientOptions,
+	)
 	if err != nil {
 		return Database{}, err
 	}
-	withoutAuthorization := WithoutAuthorization{container, baseURL, client}
+	withoutAuthorization := WithoutAuthorization{
+		NewContainerizedTestingDatabase(clientOptions, client, baseURL, container),
+	}
 
+	clientOptions = eventsourcingdb.ClientOptions{}
 	baseURL = "http://localhost.invalid"
 	client = eventsourcingdb.NewClient(baseURL)
-	withInvalidURL := WithInvalidURL{baseURL, client}
+	withInvalidURL := WithInvalidURL{
+		NewTestingDatabase(clientOptions, client, baseURL),
+	}
 
 	database := Database{
 		withAuthorization,
