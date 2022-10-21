@@ -13,7 +13,7 @@ import (
 
 func TestReadStreamNames(t *testing.T) {
 	t.Run("returns a channel containing an error when trying to read from a non-reachable server.", func(t *testing.T) {
-		client := database.WithInvalidURL.Client
+		client := database.WithInvalidURL.GetClient()
 
 		readStreamNameResults := client.ReadStreamNames(context.Background())
 
@@ -22,7 +22,7 @@ func TestReadStreamNames(t *testing.T) {
 	})
 
 	t.Run("supports authorization.", func(t *testing.T) {
-		client := database.WithAuthorization.Client
+		client := database.WithAuthorization.GetClient()
 
 		readStreamNameResults := client.ReadStreamNames(context.Background())
 
@@ -33,7 +33,7 @@ func TestReadStreamNames(t *testing.T) {
 	})
 
 	t.Run("closes the channel when no more stream names exist.", func(t *testing.T) {
-		client := database.WithoutAuthorization.Client
+		client := database.WithoutAuthorization.GetClient()
 
 		readStreamNameResults := client.ReadStreamNames(context.Background())
 
@@ -48,7 +48,7 @@ func TestReadStreamNames(t *testing.T) {
 	})
 
 	t.Run("reads all stream names starting from /.", func(t *testing.T) {
-		client := database.WithoutAuthorization.Client
+		client := database.WithoutAuthorization.GetClient()
 
 		streamName := "/" + uuid.New().String()
 		janeRegistered := test.Events.Registered.JaneDoe
@@ -73,7 +73,7 @@ func TestReadStreamNames(t *testing.T) {
 	})
 
 	t.Run("reads stream names starting from the given base stream name.", func(t *testing.T) {
-		client := database.WithoutAuthorization.Client
+		client := database.WithoutAuthorization.GetClient()
 
 		streamName := "/foobar/" + uuid.New().String()
 		janeRegistered := test.Events.Registered.JaneDoe
@@ -98,7 +98,7 @@ func TestReadStreamNames(t *testing.T) {
 	})
 
 	t.Run("closes the result channel when the given context is cancelled.", func(t *testing.T) {
-		client := database.WithoutAuthorization.Client
+		client := database.WithoutAuthorization.GetClient()
 
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
