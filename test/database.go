@@ -1,26 +1,16 @@
 package test
 
-import (
-	"github.com/thenativeweb/eventsourcingdb-client-golang"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/docker"
-)
-
 type WithAuthorization struct {
-	Container   docker.Container
-	BaseURL     string
+	ContainerizedTestingDatabase
 	AccessToken string
-	Client      eventsourcingdb.Client
 }
 
 type WithoutAuthorization struct {
-	Container docker.Container
-	BaseURL   string
-	Client    eventsourcingdb.Client
+	ContainerizedTestingDatabase
 }
 
 type WithInvalidURL struct {
-	BaseURL string
-	Client  eventsourcingdb.Client
+	TestingDatabase
 }
 
 type Database struct {

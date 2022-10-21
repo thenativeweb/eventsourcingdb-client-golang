@@ -11,7 +11,7 @@ import (
 
 func TestWriteEvents(t *testing.T) {
 	t.Run("returns an error when trying to write to a non-reachable server.", func(t *testing.T) {
-		client := database.WithInvalidURL.Client
+		client := database.WithInvalidURL.GetClient()
 
 		streamName := "/" + uuid.New().String()
 		janeRegistered := test.Events.Registered.JaneDoe
@@ -24,7 +24,7 @@ func TestWriteEvents(t *testing.T) {
 	})
 
 	t.Run("supports authorization.", func(t *testing.T) {
-		client := database.WithAuthorization.Client
+		client := database.WithAuthorization.GetClient()
 
 		streamName := "/" + uuid.New().String()
 		janeRegistered := test.Events.Registered.JaneDoe
@@ -37,7 +37,7 @@ func TestWriteEvents(t *testing.T) {
 	})
 
 	t.Run("writes a single event.", func(t *testing.T) {
-		client := database.WithoutAuthorization.Client
+		client := database.WithoutAuthorization.GetClient()
 
 		streamName := "/" + uuid.New().String()
 		janeRegistered := test.Events.Registered.JaneDoe
@@ -50,7 +50,7 @@ func TestWriteEvents(t *testing.T) {
 	})
 
 	t.Run("writes multiple events.", func(t *testing.T) {
-		client := database.WithoutAuthorization.Client
+		client := database.WithoutAuthorization.GetClient()
 
 		streamName := "/" + uuid.New().String()
 		janeRegistered := test.Events.Registered.JaneDoe
@@ -65,7 +65,7 @@ func TestWriteEvents(t *testing.T) {
 	})
 
 	t.Run("returns an error when trying to write an empty list of events.", func(t *testing.T) {
-		client := database.WithoutAuthorization.Client
+		client := database.WithoutAuthorization.GetClient()
 		err := client.WriteEvents([]eventsourcingdb.EventCandidate{})
 
 		assert.Error(t, err)
@@ -75,7 +75,7 @@ func TestWriteEvents(t *testing.T) {
 func TestWriteEventsWithPreconditions(t *testing.T) {
 	t.Run("when using the 'is stream pristine' precondition", func(t *testing.T) {
 		t.Run("writes events if the stream is pristine.", func(t *testing.T) {
-			client := database.WithoutAuthorization.Client
+			client := database.WithoutAuthorization.GetClient()
 
 			streamName := "/" + uuid.New().String()
 			janeRegistered := test.Events.Registered.JaneDoe
@@ -90,7 +90,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 		})
 
 		t.Run("returns an error if the stream is not pristine.", func(t *testing.T) {
-			client := database.WithoutAuthorization.Client
+			client := database.WithoutAuthorization.GetClient()
 
 			streamName := "/" + uuid.New().String()
 			janeRegistered := test.Events.Registered.JaneDoe
