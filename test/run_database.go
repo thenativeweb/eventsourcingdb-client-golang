@@ -15,7 +15,7 @@ func runDatabase(runContainerFn func() (container docker.Container, err error), 
 		return docker.Container{}, "", eventsourcingdb.Client{}, err
 	}
 
-	port, err := docker.GetExposedPort(container, 3000)
+	port, err := container.GetExposedPort(3000)
 	if err != nil {
 		return docker.Container{}, "", eventsourcingdb.Client{}, err
 	}
