@@ -2,17 +2,19 @@ package test
 
 import (
 	"errors"
+
+	"github.com/thenativeweb/eventsourcingdb-client-golang/docker"
 )
 
 func Teardown(database Database) error {
 	errorMessage := ""
 
-	err := database.WithAuthorization.Container.Kill()
+	err := docker.KillContainer(database.WithAuthorization.Container)
 	if err != nil {
 		errorMessage = errorMessage + ": " + err.Error()
 	}
 
-	err = database.WithoutAuthorization.Container.Kill()
+	err = docker.KillContainer(database.WithoutAuthorization.Container)
 	if err != nil {
 		errorMessage = errorMessage + ": " + err.Error()
 	}
