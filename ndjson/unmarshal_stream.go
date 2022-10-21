@@ -5,26 +5,29 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/error_container"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/result"
 	"io"
 )
 
 type UnmarshalStreamResult[TData any] struct {
-	error_container.ErrorContainer
-	Data TData
+	result.Result[TData]
 }
 
-func newUnmarshalStreamResult[TData any](data TData, err error) UnmarshalStreamResult[TData] {
+func newError[TData any](err error) UnmarshalStreamResult[TData] {
 	return UnmarshalStreamResult[TData]{
-		ErrorContainer: error_container.NewErrorContainer(err),
-		Data:           data,
+		result.NewResultWithError[TData](err),
+	}
+}
+
+func newData[TData any](data TData) UnmarshalStreamResult[TData] {
+	return UnmarshalStreamResult[TData]{
+		result.NewResultWithData[TData](data),
 	}
 }
 
 func UnmarshalStream[TData any](context context.Context, reader io.Reader) <-chan UnmarshalStreamResult[TData] {
 	scanner := bufio.NewScanner(reader)
 	resultChannel := make(chan UnmarshalStreamResult[TData], 1)
-	var nilValue TData
 
 	go func() {
 		defer close(resultChannel)
@@ -32,12 +35,12 @@ func UnmarshalStream[TData any](context context.Context, reader io.Reader) <-cha
 		for scanner.Scan() {
 			select {
 			case <-context.Done():
-				resultChannel <- newUnmarshalStreamResult[TData](nilValue, errors.New("context cancelled"))
+				resultChannel <- newError[TData](errors.New("context cancelled"))
 
 				return
 			default:
 				if err := scanner.Err(); err != nil {
-					resultChannel <- newUnmarshalStreamResult[TData](nilValue, err)
+					resultChannel <- newError[TData](err)
 
 					return
 				}
@@ -46,12 +49,12 @@ func UnmarshalStream[TData any](context context.Context, reader io.Reader) <-cha
 
 				currentLine := scanner.Text()
 				if err := json.Unmarshal([]byte(currentLine), &data); err != nil {
-					resultChannel <- newUnmarshalStreamResult[TData](nilValue, err)
+					resultChannel <- newError[TData](err)
 
 					return
 				}
 
-				resultChannel <- newUnmarshalStreamResult(data, nil)
+				resultChannel <- newData(data)
 			}
 		}
 	}()

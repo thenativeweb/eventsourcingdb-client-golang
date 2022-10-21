@@ -7,21 +7,25 @@ import (
 	"errors"
 	"fmt"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/authorization"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/error_container"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/ndjson"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/result"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/retry"
 	"net/http"
 )
 
 type ReadStreamNamesResult struct {
-	error_container.ErrorContainer
-	StreamName *string
+	result.Result[string]
 }
 
-func NewReadStreamNamesResult(streamName *string, err error) ReadStreamNamesResult {
+func newError(err error) ReadStreamNamesResult {
 	return ReadStreamNamesResult{
-		ErrorContainer: error_container.NewErrorContainer(err),
-		StreamName:     streamName,
+		result.NewResultWithError[string](err),
+	}
+}
+
+func newStreamName(streamName string) ReadStreamNamesResult {
+	return ReadStreamNamesResult{
+		result.NewResultWithData[string](streamName),
 	}
 }
 
@@ -49,7 +53,7 @@ func (client *Client) ReadStreamNamesWithBaseStreamName(ctx context.Context, bas
 		}
 		requestBodyAsJSON, err := json.Marshal(requestBody)
 		if err != nil {
-			resultChannel <- NewReadStreamNamesResult(nil, err)
+			resultChannel <- newError(err)
 
 			return
 		}
@@ -60,7 +64,7 @@ func (client *Client) ReadStreamNamesWithBaseStreamName(ctx context.Context, bas
 		url := client.configuration.baseURL + "/api/read-stream-names"
 		request, err := http.NewRequest("POST", url, bytes.NewReader(requestBodyAsJSON))
 		if err != nil {
-			resultChannel <- NewReadStreamNamesResult(nil, err)
+			resultChannel <- newError(err)
 
 			return
 		}
@@ -75,7 +79,7 @@ func (client *Client) ReadStreamNamesWithBaseStreamName(ctx context.Context, bas
 			return err
 		}, client.configuration.maxTries, ctx)
 		if err != nil {
-			resultChannel <- NewReadStreamNamesResult(nil, err)
+			resultChannel <- newError(err)
 
 			return
 		}
@@ -83,13 +87,13 @@ func (client *Client) ReadStreamNamesWithBaseStreamName(ctx context.Context, bas
 
 		err = client.validateProtocolVersion(response)
 		if err != nil {
-			resultChannel <- NewReadStreamNamesResult(nil, err)
+			resultChannel <- newError(err)
 
 			return
 		}
 
 		if response.StatusCode != http.StatusOK {
-			resultChannel <- NewReadStreamNamesResult(nil, errors.New(fmt.Sprintf("failed to write events: %s", response.Status)))
+			resultChannel <- newError(errors.New(fmt.Sprintf("failed to write events: %s", response.Status)))
 
 			return
 		}
@@ -99,19 +103,20 @@ func (client *Client) ReadStreamNamesWithBaseStreamName(ctx context.Context, bas
 
 		unmarshalResults := ndjson.UnmarshalStream[readStreamNamesResponseItem](unmarshalContext, response.Body)
 		for unmarshalResult := range unmarshalResults {
-			if unmarshalResult.IsError() {
-				resultChannel <- NewReadStreamNamesResult(nil, unmarshalResult.Error)
+			data, err := unmarshalResult.GetData()
+			if err != nil {
+				resultChannel <- newError(err)
 
 				return
 			}
 
-			resultChannel <- NewReadStreamNamesResult(&unmarshalResult.Data.Payload.StreamName, nil)
+			resultChannel <- newStreamName(data.Payload.StreamName)
 		}
 	}()
 
 	return resultChannel
 }
 
-func (client *Client) ReadStreamNames(context context.Context) <-chan ReadStreamNamesResult {
-	return client.ReadStreamNamesWithBaseStreamName(context, "/")
+func (client *Client) ReadStreamNames(ctx context.Context) <-chan ReadStreamNamesResult {
+	return client.ReadStreamNamesWithBaseStreamName(ctx, "/")
 }

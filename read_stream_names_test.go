@@ -20,27 +20,33 @@ func TestReadStreamNames(t *testing.T) {
 		errorResult := <-readStreamNameResults
 		assert.True(t, errorResult.IsError())
 	})
+
 	t.Run("supports authorization.", func(t *testing.T) {
 		client := database.WithAuthorization.Client
 
 		readStreamNameResults := client.ReadStreamNames(context.Background())
 
 		for result := range readStreamNameResults {
-			assert.NoError(t, result.Error)
+			_, err := result.GetData()
+			assert.NoError(t, err)
 		}
 	})
+
 	t.Run("closes the channel when no more stream names exist.", func(t *testing.T) {
 		client := database.WithoutAuthorization.Client
 
 		readStreamNameResults := client.ReadStreamNames(context.Background())
 
 		rootStreamNameResult := <-readStreamNameResults
-		assert.False(t, rootStreamNameResult.IsError())
-		assert.Equal(t, *rootStreamNameResult.StreamName, "/")
+		rootStreamName, err := rootStreamNameResult.GetData()
+
+		assert.NoError(t, err)
+		assert.Equal(t, rootStreamName, "/")
 
 		_, ok := <-readStreamNameResults
 		assert.False(t, ok)
 	})
+
 	t.Run("reads all stream names starting from /.", func(t *testing.T) {
 		client := database.WithoutAuthorization.Client
 
@@ -57,13 +63,15 @@ func TestReadStreamNames(t *testing.T) {
 		streamNames := make([]string, 0, 2)
 
 		for result := range readStreamNameResults {
-			assert.False(t, result.IsError())
+			data, err := result.GetData()
+			assert.NoError(t, err)
 
-			streamNames = append(streamNames, *result.StreamName)
+			streamNames = append(streamNames, data)
 		}
 
 		assert.Equal(t, streamNames, []string{"/", streamName})
 	})
+
 	t.Run("reads stream names starting from the given base stream name.", func(t *testing.T) {
 		client := database.WithoutAuthorization.Client
 
@@ -80,13 +88,15 @@ func TestReadStreamNames(t *testing.T) {
 		streamNames := make([]string, 0, 2)
 
 		for result := range readStreamNameResults {
-			assert.False(t, result.IsError())
+			data, err := result.GetData()
+			assert.NoError(t, err)
 
-			streamNames = append(streamNames, *result.StreamName)
+			streamNames = append(streamNames, data)
 		}
 
 		assert.Equal(t, streamNames, []string{"/foobar", streamName})
 	})
+
 	t.Run("closes the result channel when the given context is cancelled.", func(t *testing.T) {
 		client := database.WithoutAuthorization.Client
 
@@ -95,7 +105,8 @@ func TestReadStreamNames(t *testing.T) {
 		readStreamNameResults := client.ReadStreamNames(ctx)
 
 		cancelledResult := <-readStreamNameResults
-		assert.Error(t, cancelledResult.Error, errors.New("context cancelled"))
+		_, err := cancelledResult.GetData()
+		assert.Error(t, err, errors.New("context cancelled"))
 
 		superfluousResult, ok := <-readStreamNameResults
 		assert.False(t, ok, fmt.Sprintf("channel did not close %+v", superfluousResult))
