@@ -10,7 +10,7 @@ import (
 	"github.com/thenativeweb/eventsourcingdb-client-golang"
 )
 
-func RemoveTabsAndNewlines(text string) string {
+func removeTabsAndNewlines(text string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(
 		text,
 		"\t", ""),
@@ -37,7 +37,7 @@ func TestPreconditions(t *testing.T) {
 		jsonResult, err := json.Marshal(preconditions)
 
 		assert.NoError(t, err)
-		assert.Equal(t, RemoveTabsAndNewlines(`[
+		assert.Equal(t, removeTabsAndNewlines(`[
 			{"type":"isStreamPristine","payload":{"streamName":"/bar"}},
 			{"type":"isStreamPristine","payload":{"streamName":"/foo"}},
 			{"type":"isStreamOnEventId","payload":{"streamName":"/heck","eventId":1337}},
