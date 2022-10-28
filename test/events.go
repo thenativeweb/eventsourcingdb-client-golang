@@ -1,12 +1,12 @@
 package test
 
-type registeredEventData struct {
+type RegisteredEventData struct {
 	Name string `json:"name"`
 }
 
 type registeredEvent struct {
 	Name string
-	Data registeredEventData
+	Data RegisteredEventData
 }
 
 type registeredEvents struct {
@@ -14,13 +14,32 @@ type registeredEvents struct {
 	JohnDoe registeredEvent
 }
 
+type LoggedInEventData struct {
+	Name string `json:"name"`
+}
+
+type loggedInEvent struct {
+	Name string
+	Data LoggedInEventData
+}
+
+type loggedInEvents struct {
+	JaneDoe loggedInEvent
+	JohnDoe loggedInEvent
+}
+
 type events struct {
 	Registered registeredEvents
+	LoggedIn   loggedInEvents
 }
 
 var Events = events{
 	Registered: registeredEvents{
-		JaneDoe: registeredEvent{"registered", registeredEventData{"Jane Doe"}},
-		JohnDoe: registeredEvent{"registered", registeredEventData{"John Doe"}},
+		JaneDoe: registeredEvent{"registered", RegisteredEventData{"Jane Doe"}},
+		JohnDoe: registeredEvent{"registered", RegisteredEventData{"John Doe"}},
+	},
+	LoggedIn: loggedInEvents{
+		JaneDoe: loggedInEvent{"loggedIn", LoggedInEventData{"Jane Doe"}},
+		JohnDoe: loggedInEvent{"loggedIn", LoggedInEventData{"Jane Doe"}},
 	},
 }

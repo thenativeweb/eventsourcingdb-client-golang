@@ -21,7 +21,7 @@ type ReadStreamNamesResult struct {
 	result.Result[StreamName]
 }
 
-func newError(err error) ReadStreamNamesResult {
+func newReadStreamNamesError(err error) ReadStreamNamesResult {
 	return ReadStreamNamesResult{
 		result.NewResultWithError[StreamName](err),
 	}
@@ -53,7 +53,7 @@ func (client *Client) ReadStreamNamesWithBaseStreamName(ctx context.Context, bas
 		}
 		requestBodyAsJSON, err := json.Marshal(requestBody)
 		if err != nil {
-			resultChannel <- newError(err)
+			resultChannel <- newReadStreamNamesError(err)
 
 			return
 		}
@@ -64,7 +64,7 @@ func (client *Client) ReadStreamNamesWithBaseStreamName(ctx context.Context, bas
 		url := client.configuration.baseURL + "/api/read-stream-names"
 		request, err := http.NewRequest("POST", url, bytes.NewReader(requestBodyAsJSON))
 		if err != nil {
-			resultChannel <- newError(err)
+			resultChannel <- newReadStreamNamesError(err)
 
 			return
 		}
@@ -79,7 +79,7 @@ func (client *Client) ReadStreamNamesWithBaseStreamName(ctx context.Context, bas
 			return err
 		}, client.configuration.maxTries, ctx)
 		if err != nil {
-			resultChannel <- newError(err)
+			resultChannel <- newReadStreamNamesError(err)
 
 			return
 		}
@@ -87,13 +87,13 @@ func (client *Client) ReadStreamNamesWithBaseStreamName(ctx context.Context, bas
 
 		err = client.validateProtocolVersion(response)
 		if err != nil {
-			resultChannel <- newError(err)
+			resultChannel <- newReadStreamNamesError(err)
 
 			return
 		}
 
 		if response.StatusCode != http.StatusOK {
-			resultChannel <- newError(errors.New(fmt.Sprintf("failed to write events: %s", response.Status)))
+			resultChannel <- newReadStreamNamesError(errors.New(fmt.Sprintf("failed to write events: %s", response.Status)))
 
 			return
 		}
@@ -105,7 +105,7 @@ func (client *Client) ReadStreamNamesWithBaseStreamName(ctx context.Context, bas
 		for unmarshalResult := range unmarshalResults {
 			data, err := unmarshalResult.GetData()
 			if err != nil {
-				resultChannel <- newError(err)
+				resultChannel <- newReadStreamNamesError(err)
 
 				return
 			}
@@ -114,14 +114,14 @@ func (client *Client) ReadStreamNamesWithBaseStreamName(ctx context.Context, bas
 			case "streamName":
 				var streamName StreamName
 				if err := json.Unmarshal(data.Payload, &streamName); err != nil {
-					resultChannel <- newError(err)
+					resultChannel <- newReadStreamNamesError(err)
 
 					return
 				}
 
 				resultChannel <- newStreamName(streamName)
 			default:
-				resultChannel <- newError(errors.New(fmt.Sprintf("unexpected stream item %+v", data)))
+				resultChannel <- newReadStreamNamesError(errors.New(fmt.Sprintf("unexpected stream item %+v", data)))
 
 				return
 			}

@@ -1,0 +1,228 @@
+package eventsourcingdb_test
+
+import (
+	"context"
+	"encoding/json"
+	"github.com/stretchr/testify/assert"
+	"github.com/thenativeweb/eventsourcingdb-client-golang"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/test"
+	"testing"
+)
+
+func TestReadEvents(t *testing.T) {
+	client := database.WithoutAuthorization.GetClient()
+
+	janeRegistered := eventsourcingdb.NewEventCandidate("/users/registered", test.Events.Registered.JaneDoe.Name, test.Events.Registered.JaneDoe.Data)
+	johnRegistered := eventsourcingdb.NewEventCandidate("/users/registered", test.Events.Registered.JohnDoe.Name, test.Events.Registered.JohnDoe.Data)
+	janeLoggedIn := eventsourcingdb.NewEventCandidate("/users/loggedIn", test.Events.LoggedIn.JaneDoe.Name, test.Events.LoggedIn.JaneDoe.Data)
+	johnLoggedIn := eventsourcingdb.NewEventCandidate("/users/loggedIn", test.Events.LoggedIn.JohnDoe.Name, test.Events.LoggedIn.JohnDoe.Data)
+
+	err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+		janeRegistered,
+		janeLoggedIn,
+		johnRegistered,
+		johnLoggedIn,
+	})
+
+	assert.NoError(t, err)
+
+	getNextEvent := func(t *testing.T, resultChan <-chan eventsourcingdb.ReadEventsResult) eventsourcingdb.Event {
+		firstStoreItem := <-resultChan
+		data, err := firstStoreItem.GetData()
+
+		assert.NoError(t, err)
+
+		return data.Event
+	}
+
+	matchRegisteredEvent := func(t *testing.T, event eventsourcingdb.Event, candidate eventsourcingdb.EventCandidate) {
+		assert.Equal(t, event.Metadata.StreamName, candidate.Metadata.StreamName)
+		assert.Equal(t, event.Metadata.Name, candidate.Metadata.Name)
+
+		var eventData test.RegisteredEventData
+		err = json.Unmarshal(event.Data, &eventData)
+
+		assert.NoError(t, err)
+
+		candidateData, ok := candidate.Data.(test.RegisteredEventData)
+
+		assert.True(t, ok)
+
+		assert.Equal(t, candidateData.Name, eventData.Name)
+	}
+
+	matchLoggedInEvent := func(t *testing.T, event eventsourcingdb.Event, candidate eventsourcingdb.EventCandidate) {
+		assert.Equal(t, event.Metadata.StreamName, candidate.Metadata.StreamName)
+		assert.Equal(t, event.Metadata.Name, candidate.Metadata.Name)
+
+		var eventData test.LoggedInEventData
+		err = json.Unmarshal(event.Data, &eventData)
+
+		assert.NoError(t, err)
+
+		candidateData, ok := candidate.Data.(test.LoggedInEventData)
+
+		assert.True(t, ok)
+
+		assert.Equal(t, candidateData.Name, eventData.Name)
+	}
+
+	t.Run("reads from a single stream.", func(t *testing.T) {
+		resultChan := client.ReadEvents(context.Background(), "/users/registered")
+
+		firstEvent := getNextEvent(t, resultChan)
+		matchRegisteredEvent(t, firstEvent, janeRegistered)
+
+		secondEvent := getNextEvent(t, resultChan)
+		matchRegisteredEvent(t, secondEvent, johnRegistered)
+
+		_, ok := <-resultChan
+
+		assert.False(t, ok)
+	})
+
+	t.Run("reads from a stream including sub-streams.", func(t *testing.T) {
+		resultChan := client.ReadEventsWithOptions(
+			context.Background(),
+			"/users",
+			eventsourcingdb.NewReadEventsOptions().
+				WithSubStreams(true),
+		)
+
+		firstEvent := getNextEvent(t, resultChan)
+		matchRegisteredEvent(t, firstEvent, janeRegistered)
+
+		secondEvent := getNextEvent(t, resultChan)
+		matchLoggedInEvent(t, secondEvent, janeLoggedIn)
+
+		thirdEvent := getNextEvent(t, resultChan)
+		matchRegisteredEvent(t, thirdEvent, johnRegistered)
+
+		fourthEvent := getNextEvent(t, resultChan)
+		matchLoggedInEvent(t, fourthEvent, johnLoggedIn)
+
+		_, ok := <-resultChan
+
+		assert.False(t, ok)
+	})
+
+	t.Run("reads the events in reverse order.", func(t *testing.T) {
+		resultChan := client.ReadEventsWithOptions(
+			context.Background(),
+			"/users/registered",
+			eventsourcingdb.NewReadEventsOptions().
+				Order(eventsourcingdb.NewestFirst),
+		)
+
+		firstEvent := getNextEvent(t, resultChan)
+		matchRegisteredEvent(t, firstEvent, johnRegistered)
+
+		secondEvent := getNextEvent(t, resultChan)
+		matchRegisteredEvent(t, secondEvent, janeRegistered)
+
+		_, ok := <-resultChan
+
+		assert.False(t, ok)
+	})
+
+	t.Run("reads only events matching the given event names.", func(t *testing.T) {
+		resultChan := client.ReadEventsWithOptions(
+			context.Background(),
+			"/users",
+			eventsourcingdb.NewReadEventsOptions().
+				WithSubStreams(true).
+				EventNames([]string{"registered"}),
+		)
+
+		firstEvent := getNextEvent(t, resultChan)
+		matchRegisteredEvent(t, firstEvent, janeRegistered)
+
+		secondEvent := getNextEvent(t, resultChan)
+		matchRegisteredEvent(t, secondEvent, johnRegistered)
+
+		_, ok := <-resultChan
+
+		assert.False(t, ok)
+	})
+
+	t.Run("reads events starting from the oldest event matching the given event name.", func(t *testing.T) {
+		resultChan := client.ReadEventsWithOptions(
+			context.Background(),
+			"/users",
+			eventsourcingdb.NewReadEventsOptions().
+				WithSubStreams(true).
+				FromEventName("loggedIn"),
+		)
+
+		firstEvent := getNextEvent(t, resultChan)
+		matchRegisteredEvent(t, firstEvent, johnRegistered)
+
+		secondEvent := getNextEvent(t, resultChan)
+		matchLoggedInEvent(t, secondEvent, johnLoggedIn)
+
+		_, ok := <-resultChan
+
+		assert.False(t, ok)
+	})
+
+	t.Run("when the order is reversed, the FromEvent condition is applied in the usual (oldest first) order, but the resulting event stream is reversed.", func(t *testing.T) {
+		resultChan := client.ReadEventsWithOptions(
+			context.Background(),
+			"/users",
+			eventsourcingdb.NewReadEventsOptions().
+				WithSubStreams(true).
+				FromEventName("loggedIn").
+				Order(eventsourcingdb.NewestFirst),
+		)
+
+		firstEvent := getNextEvent(t, resultChan)
+		matchLoggedInEvent(t, firstEvent, johnLoggedIn)
+
+		secondEvent := getNextEvent(t, resultChan)
+		matchRegisteredEvent(t, secondEvent, johnRegistered)
+
+		_, ok := <-resultChan
+
+		assert.False(t, ok)
+	})
+
+	t.Run("reads events starting from the lower bound ID.", func(t *testing.T) {
+		resultChan := client.ReadEventsWithOptions(
+			context.Background(),
+			"/users",
+			eventsourcingdb.NewReadEventsOptions().
+				WithSubStreams(true).
+				LowerBoundID(2),
+		)
+
+		firstEvent := getNextEvent(t, resultChan)
+		matchRegisteredEvent(t, firstEvent, johnRegistered)
+
+		secondEvent := getNextEvent(t, resultChan)
+		matchLoggedInEvent(t, secondEvent, johnLoggedIn)
+
+		_, ok := <-resultChan
+
+		assert.False(t, ok)
+	})
+
+	t.Run("reads events up to the upper bound ID.", func(t *testing.T) {
+		resultChan := client.ReadEventsWithOptions(
+			context.Background(),
+			"/users",
+			eventsourcingdb.NewReadEventsOptions().
+				WithSubStreams(true).
+				UpperBoundID(1),
+		)
+
+		firstEvent := getNextEvent(t, resultChan)
+		matchRegisteredEvent(t, firstEvent, janeRegistered)
+
+		secondEvent := getNextEvent(t, resultChan)
+		matchLoggedInEvent(t, secondEvent, janeLoggedIn)
+
+		_, ok := <-resultChan
+
+		assert.False(t, ok)
+	})
+}

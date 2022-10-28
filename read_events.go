@@ -16,17 +16,57 @@ import (
 type ReadEventsOptionsOrder string
 
 const (
-	oldestFirst ReadEventsOptionsOrder = "oldest-first"
-	newestFirst ReadEventsOptionsOrder = "newest-first"
+	OldestFirst ReadEventsOptionsOrder = "oldest-first"
+	NewestFirst ReadEventsOptionsOrder = "newest-first"
 )
 
 type ReadEventsOptions struct {
-	WithSubStreams *bool
-	Order          *ReadEventsOptionsOrder
-	EventNames     *[]string
-	LowerBoundID   *int64
-	UpperBoundID   *int64
-	FromEventName  *string
+	OptionWithSubStreams *bool                   `json:"withSubStreams,omitempty"`
+	OptionOrder          *ReadEventsOptionsOrder `json:"order,omitempty"`
+	OptionEventNames     *[]string               `json:"eventNames,omitempty"`
+	OptionLowerBoundID   *int64                  `json:"lowerBoundId,omitempty"`
+	OptionUpperBoundID   *int64                  `json:"upperBoundId,omitempty"`
+	OptionFromEventName  *string                 `json:"fromEventName,omitempty"`
+}
+
+func NewReadEventsOptions() ReadEventsOptions {
+	return ReadEventsOptions{}
+}
+
+func (options ReadEventsOptions) WithSubStreams(withSubStreams bool) ReadEventsOptions {
+	options.OptionWithSubStreams = &withSubStreams
+
+	return options
+}
+
+func (options ReadEventsOptions) Order(order ReadEventsOptionsOrder) ReadEventsOptions {
+	options.OptionOrder = &order
+
+	return options
+}
+
+func (options ReadEventsOptions) EventNames(eventNames []string) ReadEventsOptions {
+	options.OptionEventNames = &eventNames
+
+	return options
+}
+
+func (options ReadEventsOptions) LowerBoundID(lowerBoundID int64) ReadEventsOptions {
+	options.OptionLowerBoundID = &lowerBoundID
+
+	return options
+}
+
+func (options ReadEventsOptions) UpperBoundID(upperBoundID int64) ReadEventsOptions {
+	options.OptionUpperBoundID = &upperBoundID
+
+	return options
+}
+
+func (options ReadEventsOptions) FromEventName(eventName string) ReadEventsOptions {
+	options.OptionFromEventName = &eventName
+
+	return options
 }
 
 type readEventsRequest struct {
@@ -43,7 +83,7 @@ type ReadEventsResult struct {
 	result.Result[StoreItem]
 }
 
-func newError(err error) ReadEventsResult {
+func newReadEventsError(err error) ReadEventsResult {
 	return ReadEventsResult{
 		result.NewResultWithError[StoreItem](err),
 	}
@@ -55,7 +95,7 @@ func newStoreItem(item StoreItem) ReadEventsResult {
 	}
 }
 
-func (client Client) ReadEvents(ctx context.Context, streamName string, options ReadEventsOptions) <-chan ReadEventsResult {
+func (client *Client) ReadEventsWithOptions(ctx context.Context, streamName string, options ReadEventsOptions) <-chan ReadEventsResult {
 	resultChannel := make(chan ReadEventsResult, 1)
 
 	go func() {
@@ -66,7 +106,7 @@ func (client Client) ReadEvents(ctx context.Context, streamName string, options 
 		}
 		requestBodyAsJSON, err := json.Marshal(requestBody)
 		if err != nil {
-			resultChannel <- newError(err)
+			resultChannel <- newReadEventsError(err)
 
 			return
 		}
@@ -77,7 +117,7 @@ func (client Client) ReadEvents(ctx context.Context, streamName string, options 
 		url := client.configuration.baseURL + "/api/read-events"
 		request, err := http.NewRequest("POST", url, bytes.NewReader(requestBodyAsJSON))
 		if err != nil {
-			resultChannel <- newError(err)
+			resultChannel <- newReadEventsError(err)
 
 			return
 		}
@@ -92,7 +132,7 @@ func (client Client) ReadEvents(ctx context.Context, streamName string, options 
 			return err
 		}, client.configuration.maxTries, ctx)
 		if err != nil {
-			resultChannel <- newError(err)
+			resultChannel <- newReadEventsError(err)
 
 			return
 		}
@@ -100,13 +140,13 @@ func (client Client) ReadEvents(ctx context.Context, streamName string, options 
 
 		err = client.validateProtocolVersion(response)
 		if err != nil {
-			resultChannel <- newError(err)
+			resultChannel <- newReadEventsError(err)
 
 			return
 		}
 
 		if response.StatusCode != http.StatusOK {
-			resultChannel <- newError(errors.New(fmt.Sprintf("failed to read events: %s", response.Status)))
+			resultChannel <- newReadEventsError(errors.New(fmt.Sprintf("failed to read events: %s", response.Status)))
 
 			return
 		}
@@ -118,7 +158,7 @@ func (client Client) ReadEvents(ctx context.Context, streamName string, options 
 		for unmarshalResult := range unmarshalResults {
 			data, err := unmarshalResult.GetData()
 			if err != nil {
-				resultChannel <- newError(err)
+				resultChannel <- newReadEventsError(err)
 
 				return
 			}
@@ -127,14 +167,14 @@ func (client Client) ReadEvents(ctx context.Context, streamName string, options 
 			case "item":
 				var storeItem StoreItem
 				if err := json.Unmarshal(data.Payload, &storeItem); err != nil {
-					resultChannel <- newError(err)
+					resultChannel <- newReadEventsError(err)
 
 					return
 				}
 
 				resultChannel <- newStoreItem(storeItem)
 			default:
-				resultChannel <- newError(errors.New(fmt.Sprintf("unexpected stream item %+v", data)))
+				resultChannel <- newReadEventsError(errors.New(fmt.Sprintf("unexpected stream item %+v", data)))
 
 				return
 			}
@@ -142,4 +182,8 @@ func (client Client) ReadEvents(ctx context.Context, streamName string, options 
 	}()
 
 	return resultChannel
+}
+
+func (client *Client) ReadEvents(ctx context.Context, streamName string) <-chan ReadEventsResult {
+	return client.ReadEventsWithOptions(ctx, streamName, NewReadEventsOptions())
 }
