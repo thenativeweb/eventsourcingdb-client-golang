@@ -12,20 +12,6 @@ import (
 	"net/http"
 )
 
-type writeEventsRequestBodyIsStreamPristinePrecondition struct {
-	StreamName string `json:"streamName"`
-}
-
-type writeEventsRequestBodyIsStreamOnEventIDPrecondition struct {
-	StreamName string `json:"streamName"`
-	EventID    int    `json:"eventId"`
-}
-
-type writeEventsRequestBodyPrecondition struct {
-	Type    string      `json:"type"`
-	Payload interface{} `json:"payload"`
-}
-
 type writeEventsRequestBodyEventCandidateMetadata struct {
 	StreamName string `json:"streamName"`
 	Name       string `json:"name"`
@@ -37,38 +23,18 @@ type writeEventsRequestBodyEventCandidate struct {
 }
 
 type writeEventsRequestBody struct {
-	Preconditions []writeEventsRequestBodyPrecondition   `json:"preconditions,omitempty"`
+	Preconditions *Preconditions                         `json:"preconditions,omitempty"`
 	Events        []writeEventsRequestBodyEventCandidate `json:"events"`
 }
 
 func (client *Client) WriteEvents(eventCandidates []EventCandidate) error {
-	return client.WriteEventsWithPreconditions([]interface{}{}, eventCandidates)
+	return client.WriteEventsWithPreconditions(NewPreconditions(), eventCandidates)
 }
 
-func (client *Client) WriteEventsWithPreconditions(preconditions []interface{}, eventCandidates []EventCandidate) error {
+func (client *Client) WriteEventsWithPreconditions(preconditions *Preconditions, eventCandidates []EventCandidate) error {
 	requestBody := writeEventsRequestBody{
-		[]writeEventsRequestBodyPrecondition{},
+		preconditions,
 		[]writeEventsRequestBodyEventCandidate{},
-	}
-
-	for _, precondition := range preconditions {
-		switch concretePrecondition := precondition.(type) {
-		case IsStreamPristinePrecondition:
-			requestBody.Preconditions = append(requestBody.Preconditions, writeEventsRequestBodyPrecondition{
-				"isStreamPristine",
-				writeEventsRequestBodyIsStreamPristinePrecondition{concretePrecondition.StreamName},
-			})
-		case IsStreamOnEventIDPrecondition:
-			requestBody.Preconditions = append(requestBody.Preconditions, writeEventsRequestBodyPrecondition{
-				"isStreamOnEventId",
-				writeEventsRequestBodyIsStreamOnEventIDPrecondition{
-					concretePrecondition.StreamName,
-					concretePrecondition.EventID,
-				},
-			})
-		default:
-			return errors.New(fmt.Sprintf("unknown precondition type '%+v'", precondition))
-		}
 	}
 
 	for _, event := range eventCandidates {
