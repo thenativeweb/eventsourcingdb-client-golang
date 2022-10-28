@@ -13,19 +13,23 @@ import (
 	"net/http"
 )
 
+type StreamName struct {
+	StreamName string `json:"streamName"`
+}
+
 type ReadStreamNamesResult struct {
-	result.Result[string]
+	result.Result[StreamName]
 }
 
 func newError(err error) ReadStreamNamesResult {
 	return ReadStreamNamesResult{
-		result.NewResultWithError[string](err),
+		result.NewResultWithError[StreamName](err),
 	}
 }
 
-func newStreamName(streamName string) ReadStreamNamesResult {
+func newStreamName(streamName StreamName) ReadStreamNamesResult {
 	return ReadStreamNamesResult{
-		result.NewResultWithData[string](streamName),
+		result.NewResultWithData[StreamName](streamName),
 	}
 }
 
@@ -33,13 +37,9 @@ type readStreamNamesRequestBody struct {
 	BaseStreamName string `json:"baseStreamName"`
 }
 
-type readStreamNamesResponseItemPayload struct {
-	StreamName string `json:"streamName"`
-}
-
 type readStreamNamesResponseItem struct {
-	Type    string                             `json:"type"`
-	Payload readStreamNamesResponseItemPayload `json:"payload"`
+	Type    string          `json:"type"`
+	Payload json.RawMessage `json:"payload"`
 }
 
 func (client *Client) ReadStreamNamesWithBaseStreamName(ctx context.Context, baseStreamName string) <-chan ReadStreamNamesResult {
@@ -110,7 +110,21 @@ func (client *Client) ReadStreamNamesWithBaseStreamName(ctx context.Context, bas
 				return
 			}
 
-			resultChannel <- newStreamName(data.Payload.StreamName)
+			switch data.Type {
+			case "streamName":
+				var streamName StreamName
+				if err := json.Unmarshal(data.Payload, &streamName); err != nil {
+					resultChannel <- newError(err)
+
+					return
+				}
+
+				resultChannel <- newStreamName(streamName)
+			default:
+				resultChannel <- newError(errors.New(fmt.Sprintf("unexpected stream item %+v", data)))
+
+				return
+			}
 		}
 	}()
 
