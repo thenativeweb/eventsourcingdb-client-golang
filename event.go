@@ -6,7 +6,7 @@ import (
 )
 
 type EventMetadata struct {
-	ID              int64               `json:"id"`
+	ID              int                 `json:"id"`
 	Timestamp       timestamp.Timestamp `json:"timestamp"`
 	StreamName      string              `json:"streamName"`
 	Name            string              `json:"name"`

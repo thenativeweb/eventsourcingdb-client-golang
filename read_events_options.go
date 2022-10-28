@@ -11,8 +11,8 @@ type ReadEventsOptions struct {
 	OptionWithSubStreams *bool                   `json:"withSubStreams,omitempty"`
 	OptionOrder          *ReadEventsOptionsOrder `json:"order,omitempty"`
 	OptionEventNames     *[]string               `json:"eventNames,omitempty"`
-	OptionLowerBoundID   *int64                  `json:"lowerBoundId,omitempty"`
-	OptionUpperBoundID   *int64                  `json:"upperBoundId,omitempty"`
+	OptionLowerBoundID   *int                    `json:"lowerBoundId,omitempty"`
+	OptionUpperBoundID   *int                    `json:"upperBoundId,omitempty"`
 	OptionFromEventName  *string                 `json:"fromEventName,omitempty"`
 }
 
@@ -38,13 +38,13 @@ func (options ReadEventsOptions) EventNames(eventNames []string) ReadEventsOptio
 	return options
 }
 
-func (options ReadEventsOptions) LowerBoundID(lowerBoundID int64) ReadEventsOptions {
+func (options ReadEventsOptions) LowerBoundID(lowerBoundID int) ReadEventsOptions {
 	options.OptionLowerBoundID = &lowerBoundID
 
 	return options
 }
 
-func (options ReadEventsOptions) UpperBoundID(upperBoundID int64) ReadEventsOptions {
+func (options ReadEventsOptions) UpperBoundID(upperBoundID int) ReadEventsOptions {
 	options.OptionUpperBoundID = &upperBoundID
 
 	return options
