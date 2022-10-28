@@ -10,8 +10,9 @@ type registeredEvent struct {
 }
 
 type registeredEvents struct {
-	JaneDoe registeredEvent
-	JohnDoe registeredEvent
+	JaneDoe   registeredEvent
+	JohnDoe   registeredEvent
+	ApfelFred registeredEvent
 }
 
 type LoggedInEventData struct {
@@ -35,8 +36,9 @@ type events struct {
 
 var Events = events{
 	Registered: registeredEvents{
-		JaneDoe: registeredEvent{"registered", RegisteredEventData{"Jane Doe"}},
-		JohnDoe: registeredEvent{"registered", RegisteredEventData{"John Doe"}},
+		JaneDoe:   registeredEvent{"registered", RegisteredEventData{"Jane Doe"}},
+		JohnDoe:   registeredEvent{"registered", RegisteredEventData{"John Doe"}},
+		ApfelFred: registeredEvent{"registered", RegisteredEventData{"Apfel Fred"}},
 	},
 	LoggedIn: loggedInEvents{
 		JaneDoe: loggedInEvent{"loggedIn", LoggedInEventData{"Jane Doe"}},

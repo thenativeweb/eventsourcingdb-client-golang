@@ -6,46 +6,47 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+
 	"github.com/thenativeweb/eventsourcingdb-client-golang/authorization"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/ndjson"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/result"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/retry"
-	"net/http"
 )
 
-type readEventsRequest struct {
-	StreamName string            `json:"streamName,omitempty"`
-	Options    ReadEventsOptions `json:"options,omitempty"`
+type observeEventsRequest struct {
+	StreamName string               `json:"streamName,omitempty"`
+	Options    ObserveEventsOptions `json:"options,omitempty"`
 }
 
-type ReadEventsResult struct {
+type ObserveEventsResult struct {
 	result.Result[StoreItem]
 }
 
-func newReadEventsError(err error) ReadEventsResult {
-	return ReadEventsResult{
+func newObserveEventsError(err error) ObserveEventsResult {
+	return ObserveEventsResult{
 		result.NewResultWithError[StoreItem](err),
 	}
 }
 
-func newStoreItem(item StoreItem) ReadEventsResult {
-	return ReadEventsResult{
+func newObserveEventsValue(item StoreItem) ObserveEventsResult {
+	return ObserveEventsResult{
 		result.NewResultWithData[StoreItem](item),
 	}
 }
 
-func (client *Client) ReadEventsWithOptions(ctx context.Context, streamName string, options ReadEventsOptions) <-chan ReadEventsResult {
-	resultChannel := make(chan ReadEventsResult, 1)
+func (client *Client) ObserveEventsWithOptions(ctx context.Context, streamName string, options ObserveEventsOptions) <-chan ObserveEventsResult {
+	resultChannel := make(chan ObserveEventsResult, 1)
 
 	go func() {
 		defer close(resultChannel)
-		requestBody := readEventsRequest{
+		requestBody := observeEventsRequest{
 			StreamName: streamName,
 			Options:    options,
 		}
 		requestBodyAsJSON, err := json.Marshal(requestBody)
 		if err != nil {
-			resultChannel <- newReadEventsError(err)
+			resultChannel <- newObserveEventsError(err)
 
 			return
 		}
@@ -53,10 +54,10 @@ func (client *Client) ReadEventsWithOptions(ctx context.Context, streamName stri
 		httpClient := &http.Client{
 			Timeout: client.configuration.timeout,
 		}
-		url := client.configuration.baseURL + "/api/read-events"
+		url := client.configuration.baseURL + "/api/observe-events"
 		request, err := http.NewRequest("POST", url, bytes.NewReader(requestBodyAsJSON))
 		if err != nil {
-			resultChannel <- newReadEventsError(err)
+			resultChannel <- newObserveEventsError(err)
 
 			return
 		}
@@ -71,7 +72,7 @@ func (client *Client) ReadEventsWithOptions(ctx context.Context, streamName stri
 			return err
 		}, client.configuration.maxTries, ctx)
 		if err != nil {
-			resultChannel <- newReadEventsError(err)
+			resultChannel <- newObserveEventsError(err)
 
 			return
 		}
@@ -79,13 +80,13 @@ func (client *Client) ReadEventsWithOptions(ctx context.Context, streamName stri
 
 		err = client.validateProtocolVersion(response)
 		if err != nil {
-			resultChannel <- newReadEventsError(err)
+			resultChannel <- newObserveEventsError(err)
 
 			return
 		}
 
 		if response.StatusCode != http.StatusOK {
-			resultChannel <- newReadEventsError(errors.New(fmt.Sprintf("failed to read events: %s", response.Status)))
+			resultChannel <- newObserveEventsError(errors.New(fmt.Sprintf("failed to observe events: %s", response.Status)))
 
 			return
 		}
@@ -97,23 +98,25 @@ func (client *Client) ReadEventsWithOptions(ctx context.Context, streamName stri
 		for unmarshalResult := range unmarshalResults {
 			data, err := unmarshalResult.GetData()
 			if err != nil {
-				resultChannel <- newReadEventsError(err)
+				resultChannel <- newObserveEventsError(err)
 
 				return
 			}
 
 			switch data.Type {
+			case "heartbeat":
+				continue
 			case "item":
 				var storeItem StoreItem
 				if err := json.Unmarshal(data.Payload, &storeItem); err != nil {
-					resultChannel <- newReadEventsError(err)
+					resultChannel <- newObserveEventsError(err)
 
 					return
 				}
 
-				resultChannel <- newStoreItem(storeItem)
+				resultChannel <- newObserveEventsValue(storeItem)
 			default:
-				resultChannel <- newReadEventsError(errors.New(fmt.Sprintf("unexpected stream item %+v", data)))
+				resultChannel <- newObserveEventsError(errors.New(fmt.Sprintf("unexpected stream item %+v", data)))
 
 				return
 			}
@@ -123,6 +126,6 @@ func (client *Client) ReadEventsWithOptions(ctx context.Context, streamName stri
 	return resultChannel
 }
 
-func (client *Client) ReadEvents(ctx context.Context, streamName string) <-chan ReadEventsResult {
-	return client.ReadEventsWithOptions(ctx, streamName, NewReadEventsOptions())
+func (client *Client) ObserveEvents(ctx context.Context, streamName string) <-chan ObserveEventsResult {
+	return client.ObserveEventsWithOptions(ctx, streamName, NewObserveEventsOptions())
 }

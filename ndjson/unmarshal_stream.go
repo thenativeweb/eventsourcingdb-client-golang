@@ -28,33 +28,37 @@ func newData[TData any](data TData) UnmarshalStreamResult[TData] {
 func UnmarshalStream[TData any](context context.Context, reader io.Reader) <-chan UnmarshalStreamResult[TData] {
 	scanner := bufio.NewScanner(reader)
 	resultChannel := make(chan UnmarshalStreamResult[TData], 1)
+	lineChannel := make(chan string)
+
+	go func() {
+		defer close(lineChannel)
+		for scanner.Scan() {
+			if err := scanner.Err(); err != nil {
+				resultChannel <- newError[TData](err)
+
+				return
+			}
+
+			lineChannel <- scanner.Text()
+		}
+	}()
 
 	go func() {
 		defer close(resultChannel)
 
-		for scanner.Scan() {
+		for {
 			select {
 			case <-context.Done():
 				resultChannel <- newError[TData](errors.New("context cancelled"))
-
-				return
-			default:
-				if err := scanner.Err(); err != nil {
-					resultChannel <- newError[TData](err)
-
-					return
-				}
-
+			case currentLine := <-lineChannel:
 				var data TData
-
-				currentLine := scanner.Text()
 				if err := json.Unmarshal([]byte(currentLine), &data); err != nil {
 					resultChannel <- newError[TData](err)
-
-					return
+					break
 				}
 
 				resultChannel <- newData(data)
+			default:
 			}
 		}
 	}()
