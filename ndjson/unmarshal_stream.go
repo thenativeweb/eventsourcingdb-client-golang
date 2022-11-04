@@ -46,11 +46,16 @@ func UnmarshalStream[TData any](context context.Context, reader io.Reader) <-cha
 	go func() {
 		defer close(resultChannel)
 
+	LineLoop:
 		for {
 			select {
 			case <-context.Done():
 				resultChannel <- newError[TData](errors.New("context cancelled"))
-			case currentLine := <-lineChannel:
+			case currentLine, ok := <-lineChannel:
+				if !ok {
+					break LineLoop
+				}
+
 				var data TData
 				if err := json.Unmarshal([]byte(currentLine), &data); err != nil {
 					resultChannel <- newError[TData](err)

@@ -3,6 +3,7 @@ package eventsourcingdb_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/thenativeweb/eventsourcingdb-client-golang"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/test"
@@ -76,9 +77,9 @@ func TestReadEvents(t *testing.T) {
 		secondEvent := getNextEvent(t, resultChan)
 		matchRegisteredEvent(t, secondEvent, johnRegistered)
 
-		_, ok := <-resultChan
+		data, ok := <-resultChan
 
-		assert.False(t, ok)
+		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
 	})
 
 	t.Run("reads from a stream including sub-streams.", func(t *testing.T) {
@@ -101,9 +102,9 @@ func TestReadEvents(t *testing.T) {
 		fourthEvent := getNextEvent(t, resultChan)
 		matchLoggedInEvent(t, fourthEvent, johnLoggedIn)
 
-		_, ok := <-resultChan
+		data, ok := <-resultChan
 
-		assert.False(t, ok)
+		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
 	})
 
 	t.Run("reads the events in reverse order.", func(t *testing.T) {
@@ -120,9 +121,9 @@ func TestReadEvents(t *testing.T) {
 		secondEvent := getNextEvent(t, resultChan)
 		matchRegisteredEvent(t, secondEvent, janeRegistered)
 
-		_, ok := <-resultChan
+		data, ok := <-resultChan
 
-		assert.False(t, ok)
+		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
 	})
 
 	t.Run("reads only events matching the given event names.", func(t *testing.T) {
@@ -140,9 +141,9 @@ func TestReadEvents(t *testing.T) {
 		secondEvent := getNextEvent(t, resultChan)
 		matchRegisteredEvent(t, secondEvent, johnRegistered)
 
-		_, ok := <-resultChan
+		data, ok := <-resultChan
 
-		assert.False(t, ok)
+		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
 	})
 
 	t.Run("reads events starting from the oldest event matching the given event name.", func(t *testing.T) {
@@ -160,9 +161,9 @@ func TestReadEvents(t *testing.T) {
 		secondEvent := getNextEvent(t, resultChan)
 		matchLoggedInEvent(t, secondEvent, johnLoggedIn)
 
-		_, ok := <-resultChan
+		data, ok := <-resultChan
 
-		assert.False(t, ok)
+		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
 	})
 
 	t.Run("when the order is reversed, the FromEvent condition is applied in the usual (oldest first) order, but the resulting event stream is reversed.", func(t *testing.T) {
@@ -181,9 +182,9 @@ func TestReadEvents(t *testing.T) {
 		secondEvent := getNextEvent(t, resultChan)
 		matchRegisteredEvent(t, secondEvent, johnRegistered)
 
-		_, ok := <-resultChan
+		data, ok := <-resultChan
 
-		assert.False(t, ok)
+		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
 	})
 
 	t.Run("reads events starting from the lower bound ID.", func(t *testing.T) {
@@ -201,9 +202,9 @@ func TestReadEvents(t *testing.T) {
 		secondEvent := getNextEvent(t, resultChan)
 		matchLoggedInEvent(t, secondEvent, johnLoggedIn)
 
-		_, ok := <-resultChan
+		data, ok := <-resultChan
 
-		assert.False(t, ok)
+		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
 	})
 
 	t.Run("reads events up to the upper bound ID.", func(t *testing.T) {
@@ -221,8 +222,8 @@ func TestReadEvents(t *testing.T) {
 		secondEvent := getNextEvent(t, resultChan)
 		matchLoggedInEvent(t, secondEvent, janeLoggedIn)
 
-		_, ok := <-resultChan
+		data, ok := <-resultChan
 
-		assert.False(t, ok)
+		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
 	})
 }
