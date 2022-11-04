@@ -80,11 +80,12 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 			streamName := "/" + uuid.New().String()
 			janeRegistered := test.Events.Registered.JaneDoe
 
-			err := client.WriteEventsWithPreconditions([]interface{}{
-				eventsourcingdb.NewIsStreamPristinePrecondition(streamName),
-			}, []eventsourcingdb.EventCandidate{
-				eventsourcingdb.NewEventCandidate(streamName, janeRegistered.Name, janeRegistered.Data),
-			})
+			err := client.WriteEventsWithPreconditions(
+				eventsourcingdb.NewPreconditions().IsStreamPristine(streamName),
+				[]eventsourcingdb.EventCandidate{
+					eventsourcingdb.NewEventCandidate(streamName, janeRegistered.Name, janeRegistered.Data),
+				},
+			)
 
 			assert.NoError(t, err)
 		})
@@ -102,11 +103,12 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 			assert.NoError(t, err)
 
-			err = client.WriteEventsWithPreconditions([]interface{}{
-				eventsourcingdb.NewIsStreamPristinePrecondition(streamName),
-			}, []eventsourcingdb.EventCandidate{
-				eventsourcingdb.NewEventCandidate(streamName, johnRegistered.Name, johnRegistered.Data),
-			})
+			err = client.WriteEventsWithPreconditions(
+				eventsourcingdb.NewPreconditions().IsStreamPristine(streamName),
+				[]eventsourcingdb.EventCandidate{
+					eventsourcingdb.NewEventCandidate(streamName, johnRegistered.Name, johnRegistered.Data),
+				},
+			)
 
 			assert.Error(t, err)
 		})
