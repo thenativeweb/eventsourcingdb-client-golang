@@ -8,22 +8,18 @@ const (
 )
 
 type ReadEventsOptions struct {
-	OptionWithSubStreams *bool                   `json:"withSubStreams,omitempty"`
-	OptionOrder          *ReadEventsOptionsOrder `json:"order,omitempty"`
-	OptionEventNames     *[]string               `json:"eventNames,omitempty"`
-	OptionLowerBoundID   *int                    `json:"lowerBoundId,omitempty"`
-	OptionUpperBoundID   *int                    `json:"upperBoundId,omitempty"`
-	OptionFromEventName  *string                 `json:"fromEventName,omitempty"`
+	OptionRecursive     bool                    `json:"recursive"`
+	OptionOrder         *ReadEventsOptionsOrder `json:"order,omitempty"`
+	OptionEventNames    *[]string               `json:"eventNames,omitempty"`
+	OptionLowerBoundID  *int                    `json:"lowerBoundId,omitempty"`
+	OptionUpperBoundID  *int                    `json:"upperBoundId,omitempty"`
+	OptionFromEventName *string                 `json:"fromEventName,omitempty"`
 }
 
-func NewReadEventsOptions() ReadEventsOptions {
-	return ReadEventsOptions{}
-}
-
-func (options ReadEventsOptions) WithSubStreams(withSubStreams bool) ReadEventsOptions {
-	options.OptionWithSubStreams = &withSubStreams
-
-	return options
+func NewReadEventsOptions(recursive bool) ReadEventsOptions {
+	return ReadEventsOptions{
+		OptionRecursive: recursive,
+	}
 }
 
 func (options ReadEventsOptions) Order(order ReadEventsOptionsOrder) ReadEventsOptions {

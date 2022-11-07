@@ -69,7 +69,7 @@ func TestReadEvents(t *testing.T) {
 	}
 
 	t.Run("reads from a single stream.", func(t *testing.T) {
-		resultChan := client.ReadEvents(context.Background(), "/users/registered")
+		resultChan := client.ReadEvents(context.Background(), "/users/registered", false)
 
 		firstEvent := getNextEvent(t, resultChan)
 		matchRegisteredEvent(t, firstEvent, janeRegistered)
@@ -86,8 +86,7 @@ func TestReadEvents(t *testing.T) {
 		resultChan := client.ReadEventsWithOptions(
 			context.Background(),
 			"/users",
-			eventsourcingdb.NewReadEventsOptions().
-				WithSubStreams(true),
+			eventsourcingdb.NewReadEventsOptions(true),
 		)
 
 		firstEvent := getNextEvent(t, resultChan)
@@ -111,7 +110,7 @@ func TestReadEvents(t *testing.T) {
 		resultChan := client.ReadEventsWithOptions(
 			context.Background(),
 			"/users/registered",
-			eventsourcingdb.NewReadEventsOptions().
+			eventsourcingdb.NewReadEventsOptions(false).
 				Order(eventsourcingdb.NewestFirst),
 		)
 
@@ -130,8 +129,7 @@ func TestReadEvents(t *testing.T) {
 		resultChan := client.ReadEventsWithOptions(
 			context.Background(),
 			"/users",
-			eventsourcingdb.NewReadEventsOptions().
-				WithSubStreams(true).
+			eventsourcingdb.NewReadEventsOptions(true).
 				EventNames([]string{"registered"}),
 		)
 
@@ -149,38 +147,13 @@ func TestReadEvents(t *testing.T) {
 	t.Run("reads events starting from the oldest event matching the given event name.", func(t *testing.T) {
 		resultChan := client.ReadEventsWithOptions(
 			context.Background(),
-			"/users",
-			eventsourcingdb.NewReadEventsOptions().
-				WithSubStreams(true).
+			"/users/loggedIn",
+			eventsourcingdb.NewReadEventsOptions(true).
 				FromEventName("loggedIn"),
 		)
 
 		firstEvent := getNextEvent(t, resultChan)
-		matchRegisteredEvent(t, firstEvent, johnRegistered)
-
-		secondEvent := getNextEvent(t, resultChan)
-		matchLoggedInEvent(t, secondEvent, johnLoggedIn)
-
-		data, ok := <-resultChan
-
-		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
-	})
-
-	t.Run("when the order is reversed, the FromEvent condition is applied in the usual (oldest first) order, but the resulting event stream is reversed.", func(t *testing.T) {
-		resultChan := client.ReadEventsWithOptions(
-			context.Background(),
-			"/users",
-			eventsourcingdb.NewReadEventsOptions().
-				WithSubStreams(true).
-				FromEventName("loggedIn").
-				Order(eventsourcingdb.NewestFirst),
-		)
-
-		firstEvent := getNextEvent(t, resultChan)
 		matchLoggedInEvent(t, firstEvent, johnLoggedIn)
-
-		secondEvent := getNextEvent(t, resultChan)
-		matchRegisteredEvent(t, secondEvent, johnRegistered)
 
 		data, ok := <-resultChan
 
@@ -191,8 +164,7 @@ func TestReadEvents(t *testing.T) {
 		resultChan := client.ReadEventsWithOptions(
 			context.Background(),
 			"/users",
-			eventsourcingdb.NewReadEventsOptions().
-				WithSubStreams(true).
+			eventsourcingdb.NewReadEventsOptions(true).
 				LowerBoundID(2),
 		)
 
@@ -211,8 +183,7 @@ func TestReadEvents(t *testing.T) {
 		resultChan := client.ReadEventsWithOptions(
 			context.Background(),
 			"/users",
-			eventsourcingdb.NewReadEventsOptions().
-				WithSubStreams(true).
+			eventsourcingdb.NewReadEventsOptions(true).
 				UpperBoundID(1),
 		)
 

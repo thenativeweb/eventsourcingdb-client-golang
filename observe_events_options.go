@@ -1,20 +1,16 @@
 package eventsourcingdb
 
 type ObserveEventsOptions struct {
-	OptionWithSubStreams *bool     `json:"withSubStreams,omitempty"`
-	OptionEventNames     *[]string `json:"eventNames,omitempty"`
-	OptionLowerBoundID   *int      `json:"lowerBoundId,omitempty"`
-	OptionFromEventName  *string   `json:"fromEventName,omitempty"`
+	OptionRecursive     bool      `json:"recursive"`
+	OptionEventNames    *[]string `json:"eventNames,omitempty"`
+	OptionLowerBoundID  *int      `json:"lowerBoundId,omitempty"`
+	OptionFromEventName *string   `json:"fromEventName,omitempty"`
 }
 
-func NewObserveEventsOptions() ObserveEventsOptions {
-	return ObserveEventsOptions{}
-}
-
-func (options ObserveEventsOptions) WithSubStreams(withSubStreams bool) ObserveEventsOptions {
-	options.OptionWithSubStreams = &withSubStreams
-
-	return options
+func NewObserveEventsOptions(recursive bool) ObserveEventsOptions {
+	return ObserveEventsOptions{
+		OptionRecursive: recursive,
+	}
 }
 
 func (options ObserveEventsOptions) EventNames(eventNames []string) ObserveEventsOptions {

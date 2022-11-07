@@ -126,6 +126,6 @@ func (client *Client) ObserveEventsWithOptions(ctx context.Context, streamName s
 	return resultChannel
 }
 
-func (client *Client) ObserveEvents(ctx context.Context, streamName string) <-chan ObserveEventsResult {
-	return client.ObserveEventsWithOptions(ctx, streamName, NewObserveEventsOptions())
+func (client *Client) ObserveEvents(ctx context.Context, streamName string, recursive bool) <-chan ObserveEventsResult {
+	return client.ObserveEventsWithOptions(ctx, streamName, NewObserveEventsOptions(recursive))
 }

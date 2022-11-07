@@ -78,7 +78,7 @@ func TestObserveEvents(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		resultChan := client.ObserveEvents(ctx, "/users/registered")
+		resultChan := client.ObserveEvents(ctx, "/users/registered", false)
 
 		firstEvent := getNextEvent(t, resultChan)
 		matchRegisteredEvent(t, firstEvent, janeRegistered)
@@ -108,8 +108,7 @@ func TestObserveEvents(t *testing.T) {
 		resultChan := client.ObserveEventsWithOptions(
 			ctx,
 			"/users",
-			eventsourcingdb.NewObserveEventsOptions().
-				WithSubStreams(true),
+			eventsourcingdb.NewObserveEventsOptions(true),
 		)
 
 		firstEvent := getNextEvent(t, resultChan)
@@ -133,8 +132,7 @@ func TestObserveEvents(t *testing.T) {
 		resultChan := client.ObserveEventsWithOptions(
 			ctx,
 			"/users",
-			eventsourcingdb.NewObserveEventsOptions().
-				WithSubStreams(true).
+			eventsourcingdb.NewObserveEventsOptions(true).
 				EventNames([]string{"registered"}),
 		)
 
@@ -145,21 +143,17 @@ func TestObserveEvents(t *testing.T) {
 		matchRegisteredEvent(t, secondEvent, johnRegistered)
 	})
 
-	t.Run("observes events starting from the oldest event matching the given event name.", func(t *testing.T) {
+	t.Run("observes events starting from the newest event matching the given event name.", func(t *testing.T) {
 		client := prepareClientWithEvents(t)
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
 		resultChan := client.ObserveEventsWithOptions(
 			ctx,
-			"/users",
-			eventsourcingdb.NewObserveEventsOptions().
-				WithSubStreams(true).
+			"/users/loggedIn",
+			eventsourcingdb.NewObserveEventsOptions(true).
 				FromEventName("loggedIn"),
 		)
-
-		firstEvent := getNextEvent(t, resultChan)
-		matchRegisteredEvent(t, firstEvent, johnRegistered)
 
 		secondEvent := getNextEvent(t, resultChan)
 		matchLoggedInEvent(t, secondEvent, johnLoggedIn)
@@ -173,8 +167,7 @@ func TestObserveEvents(t *testing.T) {
 		resultChan := client.ObserveEventsWithOptions(
 			ctx,
 			"/users",
-			eventsourcingdb.NewObserveEventsOptions().
-				WithSubStreams(true).
+			eventsourcingdb.NewObserveEventsOptions(true).
 				LowerBoundID(2),
 		)
 

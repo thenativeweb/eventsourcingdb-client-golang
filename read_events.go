@@ -49,6 +49,7 @@ func (client *Client) ReadEventsWithOptions(ctx context.Context, streamName stri
 
 			return
 		}
+		fmt.Printf("request body: %s", requestBodyAsJSON)
 
 		httpClient := &http.Client{
 			Timeout: client.configuration.timeout,
@@ -123,6 +124,6 @@ func (client *Client) ReadEventsWithOptions(ctx context.Context, streamName stri
 	return resultChannel
 }
 
-func (client *Client) ReadEvents(ctx context.Context, streamName string) <-chan ReadEventsResult {
-	return client.ReadEventsWithOptions(ctx, streamName, NewReadEventsOptions())
+func (client *Client) ReadEvents(ctx context.Context, streamName string, recursive bool) <-chan ReadEventsResult {
+	return client.ReadEventsWithOptions(ctx, streamName, NewReadEventsOptions(recursive))
 }
