@@ -49,7 +49,6 @@ func (client *Client) ReadEventsWithOptions(ctx context.Context, streamName stri
 
 			return
 		}
-		fmt.Printf("request body: %s", requestBodyAsJSON)
 
 		httpClient := &http.Client{
 			Timeout: client.configuration.timeout,
