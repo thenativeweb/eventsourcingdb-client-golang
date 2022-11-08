@@ -1,19 +1,12 @@
 package eventsourcingdb
 
-type ReadEventsOptionsOrder string
-
-const (
-	OldestFirst ReadEventsOptionsOrder = "oldest-first"
-	NewestFirst ReadEventsOptionsOrder = "newest-first"
-)
-
 type ReadEventsOptions struct {
-	OptionRecursive     bool                    `json:"recursive"`
-	OptionOrder         *ReadEventsOptionsOrder `json:"order,omitempty"`
-	OptionEventNames    *[]string               `json:"eventNames,omitempty"`
-	OptionLowerBoundID  *int                    `json:"lowerBoundId,omitempty"`
-	OptionUpperBoundID  *int                    `json:"upperBoundId,omitempty"`
-	OptionFromEventName *string                 `json:"fromEventName,omitempty"`
+	OptionRecursive     bool      `json:"recursive"`
+	OptionChronological *bool     `json:"chronological,omitempty"`
+	OptionEventNames    *[]string `json:"eventNames,omitempty"`
+	OptionLowerBoundID  *int      `json:"lowerBoundId,omitempty"`
+	OptionUpperBoundID  *int      `json:"upperBoundId,omitempty"`
+	OptionFromEventName *string   `json:"fromEventName,omitempty"`
 }
 
 func NewReadEventsOptions(recursive bool) ReadEventsOptions {
@@ -22,8 +15,8 @@ func NewReadEventsOptions(recursive bool) ReadEventsOptions {
 	}
 }
 
-func (options ReadEventsOptions) Order(order ReadEventsOptionsOrder) ReadEventsOptions {
-	options.OptionOrder = &order
+func (options ReadEventsOptions) Chronological(chronological bool) ReadEventsOptions {
+	options.OptionChronological = &chronological
 
 	return options
 }

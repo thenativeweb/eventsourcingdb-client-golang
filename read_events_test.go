@@ -106,12 +106,12 @@ func TestReadEvents(t *testing.T) {
 		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
 	})
 
-	t.Run("reads the events in reverse order.", func(t *testing.T) {
+	t.Run("reads the events in non-chronological order.", func(t *testing.T) {
 		resultChan := client.ReadEventsWithOptions(
 			context.Background(),
 			"/users/registered",
 			eventsourcingdb.NewReadEventsOptions(false).
-				Order(eventsourcingdb.NewestFirst),
+				Chronological(false),
 		)
 
 		firstEvent := getNextEvent(t, resultChan)
