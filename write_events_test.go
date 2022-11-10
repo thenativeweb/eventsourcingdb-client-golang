@@ -142,9 +142,6 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 			err = client.WriteEventsWithPreconditions(
 				eventsourcingdb.NewPreconditions().IsStreamOnEventID("/users", lastEventId),
-				// TODO: think about the following edge case:
-				// the precondition applies to some stream(s), but we can write to arbitrary streams, since the
-				// stream name is part of the event candidate
 				[]eventsourcingdb.EventCandidate{
 					eventsourcingdb.NewEventCandidate("/users", fredRegistered.Name, fredRegistered.Data),
 				},
