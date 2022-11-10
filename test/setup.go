@@ -21,43 +21,25 @@ func Setup() (Database, error) {
 	}
 
 	accessToken := uuid.New().String()
-	clientOptions := eventsourcingdb.ClientOptions{
-		AccessToken: accessToken,
-	}
-	container, baseURL, client, err := runDatabase(
-		func() (docker.Container, error) {
-			return image.Run("server", true, true, "--dev", "--ui", "--access-token", accessToken)
-		},
-		clientOptions,
+	withAuthorization, err := NewContainerizedTestingDatabase(
+		image,
+		[]string{"server", "--dev", "--ui", "--access-token", accessToken},
+		eventsourcingdb.ClientOptions{AccessToken: accessToken},
 	)
 	if err != nil {
 		return Database{}, err
 	}
-	withAuthorization := WithAuthorization{
-		NewContainerizedTestingDatabase(clientOptions, client, baseURL, container),
-		accessToken,
-	}
 
-	clientOptions = eventsourcingdb.ClientOptions{}
-	container, baseURL, client, err = runDatabase(
-		func() (docker.Container, error) {
-			return image.Run("server", true, true, "--dev", "--ui")
-		},
-		clientOptions,
+	withoutAuthorization, err := NewContainerizedTestingDatabase(
+		image,
+		[]string{"server", "--dev", "--ui"},
+		eventsourcingdb.ClientOptions{},
 	)
 	if err != nil {
 		return Database{}, err
 	}
-	withoutAuthorization := WithoutAuthorization{
-		NewContainerizedTestingDatabase(clientOptions, client, baseURL, container),
-	}
 
-	clientOptions = eventsourcingdb.ClientOptions{}
-	baseURL = "http://localhost.invalid"
-	client = eventsourcingdb.NewClient(baseURL)
-	withInvalidURL := WithInvalidURL{
-		NewTestingDatabase(clientOptions, client, baseURL),
-	}
+	withInvalidURL := NewTestingDatabase(eventsourcingdb.NewClient("http://localhost.invalid"))
 
 	database := Database{
 		withAuthorization,

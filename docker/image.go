@@ -25,7 +25,7 @@ func (image Image) Build(directory string) error {
 	return nil
 }
 
-func (image Image) Run(command string, detached, exposePorts bool, args ...string) (Container, error) {
+func (image Image) Run(command []string, detached, exposePorts bool) (Container, error) {
 	commandArgs := []string{"run", "--rm"}
 	if detached {
 		commandArgs = append(commandArgs, "-d")
@@ -34,8 +34,7 @@ func (image Image) Run(command string, detached, exposePorts bool, args ...strin
 		commandArgs = append(commandArgs, "-P")
 	}
 	commandArgs = append(commandArgs, image.GetFullName())
-	commandArgs = append(commandArgs, command)
-	commandArgs = append(commandArgs, args...)
+	commandArgs = append(commandArgs, command...)
 
 	cliCommand := exec.Command("docker", commandArgs...)
 	stdout, err := cliCommand.Output()

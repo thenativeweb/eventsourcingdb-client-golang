@@ -23,9 +23,9 @@ func runDatabase(runContainerFn func() (container docker.Container, err error), 
 	baseURL := "http://localhost:" + strconv.Itoa(port)
 	client := eventsourcingdb.NewClientWithOptions(baseURL, clientOptions)
 
-	err = retry.WithBackoff(func() error {
+	err = retry.WithBackoff(context.Background(), 10, func() error {
 		return client.Ping()
-	}, 10, context.Background())
+	})
 	if err != nil {
 		return docker.Container{}, "", eventsourcingdb.Client{}, err
 	}
