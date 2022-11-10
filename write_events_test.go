@@ -1,6 +1,7 @@
 package eventsourcingdb_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/uuid"
@@ -116,17 +117,66 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 	t.Run("when using the 'is stream on event ID' precondition", func(t *testing.T) {
 		t.Run("writes events if the last event in the stream has the given event ID.", func(t *testing.T) {
-			// TODO: We can't read the last eventID yet, so we can't implement
-			//       the test yet. This test should not be done by reading the
-			//			 event ID, but by extending the server to return the written
-			//       ID (see https://github.com/thenativeweb/eventsourcingdb/issues/188).
+			client := database.WithoutAuthorization.GetClient()
+
+			janeRegistered := test.Events.Registered.JaneDoe
+			johnRegistered := test.Events.Registered.JohnDoe
+			fredRegistered := test.Events.Registered.ApfelFred
+
+			err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+				eventsourcingdb.NewEventCandidate("/users", janeRegistered.Name, janeRegistered.Data),
+				eventsourcingdb.NewEventCandidate("/users", johnRegistered.Name, johnRegistered.Data),
+			})
+
+			assert.NoError(t, err)
+
+			events := client.ReadEvents(context.Background(), "/users", false)
+
+			var lastEventId int
+			for event := range events {
+				data, err := event.GetData()
+				assert.NoError(t, err)
+
+				lastEventId = data.Event.Metadata.ID
+			}
+
+			err = client.WriteEventsWithPreconditions(
+				eventsourcingdb.NewPreconditions().IsStreamOnEventID("/users", lastEventId),
+				// TODO: think about the following edge case:
+				// the precondition applies to some stream(s), but we can write to arbitrary streams, since the
+				// stream name is part of the event candidate
+				[]eventsourcingdb.EventCandidate{
+					eventsourcingdb.NewEventCandidate("/users", fredRegistered.Name, fredRegistered.Data),
+				},
+			)
+
+			assert.NoError(t, err)
 		})
 
 		t.Run("returns an error if the last event in the stream does not have the given event ID.", func(t *testing.T) {
-			// TODO: We can't read the last eventID yet, so we can't implement
-			//       the test yet. This test should not be done by reading the
-			//			 event ID, but by extending the server to return the written
-			//       ID (see https://github.com/thenativeweb/eventsourcingdb/issues/188).
+			client := database.WithoutAuthorization.GetClient()
+
+			janeRegistered := test.Events.Registered.JaneDoe
+			johnRegistered := test.Events.Registered.JohnDoe
+			fredRegistered := test.Events.Registered.ApfelFred
+
+			err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+				eventsourcingdb.NewEventCandidate("/users", janeRegistered.Name, janeRegistered.Data),
+				eventsourcingdb.NewEventCandidate("/users", johnRegistered.Name, johnRegistered.Data),
+			})
+
+			assert.NoError(t, err)
+
+			lastEventId := 1337
+
+			err = client.WriteEventsWithPreconditions(
+				eventsourcingdb.NewPreconditions().IsStreamOnEventID("/users", lastEventId),
+				[]eventsourcingdb.EventCandidate{
+					eventsourcingdb.NewEventCandidate("/users", fredRegistered.Name, fredRegistered.Data),
+				},
+			)
+
+			assert.Error(t, err)
 		})
 	})
 }
