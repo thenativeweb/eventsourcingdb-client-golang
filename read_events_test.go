@@ -144,12 +144,16 @@ func TestReadEvents(t *testing.T) {
 		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
 	})
 
-	t.Run("reads events starting from the oldest event matching the given event name.", func(t *testing.T) {
+	t.Run("reads events starting from the latest event matching the given event name.", func(t *testing.T) {
 		resultChan := client.ReadEventsWithOptions(
 			context.Background(),
 			"/users/loggedIn",
 			eventsourcingdb.NewReadEventsOptions(true).
-				FromEventName("loggedIn"),
+				FromLatestEvent(eventsourcingdb.ReadFromLatestEvent{
+					StreamName:       "/users/loggedIn",
+					EventName:        "loggedIn",
+					IfEventIsMissing: eventsourcingdb.ReadEverythingIfEventIsMissingDuringRead,
+				}),
 		)
 
 		firstEvent := getNextEvent(t, resultChan)

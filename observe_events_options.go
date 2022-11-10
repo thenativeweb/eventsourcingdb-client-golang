@@ -1,10 +1,23 @@
 package eventsourcingdb
 
+type IfEventIsMissingDuringObserve string
+
+const (
+	ReadNothingIfEventIsMissingDuringObserve  IfEventIsMissingDuringObserve = "read-nothing"
+	WaitForEventIfEventIsMissingDuringObserve IfEventIsMissingDuringObserve = "wait-for-event"
+)
+
+type ObserveFromLatestEvent struct {
+	StreamName       string                        `json:"streamName"`
+	EventName        string                        `json:"eventName"`
+	IfEventIsMissing IfEventIsMissingDuringObserve `json:"ifEventIsMissing"`
+}
+
 type ObserveEventsOptions struct {
-	OptionRecursive     bool      `json:"recursive"`
-	OptionEventNames    *[]string `json:"eventNames,omitempty"`
-	OptionLowerBoundID  *int      `json:"lowerBoundId,omitempty"`
-	OptionFromEventName *string   `json:"fromEventName,omitempty"`
+	OptionRecursive       bool                    `json:"recursive"`
+	OptionEventNames      *[]string               `json:"eventNames,omitempty"`
+	OptionLowerBoundID    *int                    `json:"lowerBoundId,omitempty"`
+	OptionFromLatestEvent *ObserveFromLatestEvent `json:"fromLatestEvent,omitempty"`
 }
 
 func NewObserveEventsOptions(recursive bool) ObserveEventsOptions {
@@ -25,8 +38,8 @@ func (options ObserveEventsOptions) LowerBoundID(lowerBoundID int) ObserveEvents
 	return options
 }
 
-func (options ObserveEventsOptions) FromEventName(eventName string) ObserveEventsOptions {
-	options.OptionFromEventName = &eventName
+func (options ObserveEventsOptions) FromLatestEvent(fromLatestEvent ObserveFromLatestEvent) ObserveEventsOptions {
+	options.OptionFromLatestEvent = &fromLatestEvent
 
 	return options
 }
