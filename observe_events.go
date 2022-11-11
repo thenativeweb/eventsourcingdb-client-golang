@@ -66,11 +66,11 @@ func (client *Client) ObserveEventsWithOptions(ctx context.Context, streamName s
 
 		var response *http.Response
 
-		err = retry.WithBackoff(func() error {
+		err = retry.WithBackoff(ctx, client.configuration.maxTries, func() error {
 			response, err = httpClient.Do(request)
 
 			return err
-		}, client.configuration.maxTries, ctx)
+		})
 		if err != nil {
 			resultChannel <- newObserveEventsError(err)
 

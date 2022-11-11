@@ -20,16 +20,6 @@ func (container Container) Kill() error {
 	return nil
 }
 
-func (container Container) Restart() error {
-	cliCommand := exec.Command("docker", "restart", container.ID)
-	err := cliCommand.Run()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (container Container) GetExposedPort(internalPort int) (int, error) {
 	cliCommand := exec.Command("docker", "inspect", "--format='{{(index (index .NetworkSettings.Ports \""+strconv.Itoa(internalPort)+"/tcp\") 0).HostPort}}'", container.ID)
 	stdout, err := cliCommand.Output()
