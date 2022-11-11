@@ -41,7 +41,7 @@ func TestReadStreamNames(t *testing.T) {
 		rootStreamName, err := rootStreamNameResult.GetData()
 
 		assert.NoError(t, err)
-		assert.Equal(t, rootStreamName, eventsourcingdb.StreamName{"/"})
+		assert.Equal(t, eventsourcingdb.StreamName{"/"}, rootStreamName)
 
 		_, ok := <-readStreamNameResults
 		assert.False(t, ok)
@@ -69,7 +69,7 @@ func TestReadStreamNames(t *testing.T) {
 			streamNames = append(streamNames, data)
 		}
 
-		assert.Equal(t, streamNames, []eventsourcingdb.StreamName{{"/"}, {streamName}})
+		assert.Equal(t, []eventsourcingdb.StreamName{{"/"}, {streamName}}, streamNames)
 	})
 
 	t.Run("reads stream names starting from the given base stream name.", func(t *testing.T) {
@@ -94,7 +94,7 @@ func TestReadStreamNames(t *testing.T) {
 			streamNames = append(streamNames, data)
 		}
 
-		assert.Equal(t, streamNames, []eventsourcingdb.StreamName{{"/foobar"}, {streamName}})
+		assert.Equal(t, []eventsourcingdb.StreamName{{"/foobar"}, {streamName}}, streamNames)
 	})
 
 	t.Run("closes the result channel when the given context is cancelled.", func(t *testing.T) {
