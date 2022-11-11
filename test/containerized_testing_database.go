@@ -49,21 +49,13 @@ func NewContainerizedTestingDatabase(image docker.Image, command []string, clien
 }
 
 func (database *ContainerizedTestingDatabase) GetClient() eventsourcingdb.Client {
-	if !database.isFirstRun {
-		if err := database.container.Kill(); err != nil {
-			panic("could not kill database container")
-		}
-
-		startResult, err := database.start()
-		if err != nil {
-			panic("could not restart database container")
-		}
-
-		database.client = startResult.client
-		database.container = startResult.container
-	} else {
+	if database.isFirstRun {
 		database.isFirstRun = false
+
+		return database.client
 	}
+
+	database.restart()
 
 	return database.client
 }
@@ -98,6 +90,20 @@ func (database *ContainerizedTestingDatabase) start() (startResult, error) {
 		container: container,
 		client:    client,
 	}, nil
+}
+
+func (database *ContainerizedTestingDatabase) restart() {
+	if err := database.container.Kill(); err != nil {
+		panic("could not kill database container")
+	}
+
+	startResult, err := database.start()
+	if err != nil {
+		panic("could not restart database container")
+	}
+
+	database.client = startResult.client
+	database.container = startResult.container
 }
 
 func (database *ContainerizedTestingDatabase) Stop() error {
