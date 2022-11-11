@@ -133,7 +133,11 @@ func TestObserveEvents(t *testing.T) {
 			ctx,
 			"/users/loggedIn",
 			eventsourcingdb.NewObserveEventsOptions(true).
-				FromEventName("loggedIn"),
+				FromLatestEvent(eventsourcingdb.ObserveFromLatestEvent{
+					StreamName:       "/users/loggedIn",
+					EventName:        "loggedin",
+					IfEventIsMissing: eventsourcingdb.ReadNothingIfEventIsMissingDuringObserve,
+				}),
 		)
 
 		secondEvent := getNextEvent(t, resultChan)
