@@ -14,7 +14,7 @@ func getRandomizedDuration(duration int, deviation int) time.Duration {
 	return randomizedDuration
 }
 
-func WithBackoff(fn func() error, tries int, context context.Context) error {
+func WithBackoff(ctx context.Context, tries int, fn func() error) error {
 	if tries < 1 {
 		return errors.New("tries must be greater than 0")
 	}
@@ -26,8 +26,8 @@ func WithBackoff(fn func() error, tries int, context context.Context) error {
 		timeout := getRandomizedDuration(100, 25) * time.Duration(triesCount)
 
 		select {
-		case <-context.Done():
-			return context.Err()
+		case <-ctx.Done():
+			return ctx.Err()
 		case <-time.After(timeout):
 			err := fn()
 			if err != nil {

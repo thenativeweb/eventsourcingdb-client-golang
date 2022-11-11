@@ -65,11 +65,11 @@ func (client *Client) ReadEventsWithOptions(ctx context.Context, streamName stri
 
 		var response *http.Response
 
-		err = retry.WithBackoff(func() error {
+		err = retry.WithBackoff(ctx, client.configuration.maxTries, func() error {
 			response, err = httpClient.Do(request)
 
 			return err
-		}, client.configuration.maxTries, ctx)
+		})
 		if err != nil {
 			resultChannel <- newReadEventsError(err)
 
