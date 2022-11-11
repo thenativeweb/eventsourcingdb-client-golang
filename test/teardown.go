@@ -7,12 +7,12 @@ import (
 func Teardown(database Database) error {
 	errorMessage := ""
 
-	err := database.WithAuthorization.Container.Kill()
+	err := database.WithAuthorization.Stop()
 	if err != nil {
 		errorMessage = errorMessage + ": " + err.Error()
 	}
 
-	err = database.WithoutAuthorization.Container.Kill()
+	err = database.WithoutAuthorization.Stop()
 	if err != nil {
 		errorMessage = errorMessage + ": " + err.Error()
 	}

@@ -14,10 +14,10 @@ func TestWithBackoff(t *testing.T) {
 		count := 0
 		maxTries := 3
 
-		err := retry.WithBackoff(func() error {
+		err := retry.WithBackoff(context.Background(), maxTries, func() error {
 			count += 1
 			return nil
-		}, maxTries, context.Background())
+		})
 
 		assert.NoError(t, err)
 		assert.Equal(t, 1, count)
@@ -27,10 +27,10 @@ func TestWithBackoff(t *testing.T) {
 		count := 0
 		maxTries := 3
 
-		err := retry.WithBackoff(func() error {
+		err := retry.WithBackoff(context.Background(), maxTries, func() error {
 			count += 1
 			return errors.New("something went wrong")
-		}, maxTries, context.Background())
+		})
 
 		assert.Error(t, err)
 		assert.Equal(t, maxTries, count)
@@ -41,13 +41,13 @@ func TestWithBackoff(t *testing.T) {
 		maxTries := 5
 		successfulTry := 3
 
-		err := retry.WithBackoff(func() error {
+		err := retry.WithBackoff(context.Background(), maxTries, func() error {
 			count += 1
 			if count != successfulTry {
 				return errors.New("something went wrong")
 			}
 			return nil
-		}, maxTries, context.Background())
+		})
 
 		assert.NoError(t, err)
 		assert.Equal(t, successfulTry, count)
@@ -60,13 +60,13 @@ func TestWithBackoff(t *testing.T) {
 
 		context, cancel := context.WithCancel(context.Background())
 
-		err := retry.WithBackoff(func() error {
+		err := retry.WithBackoff(context, maxTries, func() error {
 			count += 1
 			if count == cancellingTry {
 				cancel()
 			}
 			return errors.New("something went wrong")
-		}, maxTries, context)
+		})
 
 		assert.Error(t, err)
 		assert.Equal(t, cancellingTry, count)

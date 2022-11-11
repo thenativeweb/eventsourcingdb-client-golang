@@ -124,25 +124,6 @@ func TestObserveEvents(t *testing.T) {
 		matchLoggedInEvent(t, fourthEvent, johnLoggedIn)
 	})
 
-	t.Run("observes only events matching the given event names.", func(t *testing.T) {
-		client := prepareClientWithEvents(t)
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		resultChan := client.ObserveEventsWithOptions(
-			ctx,
-			"/users",
-			eventsourcingdb.NewObserveEventsOptions(true).
-				EventNames([]string{"registered"}),
-		)
-
-		firstEvent := getNextEvent(t, resultChan)
-		matchRegisteredEvent(t, firstEvent, janeRegistered)
-
-		secondEvent := getNextEvent(t, resultChan)
-		matchRegisteredEvent(t, secondEvent, johnRegistered)
-	})
-
 	t.Run("observes events starting from the newest event matching the given event name.", func(t *testing.T) {
 		client := prepareClientWithEvents(t)
 		ctx, cancel := context.WithCancel(context.Background())

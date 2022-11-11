@@ -64,11 +64,11 @@ func (client *Client) WriteEventsWithPreconditions(preconditions *Preconditions,
 	authorization.AddAccessToken(request, client.configuration.accessToken)
 
 	var response *http.Response
-	err = retry.WithBackoff(func() error {
+	err = retry.WithBackoff(context.Background(), client.configuration.maxTries, func() error {
 		response, err = httpClient.Do(request)
 
 		return err
-	}, client.configuration.maxTries, context.Background())
+	})
 	if err != nil {
 		return err
 	}

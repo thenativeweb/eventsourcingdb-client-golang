@@ -125,25 +125,6 @@ func TestReadEvents(t *testing.T) {
 		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
 	})
 
-	t.Run("reads only events matching the given event names.", func(t *testing.T) {
-		resultChan := client.ReadEventsWithOptions(
-			context.Background(),
-			"/users",
-			eventsourcingdb.NewReadEventsOptions(true).
-				EventNames([]string{"registered"}),
-		)
-
-		firstEvent := getNextEvent(t, resultChan)
-		matchRegisteredEvent(t, firstEvent, janeRegistered)
-
-		secondEvent := getNextEvent(t, resultChan)
-		matchRegisteredEvent(t, secondEvent, johnRegistered)
-
-		data, ok := <-resultChan
-
-		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
-	})
-
 	t.Run("reads events starting from the latest event matching the given event name.", func(t *testing.T) {
 		resultChan := client.ReadEventsWithOptions(
 			context.Background(),
