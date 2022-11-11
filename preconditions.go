@@ -62,31 +62,31 @@ func (preconditions *Preconditions) IsStreamOnEventID(streamName string, eventID
 }
 
 func (preconditions *Preconditions) MarshalJSON() ([]byte, error) {
-	rawJsonPreconditions := make(
+	rawJSONPreconditions := make(
 		[]json.RawMessage,
 		0,
 		len(preconditions.isStreamPristinePreconditions)+len(preconditions.isStreamOnEventIDPrecondition),
 	)
 
 	for _, precondition := range preconditions.isStreamPristinePreconditions {
-		rawJsonPrecondition, err := json.Marshal(precondition)
+		rawJSONPrecondition, err := json.Marshal(precondition)
 
 		if err != nil {
 			return []byte{}, err
 		}
 
-		rawJsonPreconditions = append(rawJsonPreconditions, rawJsonPrecondition)
+		rawJSONPreconditions = append(rawJSONPreconditions, rawJSONPrecondition)
 	}
 
 	for _, precondition := range preconditions.isStreamOnEventIDPrecondition {
-		rawJsonPrecondition, err := json.Marshal(precondition)
+		rawJSONPrecondition, err := json.Marshal(precondition)
 
 		if err != nil {
 			return []byte{}, err
 		}
 
-		rawJsonPreconditions = append(rawJsonPreconditions, rawJsonPrecondition)
+		rawJSONPreconditions = append(rawJSONPreconditions, rawJSONPrecondition)
 	}
 
-	return json.Marshal(rawJsonPreconditions)
+	return json.Marshal(rawJSONPreconditions)
 }
