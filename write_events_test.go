@@ -132,16 +132,16 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 			events := client.ReadEvents(context.Background(), "/users", false)
 
-			var lastEventId int
+			var lastEventID int
 			for event := range events {
 				data, err := event.GetData()
 				assert.NoError(t, err)
 
-				lastEventId = data.Event.Metadata.ID
+				lastEventID = data.Event.Metadata.ID
 			}
 
 			err = client.WriteEventsWithPreconditions(
-				eventsourcingdb.NewPreconditions().IsStreamOnEventID("/users", lastEventId),
+				eventsourcingdb.NewPreconditions().IsStreamOnEventID("/users", lastEventID),
 				[]eventsourcingdb.EventCandidate{
 					eventsourcingdb.NewEventCandidate("/users", fredRegistered.Name, fredRegistered.Data),
 				},
@@ -164,10 +164,10 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 			assert.NoError(t, err)
 
-			lastEventId := 1337
+			lastEventID := 1337
 
 			err = client.WriteEventsWithPreconditions(
-				eventsourcingdb.NewPreconditions().IsStreamOnEventID("/users", lastEventId),
+				eventsourcingdb.NewPreconditions().IsStreamOnEventID("/users", lastEventID),
 				[]eventsourcingdb.EventCandidate{
 					eventsourcingdb.NewEventCandidate("/users", fredRegistered.Name, fredRegistered.Data),
 				},
