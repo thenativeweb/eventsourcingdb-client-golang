@@ -3,6 +3,7 @@ package eventsourcingdb_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -72,6 +73,31 @@ func TestObserveEvents(t *testing.T) {
 
 		assert.Equal(t, candidateData.Name, eventData.Name)
 	}
+
+	t.Run("returns an error when trying to observe from a non-reachable server.", func(t *testing.T) {
+		client := database.WithInvalidURL.GetClient()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		resultChan := client.ObserveEvents(ctx, "/", false)
+
+		firstResult := <-resultChan
+
+		_, err := firstResult.GetData()
+		assert.Error(t, err)
+	})
+
+	t.Run("supports authorization.", func(t *testing.T) {
+		client := database.WithAuthorization.GetClient()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		resultChan := client.ObserveEvents(ctx, "/", false)
+
+		data, ok := <-resultChan
+
+		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
+	})
 
 	t.Run("observes from a single stream.", func(t *testing.T) {
 		client := prepareClientWithEvents(t)
