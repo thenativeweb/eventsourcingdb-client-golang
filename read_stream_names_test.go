@@ -53,7 +53,7 @@ func TestReadStreamNames(t *testing.T) {
 		streamName := "/" + uuid.New().String()
 		janeRegistered := test.Events.Registered.JaneDoe
 
-		err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 			eventsourcingdb.NewEventCandidate(streamName, janeRegistered.Name, janeRegistered.Data),
 		})
 
@@ -78,7 +78,7 @@ func TestReadStreamNames(t *testing.T) {
 		streamName := "/foobar/" + uuid.New().String()
 		janeRegistered := test.Events.Registered.JaneDoe
 
-		err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 			eventsourcingdb.NewEventCandidate(streamName, janeRegistered.Name, janeRegistered.Data),
 		})
 

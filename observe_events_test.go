@@ -21,7 +21,7 @@ func TestObserveEvents(t *testing.T) {
 	prepareClientWithEvents := func(t *testing.T) eventsourcingdb.Client {
 		client := database.WithoutAuthorization.GetClient()
 
-		err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 			janeRegistered,
 			janeLoggedIn,
 			johnRegistered,
@@ -117,7 +117,7 @@ func TestObserveEvents(t *testing.T) {
 			test.Events.Registered.ApfelFred.Name,
 			test.Events.Registered.ApfelFred.Data,
 		)
-		err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 			apfelFredCandidate,
 		})
 

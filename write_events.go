@@ -27,11 +27,11 @@ type writeEventsRequestBody struct {
 	Events        []writeEventsRequestBodyEventCandidate `json:"events"`
 }
 
-func (client *Client) WriteEvents(eventCandidates []EventCandidate) error {
+func (client *Client) WriteEvents(eventCandidates []EventCandidate) ([]EventMetadata, error) {
 	return client.WriteEventsWithPreconditions(NewPreconditions(), eventCandidates)
 }
 
-func (client *Client) WriteEventsWithPreconditions(preconditions *Preconditions, eventCandidates []EventCandidate) error {
+func (client *Client) WriteEventsWithPreconditions(preconditions *Preconditions, eventCandidates []EventCandidate) ([]EventMetadata, error) {
 	requestBody := writeEventsRequestBody{
 		preconditions,
 		[]writeEventsRequestBodyEventCandidate{},
@@ -49,7 +49,7 @@ func (client *Client) WriteEventsWithPreconditions(preconditions *Preconditions,
 
 	requestBodyAsJSON, err := json.Marshal(requestBody)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	httpClient := &http.Client{
@@ -58,7 +58,7 @@ func (client *Client) WriteEventsWithPreconditions(preconditions *Preconditions,
 	url := client.configuration.baseURL + "/api/write-events"
 	request, err := http.NewRequest("POST", url, bytes.NewReader(requestBodyAsJSON))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	authorization.AddAccessToken(request, client.configuration.accessToken)
@@ -70,23 +70,29 @@ func (client *Client) WriteEventsWithPreconditions(preconditions *Preconditions,
 		return err
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer response.Body.Close()
 
 	err = client.validateProtocolVersion(response)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return errors.New(fmt.Sprintf("failed to write events: %s", responseBody))
+		return nil, errors.New(fmt.Sprintf("failed to write events: %s", responseBody))
 	}
 
-	return nil
+	var writeEventsResult []EventMetadata
+	err = json.Unmarshal(responseBody, &writeEventsResult)
+	if err != nil {
+		return nil, err
+	}
+
+	return writeEventsResult, nil
 }
