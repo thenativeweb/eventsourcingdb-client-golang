@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+
 	"github.com/thenativeweb/eventsourcingdb-client-golang"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/test"
 )
@@ -17,7 +18,7 @@ func TestWriteEvents(t *testing.T) {
 		streamName := "/" + uuid.New().String()
 		janeRegistered := test.Events.Registered.JaneDoe
 
-		err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 			eventsourcingdb.NewEventCandidate(streamName, janeRegistered.Name, janeRegistered.Data),
 		})
 
@@ -30,7 +31,7 @@ func TestWriteEvents(t *testing.T) {
 		streamName := "/" + uuid.New().String()
 		janeRegistered := test.Events.Registered.JaneDoe
 
-		err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 			eventsourcingdb.NewEventCandidate(streamName, janeRegistered.Name, janeRegistered.Data),
 		})
 
@@ -43,9 +44,37 @@ func TestWriteEvents(t *testing.T) {
 		streamName := "/" + uuid.New().String()
 		janeRegistered := test.Events.Registered.JaneDoe
 
-		err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 			eventsourcingdb.NewEventCandidate(streamName, janeRegistered.Name, janeRegistered.Data),
 		})
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("returns the written event metadata.", func(t *testing.T) {
+		client := database.WithoutAuthorization.GetClient()
+
+		janeRegistered := test.Events.Registered.JaneDoe
+		johnRegistered := test.Events.Registered.JohnDoe
+		johnLoggedIn := test.Events.LoggedIn.JohnDoe
+
+		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+			eventsourcingdb.NewEventCandidate("/users/registered", janeRegistered.Name, janeRegistered.Data),
+		})
+		assert.NoError(t, err)
+
+		writtenEventsMetadata, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+			eventsourcingdb.NewEventCandidate("/users/registered", johnRegistered.Name, johnRegistered.Data),
+			eventsourcingdb.NewEventCandidate("/users/loggedIn", johnLoggedIn.Name, johnLoggedIn.Data),
+		})
+
+		assert.Len(t, writtenEventsMetadata, 2)
+		assert.Equal(t, writtenEventsMetadata[0].Name, "registered")
+		assert.Equal(t, writtenEventsMetadata[0].StreamName, "/users/registered")
+		assert.Equal(t, writtenEventsMetadata[0].ID, 1)
+		assert.Equal(t, writtenEventsMetadata[1].Name, "loggedIn")
+		assert.Equal(t, writtenEventsMetadata[1].StreamName, "/users/loggedIn")
+		assert.Equal(t, writtenEventsMetadata[1].ID, 2)
 
 		assert.NoError(t, err)
 	})
@@ -57,7 +86,7 @@ func TestWriteEvents(t *testing.T) {
 		janeRegistered := test.Events.Registered.JaneDoe
 		johnRegistered := test.Events.Registered.JohnDoe
 
-		err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 			eventsourcingdb.NewEventCandidate(streamName, janeRegistered.Name, janeRegistered.Data),
 			eventsourcingdb.NewEventCandidate(streamName, johnRegistered.Name, johnRegistered.Data),
 		})
@@ -67,7 +96,7 @@ func TestWriteEvents(t *testing.T) {
 
 	t.Run("returns an error when trying to write an empty list of events.", func(t *testing.T) {
 		client := database.WithoutAuthorization.GetClient()
-		err := client.WriteEvents([]eventsourcingdb.EventCandidate{})
+		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{})
 
 		assert.Error(t, err)
 	})
@@ -81,7 +110,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 			streamName := "/" + uuid.New().String()
 			janeRegistered := test.Events.Registered.JaneDoe
 
-			err := client.WriteEventsWithPreconditions(
+			_, err := client.WriteEventsWithPreconditions(
 				eventsourcingdb.NewPreconditions().IsStreamPristine(streamName),
 				[]eventsourcingdb.EventCandidate{
 					eventsourcingdb.NewEventCandidate(streamName, janeRegistered.Name, janeRegistered.Data),
@@ -98,13 +127,13 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 			janeRegistered := test.Events.Registered.JaneDoe
 			johnRegistered := test.Events.Registered.JohnDoe
 
-			err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+			_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 				eventsourcingdb.NewEventCandidate(streamName, janeRegistered.Name, janeRegistered.Data),
 			})
 
 			assert.NoError(t, err)
 
-			err = client.WriteEventsWithPreconditions(
+			_, err = client.WriteEventsWithPreconditions(
 				eventsourcingdb.NewPreconditions().IsStreamPristine(streamName),
 				[]eventsourcingdb.EventCandidate{
 					eventsourcingdb.NewEventCandidate(streamName, johnRegistered.Name, johnRegistered.Data),
@@ -123,7 +152,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 			johnRegistered := test.Events.Registered.JohnDoe
 			fredRegistered := test.Events.Registered.ApfelFred
 
-			err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+			_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 				eventsourcingdb.NewEventCandidate("/users", janeRegistered.Name, janeRegistered.Data),
 				eventsourcingdb.NewEventCandidate("/users", johnRegistered.Name, johnRegistered.Data),
 			})
@@ -140,7 +169,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 				lastEventID = data.Event.Metadata.ID
 			}
 
-			err = client.WriteEventsWithPreconditions(
+			_, err = client.WriteEventsWithPreconditions(
 				eventsourcingdb.NewPreconditions().IsStreamOnEventID("/users", lastEventID),
 				[]eventsourcingdb.EventCandidate{
 					eventsourcingdb.NewEventCandidate("/users", fredRegistered.Name, fredRegistered.Data),
@@ -157,7 +186,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 			johnRegistered := test.Events.Registered.JohnDoe
 			fredRegistered := test.Events.Registered.ApfelFred
 
-			err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+			_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 				eventsourcingdb.NewEventCandidate("/users", janeRegistered.Name, janeRegistered.Data),
 				eventsourcingdb.NewEventCandidate("/users", johnRegistered.Name, johnRegistered.Data),
 			})
@@ -166,7 +195,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 			lastEventID := 1337
 
-			err = client.WriteEventsWithPreconditions(
+			_, err = client.WriteEventsWithPreconditions(
 				eventsourcingdb.NewPreconditions().IsStreamOnEventID("/users", lastEventID),
 				[]eventsourcingdb.EventCandidate{
 					eventsourcingdb.NewEventCandidate("/users", fredRegistered.Name, fredRegistered.Data),

@@ -18,7 +18,7 @@ func TestReadEvents(t *testing.T) {
 	janeLoggedIn := eventsourcingdb.NewEventCandidate("/users/loggedIn", test.Events.LoggedIn.JaneDoe.Name, test.Events.LoggedIn.JaneDoe.Data)
 	johnLoggedIn := eventsourcingdb.NewEventCandidate("/users/loggedIn", test.Events.LoggedIn.JohnDoe.Name, test.Events.LoggedIn.JohnDoe.Data)
 
-	err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+	_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 		janeRegistered,
 		janeLoggedIn,
 		johnRegistered,
