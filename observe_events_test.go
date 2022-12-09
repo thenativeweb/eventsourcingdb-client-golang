@@ -190,7 +190,7 @@ func TestObserveEvents(t *testing.T) {
 		matchLoggedInEvent(t, secondEvent, johnLoggedIn)
 	})
 
-	t.Run("returns a ContextCanceledError when the context is cancelled.", func(t *testing.T) {
+	t.Run("returns a ContextCanceledError when the context is canceled.", func(t *testing.T) {
 		client := prepareClientWithEvents(t)
 		ctx, cancel := context.WithCancel(context.Background())
 

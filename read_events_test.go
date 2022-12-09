@@ -205,7 +205,7 @@ func TestReadEvents(t *testing.T) {
 		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
 	})
 
-	t.Run("returns a ContextCancelledError when the context is cancelled.", func(t *testing.T) {
+	t.Run("returns a ContextCanceledError when the context is canceled.", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 
