@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"errors"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/result"
 	"io"
 )
@@ -25,7 +25,7 @@ func newData[TData any](data TData) UnmarshalStreamResult[TData] {
 	}
 }
 
-func UnmarshalStream[TData any](context context.Context, reader io.Reader) <-chan UnmarshalStreamResult[TData] {
+func UnmarshalStream[TData any](ctx context.Context, reader io.Reader) <-chan UnmarshalStreamResult[TData] {
 	scanner := bufio.NewScanner(reader)
 	resultChannel := make(chan UnmarshalStreamResult[TData], 1)
 	lineChannel := make(chan string)
@@ -49,8 +49,8 @@ func UnmarshalStream[TData any](context context.Context, reader io.Reader) <-cha
 	LineLoop:
 		for {
 			select {
-			case <-context.Done():
-				resultChannel <- newError[TData](errors.New("context cancelled"))
+			case <-ctx.Done():
+				resultChannel <- newError[TData](errors.NewContextCanceledError(ctx))
 			case currentLine, ok := <-lineChannel:
 				if !ok {
 					break LineLoop

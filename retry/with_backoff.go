@@ -3,6 +3,7 @@ package retry
 import (
 	"context"
 	"errors"
+	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/errors"
 	"math/rand"
 	"time"
 )
@@ -27,7 +28,7 @@ func WithBackoff(ctx context.Context, tries int, fn func() error) error {
 
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return customErrors.NewContextCanceledError(ctx)
 		case <-time.After(timeout):
 			err := fn()
 			if err != nil {
