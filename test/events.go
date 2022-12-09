@@ -4,29 +4,29 @@ type RegisteredEventData struct {
 	Name string `json:"name"`
 }
 
-type registeredEvent struct {
+type RegisteredEvent struct {
 	Name string
 	Data RegisteredEventData
 }
 
 type registeredEvents struct {
-	JaneDoe   registeredEvent
-	JohnDoe   registeredEvent
-	ApfelFred registeredEvent
+	JaneDoe   RegisteredEvent
+	JohnDoe   RegisteredEvent
+	ApfelFred RegisteredEvent
 }
 
 type LoggedInEventData struct {
 	Name string `json:"name"`
 }
 
-type loggedInEvent struct {
+type LoggedInEvent struct {
 	Name string
 	Data LoggedInEventData
 }
 
 type loggedInEvents struct {
-	JaneDoe loggedInEvent
-	JohnDoe loggedInEvent
+	JaneDoe LoggedInEvent
+	JohnDoe LoggedInEvent
 }
 
 type events struct {
@@ -36,12 +36,12 @@ type events struct {
 
 var Events = events{
 	Registered: registeredEvents{
-		JaneDoe:   registeredEvent{"registered", RegisteredEventData{"Jane Doe"}},
-		JohnDoe:   registeredEvent{"registered", RegisteredEventData{"John Doe"}},
-		ApfelFred: registeredEvent{"registered", RegisteredEventData{"Apfel Fred"}},
+		JaneDoe:   RegisteredEvent{"registered", RegisteredEventData{"Jane Doe"}},
+		JohnDoe:   RegisteredEvent{"registered", RegisteredEventData{"John Doe"}},
+		ApfelFred: RegisteredEvent{"registered", RegisteredEventData{"Apfel Fred"}},
 	},
 	LoggedIn: loggedInEvents{
-		JaneDoe: loggedInEvent{"loggedIn", LoggedInEventData{"Jane Doe"}},
-		JohnDoe: loggedInEvent{"loggedIn", LoggedInEventData{"Jane Doe"}},
+		JaneDoe: LoggedInEvent{"loggedIn", LoggedInEventData{"Jane Doe"}},
+		JohnDoe: LoggedInEvent{"loggedIn", LoggedInEventData{"Jane Doe"}},
 	},
 }

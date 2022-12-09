@@ -37,36 +37,28 @@ func TestReadEvents(t *testing.T) {
 		return data.Event
 	}
 
-	matchRegisteredEvent := func(t *testing.T, event eventsourcingdb.Event, candidate eventsourcingdb.EventCandidate) {
-		assert.Equal(t, event.Metadata.StreamName, candidate.Metadata.StreamName)
-		assert.Equal(t, event.Metadata.Name, candidate.Metadata.Name)
+	matchRegisteredEvent := func(t *testing.T, event eventsourcingdb.Event, expected test.RegisteredEvent) {
+		assert.Equal(t, "/users/registered", event.Metadata.StreamName)
+		assert.Equal(t, expected.Name, event.Metadata.Name)
 
 		var eventData test.RegisteredEventData
 		err = json.Unmarshal(event.Data, &eventData)
 
 		assert.NoError(t, err)
 
-		candidateData, ok := candidate.Data.(test.RegisteredEventData)
-
-		assert.True(t, ok)
-
-		assert.Equal(t, candidateData.Name, eventData.Name)
+		assert.Equal(t, expected.Data.Name, eventData.Name)
 	}
 
-	matchLoggedInEvent := func(t *testing.T, event eventsourcingdb.Event, candidate eventsourcingdb.EventCandidate) {
-		assert.Equal(t, event.Metadata.StreamName, candidate.Metadata.StreamName)
-		assert.Equal(t, event.Metadata.Name, candidate.Metadata.Name)
+	matchLoggedInEvent := func(t *testing.T, event eventsourcingdb.Event, expected test.LoggedInEvent) {
+		assert.Equal(t, "/users/loggedIn", event.Metadata.StreamName)
+		assert.Equal(t, expected.Name, event.Metadata.Name)
 
 		var eventData test.LoggedInEventData
 		err = json.Unmarshal(event.Data, &eventData)
 
 		assert.NoError(t, err)
 
-		candidateData, ok := candidate.Data.(test.LoggedInEventData)
-
-		assert.True(t, ok)
-
-		assert.Equal(t, candidateData.Name, eventData.Name)
+		assert.Equal(t, expected.Data.Name, eventData.Name)
 	}
 
 	t.Run("returns an error when trying to read from a non-reachable server.", func(t *testing.T) {
@@ -94,10 +86,10 @@ func TestReadEvents(t *testing.T) {
 		resultChan := client.ReadEvents(context.Background(), "/users/registered", false)
 
 		firstEvent := getNextEvent(t, resultChan)
-		matchRegisteredEvent(t, firstEvent, janeRegistered)
+		matchRegisteredEvent(t, firstEvent, test.Events.Registered.JaneDoe)
 
 		secondEvent := getNextEvent(t, resultChan)
-		matchRegisteredEvent(t, secondEvent, johnRegistered)
+		matchRegisteredEvent(t, secondEvent, test.Events.Registered.JohnDoe)
 
 		data, ok := <-resultChan
 
@@ -112,16 +104,16 @@ func TestReadEvents(t *testing.T) {
 		)
 
 		firstEvent := getNextEvent(t, resultChan)
-		matchRegisteredEvent(t, firstEvent, janeRegistered)
+		matchRegisteredEvent(t, firstEvent, test.Events.Registered.JaneDoe)
 
 		secondEvent := getNextEvent(t, resultChan)
-		matchLoggedInEvent(t, secondEvent, janeLoggedIn)
+		matchLoggedInEvent(t, secondEvent, test.Events.LoggedIn.JaneDoe)
 
 		thirdEvent := getNextEvent(t, resultChan)
-		matchRegisteredEvent(t, thirdEvent, johnRegistered)
+		matchRegisteredEvent(t, thirdEvent, test.Events.Registered.JohnDoe)
 
 		fourthEvent := getNextEvent(t, resultChan)
-		matchLoggedInEvent(t, fourthEvent, johnLoggedIn)
+		matchLoggedInEvent(t, fourthEvent, test.Events.LoggedIn.JohnDoe)
 
 		data, ok := <-resultChan
 
@@ -137,10 +129,10 @@ func TestReadEvents(t *testing.T) {
 		)
 
 		firstEvent := getNextEvent(t, resultChan)
-		matchRegisteredEvent(t, firstEvent, johnRegistered)
+		matchRegisteredEvent(t, firstEvent, test.Events.Registered.JohnDoe)
 
 		secondEvent := getNextEvent(t, resultChan)
-		matchRegisteredEvent(t, secondEvent, janeRegistered)
+		matchRegisteredEvent(t, secondEvent, test.Events.Registered.JaneDoe)
 
 		data, ok := <-resultChan
 
@@ -160,7 +152,7 @@ func TestReadEvents(t *testing.T) {
 		)
 
 		firstEvent := getNextEvent(t, resultChan)
-		matchLoggedInEvent(t, firstEvent, johnLoggedIn)
+		matchLoggedInEvent(t, firstEvent, test.Events.LoggedIn.JohnDoe)
 
 		data, ok := <-resultChan
 
@@ -176,10 +168,10 @@ func TestReadEvents(t *testing.T) {
 		)
 
 		firstEvent := getNextEvent(t, resultChan)
-		matchRegisteredEvent(t, firstEvent, johnRegistered)
+		matchRegisteredEvent(t, firstEvent, test.Events.Registered.JohnDoe)
 
 		secondEvent := getNextEvent(t, resultChan)
-		matchLoggedInEvent(t, secondEvent, johnLoggedIn)
+		matchLoggedInEvent(t, secondEvent, test.Events.LoggedIn.JohnDoe)
 
 		data, ok := <-resultChan
 
@@ -195,10 +187,10 @@ func TestReadEvents(t *testing.T) {
 		)
 
 		firstEvent := getNextEvent(t, resultChan)
-		matchRegisteredEvent(t, firstEvent, janeRegistered)
+		matchRegisteredEvent(t, firstEvent, test.Events.Registered.JaneDoe)
 
 		secondEvent := getNextEvent(t, resultChan)
-		matchLoggedInEvent(t, secondEvent, janeLoggedIn)
+		matchLoggedInEvent(t, secondEvent, test.Events.LoggedIn.JaneDoe)
 
 		data, ok := <-resultChan
 
