@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/thenativeweb/eventsourcingdb-client-golang"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/test"
 )
 
@@ -187,5 +188,23 @@ func TestObserveEvents(t *testing.T) {
 
 		secondEvent := getNextEvent(t, resultChan)
 		matchLoggedInEvent(t, secondEvent, johnLoggedIn)
+	})
+
+	t.Run("returns a ContextCanceledError when the context is canceled.", func(t *testing.T) {
+		client := prepareClientWithEvents(t)
+		ctx, cancel := context.WithCancel(context.Background())
+
+		cancel()
+
+		resultChan := client.ObserveEventsWithOptions(
+			ctx,
+			"/users",
+			eventsourcingdb.NewObserveEventsOptions(true).
+				LowerBoundID(2),
+		)
+
+		_, err := (<-resultChan).GetData()
+		assert.Error(t, err)
+		assert.True(t, errors.IsContextCanceledError(err), fmt.Sprintf("%v", err))
 	})
 }

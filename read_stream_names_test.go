@@ -2,11 +2,11 @@ package eventsourcingdb_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/thenativeweb/eventsourcingdb-client-golang"
+	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/test"
 	"testing"
 )
@@ -97,7 +97,7 @@ func TestReadStreamNames(t *testing.T) {
 		assert.Equal(t, []eventsourcingdb.StreamName{{"/foobar"}, {streamName}}, streamNames)
 	})
 
-	t.Run("closes the result channel when the given context is cancelled.", func(t *testing.T) {
+	t.Run("closes the result channel when the given context is canceled.", func(t *testing.T) {
 		client := database.WithoutAuthorization.GetClient()
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -106,7 +106,8 @@ func TestReadStreamNames(t *testing.T) {
 
 		cancelledResult := <-readStreamNameResults
 		_, err := cancelledResult.GetData()
-		assert.Error(t, err, errors.New("context cancelled"))
+		assert.Error(t, err)
+		assert.True(t, customErrors.IsContextCanceledError(err))
 
 		superfluousResult, ok := <-readStreamNameResults
 		assert.False(t, ok, fmt.Sprintf("channel did not close %+v", superfluousResult))

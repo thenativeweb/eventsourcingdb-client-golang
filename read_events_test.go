@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/thenativeweb/eventsourcingdb-client-golang"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/test"
 	"testing"
 )
@@ -202,5 +203,21 @@ func TestReadEvents(t *testing.T) {
 		data, ok := <-resultChan
 
 		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
+	})
+
+	t.Run("returns a ContextCanceledError when the context is canceled.", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		resultChan := client.ReadEventsWithOptions(
+			ctx,
+			"/users",
+			eventsourcingdb.NewReadEventsOptions(true).
+				UpperBoundID(1),
+		)
+
+		_, err := (<-resultChan).GetData()
+		assert.Error(t, err)
+		assert.True(t, errors.IsContextCanceledError(err))
 	})
 }
