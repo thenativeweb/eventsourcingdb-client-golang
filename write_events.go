@@ -40,10 +40,10 @@ func (client *Client) WriteEventsWithPreconditions(preconditions *Preconditions,
 	for _, event := range eventCandidates {
 		requestBody.Events = append(requestBody.Events, writeEventsRequestBodyEventCandidate{
 			writeEventsRequestBodyEventCandidateMetadata{
-				event.Metadata.StreamName,
-				event.Metadata.Name,
+				event.Metadata().StreamName,
+				event.Metadata().Name,
 			},
-			event.Data,
+			event.Data(),
 		})
 	}
 
