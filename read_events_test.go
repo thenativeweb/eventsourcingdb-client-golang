@@ -18,7 +18,7 @@ func TestReadEvents(t *testing.T) {
 	janeLoggedIn := eventsourcingdb.NewEventCandidate("/users/loggedIn", test.Events.LoggedIn.JaneDoe.Name, test.Events.LoggedIn.JaneDoe.Data)
 	johnLoggedIn := eventsourcingdb.NewEventCandidate("/users/loggedIn", test.Events.LoggedIn.JohnDoe.Name, test.Events.LoggedIn.JohnDoe.Data)
 
-	err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+	_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 		janeRegistered,
 		janeLoggedIn,
 		johnRegistered,
@@ -67,6 +67,27 @@ func TestReadEvents(t *testing.T) {
 
 		assert.Equal(t, candidateData.Name, eventData.Name)
 	}
+
+	t.Run("returns an error when trying to read from a non-reachable server.", func(t *testing.T) {
+		client := database.WithInvalidURL.GetClient()
+
+		resultChan := client.ReadEvents(context.Background(), "/", false)
+
+		firstResult := <-resultChan
+
+		_, err := firstResult.GetData()
+		assert.Error(t, err)
+	})
+
+	t.Run("supports authorization.", func(t *testing.T) {
+		client := database.WithAuthorization.GetClient()
+
+		resultChan := client.ReadEvents(context.Background(), "/", false)
+
+		data, ok := <-resultChan
+
+		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
+	})
 
 	t.Run("reads from a single stream.", func(t *testing.T) {
 		resultChan := client.ReadEvents(context.Background(), "/users/registered", false)

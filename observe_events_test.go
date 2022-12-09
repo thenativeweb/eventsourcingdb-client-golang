@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/thenativeweb/eventsourcingdb-client-golang"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/test"
 )
 
@@ -22,7 +22,7 @@ func TestObserveEvents(t *testing.T) {
 	prepareClientWithEvents := func(t *testing.T) eventsourcingdb.Client {
 		client := database.WithoutAuthorization.GetClient()
 
-		err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 			janeRegistered,
 			janeLoggedIn,
 			johnRegistered,
@@ -75,6 +75,31 @@ func TestObserveEvents(t *testing.T) {
 		assert.Equal(t, candidateData.Name, eventData.Name)
 	}
 
+	t.Run("returns an error when trying to observe from a non-reachable server.", func(t *testing.T) {
+		client := database.WithInvalidURL.GetClient()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		resultChan := client.ObserveEvents(ctx, "/", false)
+
+		firstResult := <-resultChan
+
+		_, err := firstResult.GetData()
+		assert.Error(t, err)
+	})
+
+	t.Run("supports authorization.", func(t *testing.T) {
+		client := database.WithAuthorization.GetClient()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		resultChan := client.ObserveEvents(ctx, "/", false)
+
+		data, ok := <-resultChan
+
+		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
+	})
+
 	t.Run("observes from a single stream.", func(t *testing.T) {
 		client := prepareClientWithEvents(t)
 		ctx, cancel := context.WithCancel(context.Background())
@@ -93,7 +118,7 @@ func TestObserveEvents(t *testing.T) {
 			test.Events.Registered.ApfelFred.Name,
 			test.Events.Registered.ApfelFred.Data,
 		)
-		err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 			apfelFredCandidate,
 		})
 
