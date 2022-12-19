@@ -48,7 +48,7 @@ func (image Image) Run(command []string, detached, exposePorts bool) (Container,
 		if exitError, ok := err.(*exec.ExitError); ok {
 			return Container{}, fmt.Errorf("failed to run image: %s", exitError.Stderr)
 		}
-		return Container{}, fmt.Errorf("failed to run image: %s", stderr)
+		return Container{}, err
 	}
 
 	containerID := strings.TrimSpace(string(stdout))
