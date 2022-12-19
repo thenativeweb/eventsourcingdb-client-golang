@@ -1,7 +1,6 @@
 package docker
 
 import (
-	"bytes"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -19,13 +18,13 @@ func (image Image) GetFullName() string {
 func (image Image) Build(directory string) error {
 	cliCommand := exec.Command("docker", "build", "-t", image.GetFullName(), directory)
 
-	stderrBuf := bytes.NewBuffer([]byte{})
-	cliCommand.Stderr = stderrBuf
-
-	err := cliCommand.Run()
+	_, err := cliCommand.Output()
 	if err != nil {
-		stderr := string(stderrBuf.Bytes())
-		return fmt.Errorf("failed to build image: %s", stderr)
+		if exitError, ok := err.(*exec.ExitError); ok {
+			return fmt.Errorf("failed to build image: %s", exitError.Stderr)
+		}
+
+		return err
 	}
 
 	return nil
@@ -44,12 +43,11 @@ func (image Image) Run(command []string, detached, exposePorts bool) (Container,
 
 	cliCommand := exec.Command("docker", commandArgs...)
 
-	stderrBuf := bytes.NewBuffer([]byte{})
-	cliCommand.Stderr = stderrBuf
-
 	stdout, err := cliCommand.Output()
 	if err != nil {
-		stderr := string(stderrBuf.Bytes())
+		if exitError, ok := err.(*exec.ExitError); ok {
+			return Container{}, fmt.Errorf("failed to run image: %s", exitError.Stderr)
+		}
 		return Container{}, fmt.Errorf("failed to run image: %s", stderr)
 	}
 
