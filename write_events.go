@@ -10,16 +10,18 @@ import (
 	"github.com/thenativeweb/eventsourcingdb-client-golang/retry"
 	"io"
 	"net/http"
+	"net/url"
 )
 
-type writeEventsRequestBodyEventCandidateMetadata struct {
-	StreamName string `json:"streamName"`
-	Name       string `json:"name"`
+type writeEventsRequestBodyEventCandidateContext struct {
+	Subject string  `json:"subject"`
+	Type    string  `json:"type"`
+	Source  url.URL `json:"source"`
 }
 
 type writeEventsRequestBodyEventCandidate struct {
-	Metadata writeEventsRequestBodyEventCandidateMetadata `json:"metadata"`
-	Data     interface{}                                  `json:"data"`
+	writeEventsRequestBodyEventCandidateContext
+	Data any `json:"data"`
 }
 
 type writeEventsRequestBody struct {
@@ -27,11 +29,11 @@ type writeEventsRequestBody struct {
 	Events        []writeEventsRequestBodyEventCandidate `json:"events"`
 }
 
-func (client *Client) WriteEvents(eventCandidates []EventCandidate) ([]EventMetadata, error) {
+func (client *Client) WriteEvents(eventCandidates []EventCandidate) ([]EventContext, error) {
 	return client.WriteEventsWithPreconditions(NewPreconditions(), eventCandidates)
 }
 
-func (client *Client) WriteEventsWithPreconditions(preconditions *Preconditions, eventCandidates []EventCandidate) ([]EventMetadata, error) {
+func (client *Client) WriteEventsWithPreconditions(preconditions *Preconditions, eventCandidates []EventCandidate) ([]EventContext, error) {
 	requestBody := writeEventsRequestBody{
 		preconditions,
 		[]writeEventsRequestBodyEventCandidate{},
@@ -39,11 +41,12 @@ func (client *Client) WriteEventsWithPreconditions(preconditions *Preconditions,
 
 	for _, event := range eventCandidates {
 		requestBody.Events = append(requestBody.Events, writeEventsRequestBodyEventCandidate{
-			writeEventsRequestBodyEventCandidateMetadata{
-				event.Metadata().StreamName,
-				event.Metadata().Name,
+			writeEventsRequestBodyEventCandidateContext{
+				event.Subject,
+				event.Type,
+				event.Source,
 			},
-			event.Data(),
+			event.Data,
 		})
 	}
 
@@ -88,7 +91,7 @@ func (client *Client) WriteEventsWithPreconditions(preconditions *Preconditions,
 		return nil, errors.New(fmt.Sprintf("failed to write events: %s", responseBody))
 	}
 
-	var writeEventsResult []EventMetadata
+	var writeEventsResult []EventContext
 	err = json.Unmarshal(responseBody, &writeEventsResult)
 	if err != nil {
 		return nil, err

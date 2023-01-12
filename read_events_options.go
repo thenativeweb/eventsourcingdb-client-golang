@@ -8,8 +8,8 @@ const (
 )
 
 type ReadFromLatestEvent struct {
-	StreamName       string                     `json:"streamName"`
-	EventName        string                     `json:"eventName"`
+	Subject          string                     `json:"subject"`
+	Type             string                     `json:"type"`
 	IfEventIsMissing IfEventIsMissingDuringRead `json:"ifEventIsMissing"`
 }
 

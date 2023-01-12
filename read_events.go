@@ -14,8 +14,8 @@ import (
 )
 
 type readEventsRequest struct {
-	StreamName string            `json:"streamName,omitempty"`
-	Options    ReadEventsOptions `json:"options,omitempty"`
+	Subject string            `json:"subject,omitempty"`
+	Options ReadEventsOptions `json:"options,omitempty"`
 }
 
 type ReadEventsResult struct {
@@ -34,14 +34,14 @@ func newStoreItem(item StoreItem) ReadEventsResult {
 	}
 }
 
-func (client *Client) ReadEventsWithOptions(ctx context.Context, streamName string, options ReadEventsOptions) <-chan ReadEventsResult {
+func (client *Client) ReadEventsWithOptions(ctx context.Context, subject string, options ReadEventsOptions) <-chan ReadEventsResult {
 	resultChannel := make(chan ReadEventsResult, 1)
 
 	go func() {
 		defer close(resultChannel)
 		requestBody := readEventsRequest{
-			StreamName: streamName,
-			Options:    options,
+			Subject: subject,
+			Options: options,
 		}
 		requestBodyAsJSON, err := json.Marshal(requestBody)
 		if err != nil {
@@ -123,6 +123,6 @@ func (client *Client) ReadEventsWithOptions(ctx context.Context, streamName stri
 	return resultChannel
 }
 
-func (client *Client) ReadEvents(ctx context.Context, streamName string, recursive bool) <-chan ReadEventsResult {
-	return client.ReadEventsWithOptions(ctx, streamName, NewReadEventsOptions(recursive))
+func (client *Client) ReadEvents(ctx context.Context, subject string, recursive bool) <-chan ReadEventsResult {
+	return client.ReadEventsWithOptions(ctx, subject, NewReadEventsOptions(recursive))
 }

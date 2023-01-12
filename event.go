@@ -3,17 +3,21 @@ package eventsourcingdb
 import (
 	"encoding/json"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/timestamp"
+	"net/url"
 )
 
-type EventMetadata struct {
-	ID              int                 `json:"id"`
-	Timestamp       timestamp.Timestamp `json:"timestamp"`
-	StreamName      string              `json:"streamName"`
-	Name            string              `json:"name"`
+type EventContext struct {
+	ID              string              `json:"id"`
+	Time            timestamp.Timestamp `json:"time"`
+	Subject         string              `json:"subject"`
+	Type            string              `json:"type"`
+	Source          url.URL             `json:"source"`
 	PredecessorHash string              `json:"predecessorHash"`
+	DataContentType string              `json:"datacontenttype"`
+	SpecVersion     string              `json:"specversion"`
 }
 
 type Event struct {
-	Metadata EventMetadata   `json:"metadata"`
-	Data     json.RawMessage `json:"data"`
+	EventContext
+	Data json.RawMessage `json:"data"`
 }

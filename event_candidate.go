@@ -1,45 +1,31 @@
 package eventsourcingdb
 
-import "encoding/json"
+import (
+	"net/url"
+)
 
-type EventCandidateMetadata struct {
-	StreamName string
-	Name       string
+type EventCandidateContext struct {
+	Subject string
+	Type    string
+	Source  url.URL
 }
 
-func NewEventCandidateMetadata(streamName, name string) EventCandidateMetadata {
-	return EventCandidateMetadata{
-		streamName,
+func NewEventCandidateContext(subject, name string, source url.URL) EventCandidateContext {
+	return EventCandidateContext{
+		subject,
 		name,
+		source,
 	}
 }
 
-type EventCandidate interface {
-	Metadata() EventCandidateMetadata
-	Data() json.RawMessage
+type EventCandidate struct {
+	EventCandidateContext
+	Data any
 }
 
-type eventCandidate[TData any] struct {
-	metadata EventCandidateMetadata
-	data     TData
-}
-
-func (candidate eventCandidate[TData]) Metadata() EventCandidateMetadata {
-	return candidate.metadata
-}
-
-func (candidate eventCandidate[TData]) Data() json.RawMessage {
-	data, err := json.Marshal(candidate.data)
-	if err != nil {
-		panic(err)
-	}
-
-	return data
-}
-
-func NewEventCandidate[TData any](streamName, name string, data TData) EventCandidate {
-	return eventCandidate[TData]{
-		NewEventCandidateMetadata(streamName, name),
+func NewEventCandidate(subject, name string, source url.URL, data any) EventCandidate {
+	return EventCandidate{
+		NewEventCandidateContext(subject, name, source),
 		data,
 	}
 }

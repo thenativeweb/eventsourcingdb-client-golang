@@ -15,8 +15,8 @@ import (
 )
 
 type observeEventsRequest struct {
-	StreamName string               `json:"streamName,omitempty"`
-	Options    ObserveEventsOptions `json:"options,omitempty"`
+	Subject string               `json:"subject,omitempty"`
+	Options ObserveEventsOptions `json:"options,omitempty"`
 }
 
 type ObserveEventsResult struct {
@@ -35,14 +35,14 @@ func newObserveEventsValue(item StoreItem) ObserveEventsResult {
 	}
 }
 
-func (client *Client) ObserveEventsWithOptions(ctx context.Context, streamName string, options ObserveEventsOptions) <-chan ObserveEventsResult {
+func (client *Client) ObserveEventsWithOptions(ctx context.Context, subject string, options ObserveEventsOptions) <-chan ObserveEventsResult {
 	resultChannel := make(chan ObserveEventsResult, 1)
 
 	go func() {
 		defer close(resultChannel)
 		requestBody := observeEventsRequest{
-			StreamName: streamName,
-			Options:    options,
+			Subject: subject,
+			Options: options,
 		}
 		requestBodyAsJSON, err := json.Marshal(requestBody)
 		if err != nil {
@@ -126,6 +126,6 @@ func (client *Client) ObserveEventsWithOptions(ctx context.Context, streamName s
 	return resultChannel
 }
 
-func (client *Client) ObserveEvents(ctx context.Context, streamName string, recursive bool) <-chan ObserveEventsResult {
-	return client.ObserveEventsWithOptions(ctx, streamName, NewObserveEventsOptions(recursive))
+func (client *Client) ObserveEvents(ctx context.Context, subject string, recursive bool) <-chan ObserveEventsResult {
+	return client.ObserveEventsWithOptions(ctx, subject, NewObserveEventsOptions(recursive))
 }

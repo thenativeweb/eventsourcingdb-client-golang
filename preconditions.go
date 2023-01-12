@@ -5,17 +5,17 @@ import (
 )
 
 const (
-	isStreamPristine  = "isStreamPristine"
-	isStreamOnEventID = "isStreamOnEventId"
+	isSubjectPristine  = "isSubjectPristine"
+	isSubjectOnEventID = "isSubjectOnEventId"
 )
 
-type isStreamPristinePrecondition struct {
-	StreamName string `json:"streamName"`
+type isSubjectPristinePrecondition struct {
+	Subject string `json:"subject"`
 }
 
-type isStreamOnEventIDPrecondition struct {
-	StreamName string `json:"streamName"`
-	EventID    int    `json:"eventId"`
+type isSubjectOnEventIDPrecondition struct {
+	Subject string `json:"subject"`
+	EventID int    `json:"eventId"`
 }
 
 type precondition[TContent any] struct {
@@ -24,21 +24,21 @@ type precondition[TContent any] struct {
 }
 
 type Preconditions struct {
-	isStreamPristinePreconditions []precondition[isStreamPristinePrecondition]
-	isStreamOnEventIDPrecondition []precondition[isStreamOnEventIDPrecondition]
+	isSubjectPristinePreconditions []precondition[isSubjectPristinePrecondition]
+	isSubjectOnEventIDPrecondition []precondition[isSubjectOnEventIDPrecondition]
 }
 
 func NewPreconditions() *Preconditions {
 	return &Preconditions{}
 }
 
-func (preconditions *Preconditions) IsStreamPristine(streamName string) *Preconditions {
-	preconditions.isStreamPristinePreconditions = append(
-		preconditions.isStreamPristinePreconditions,
-		precondition[isStreamPristinePrecondition]{
-			Type: isStreamPristine,
-			Payload: isStreamPristinePrecondition{
-				StreamName: streamName,
+func (preconditions *Preconditions) IsSubjectPristine(subject string) *Preconditions {
+	preconditions.isSubjectPristinePreconditions = append(
+		preconditions.isSubjectPristinePreconditions,
+		precondition[isSubjectPristinePrecondition]{
+			Type: isSubjectPristine,
+			Payload: isSubjectPristinePrecondition{
+				Subject: subject,
 			},
 		},
 	)
@@ -46,14 +46,14 @@ func (preconditions *Preconditions) IsStreamPristine(streamName string) *Precond
 	return preconditions
 }
 
-func (preconditions *Preconditions) IsStreamOnEventID(streamName string, eventID int) *Preconditions {
-	preconditions.isStreamOnEventIDPrecondition = append(
-		preconditions.isStreamOnEventIDPrecondition,
-		precondition[isStreamOnEventIDPrecondition]{
-			Type: isStreamOnEventID,
-			Payload: isStreamOnEventIDPrecondition{
-				StreamName: streamName,
-				EventID:    eventID,
+func (preconditions *Preconditions) IsSubjectOnEventID(subject string, eventID int) *Preconditions {
+	preconditions.isSubjectOnEventIDPrecondition = append(
+		preconditions.isSubjectOnEventIDPrecondition,
+		precondition[isSubjectOnEventIDPrecondition]{
+			Type: isSubjectOnEventID,
+			Payload: isSubjectOnEventIDPrecondition{
+				Subject: subject,
+				EventID: eventID,
 			},
 		},
 	)
@@ -65,10 +65,10 @@ func (preconditions *Preconditions) MarshalJSON() ([]byte, error) {
 	rawJSONPreconditions := make(
 		[]json.RawMessage,
 		0,
-		len(preconditions.isStreamPristinePreconditions)+len(preconditions.isStreamOnEventIDPrecondition),
+		len(preconditions.isSubjectPristinePreconditions)+len(preconditions.isSubjectOnEventIDPrecondition),
 	)
 
-	for _, precondition := range preconditions.isStreamPristinePreconditions {
+	for _, precondition := range preconditions.isSubjectPristinePreconditions {
 		rawJSONPrecondition, err := json.Marshal(precondition)
 
 		if err != nil {
@@ -78,7 +78,7 @@ func (preconditions *Preconditions) MarshalJSON() ([]byte, error) {
 		rawJSONPreconditions = append(rawJSONPreconditions, rawJSONPrecondition)
 	}
 
-	for _, precondition := range preconditions.isStreamOnEventIDPrecondition {
+	for _, precondition := range preconditions.isSubjectOnEventIDPrecondition {
 		rawJSONPrecondition, err := json.Marshal(precondition)
 
 		if err != nil {
