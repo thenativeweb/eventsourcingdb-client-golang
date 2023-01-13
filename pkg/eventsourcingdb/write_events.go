@@ -28,7 +28,11 @@ func (client *Client) WriteEventsWithPreconditions(preconditions *Preconditions,
 		eventCandidates,
 	}
 
-	// TODO: check if event candidates are valid
+	for i := 0; i < len(eventCandidates); i++ {
+		if err := eventCandidates[i].Validate(); err != nil {
+			return nil, err
+		}
+	}
 
 	requestBodyAsJSON, err := json.Marshal(requestBody)
 	if err != nil {

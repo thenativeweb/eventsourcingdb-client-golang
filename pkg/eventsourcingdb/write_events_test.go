@@ -25,6 +25,33 @@ func TestWriteEvents(t *testing.T) {
 		assert.Error(t, err)
 	})
 
+	t.Run("returns an error if a candidate subject is malformed", func(t *testing.T) {
+		client := database.WithoutAuthorization.GetClient()
+
+		_, err := client.WriteEvents([]event.Candidate{
+			event.NewCandidate("tag:foobar.com,2023:barbaz", "foobar", "com.foobar.barbaz", struct{}{}),
+		})
+		assert.ErrorContains(t, err, "malformed event subject")
+	})
+
+	t.Run("returns an error if a candidate type is malformed", func(t *testing.T) {
+		client := database.WithoutAuthorization.GetClient()
+
+		_, err := client.WriteEvents([]event.Candidate{
+			event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "barbaz", struct{}{}),
+		})
+		assert.ErrorContains(t, err, "malformed event type")
+	})
+
+	t.Run("returns an error if a candidate source is malformed", func(t *testing.T) {
+		client := database.WithoutAuthorization.GetClient()
+
+		_, err := client.WriteEvents([]event.Candidate{
+			event.NewCandidate("://wurstsoße", "/foobar", "com.foobar.barbaz", struct{}{}),
+		})
+		assert.ErrorContains(t, err, "malformed event source")
+	})
+
 	t.Run("supports authorization.", func(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
 
