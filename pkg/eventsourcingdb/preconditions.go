@@ -23,45 +23,53 @@ type precondition[TContent any] struct {
 	Payload TContent `json:"payload"`
 }
 
-type Preconditions struct {
+type PreconditionsBody struct {
 	isSubjectPristinePreconditions []precondition[isSubjectPristinePrecondition]
 	isSubjectOnEventIDPrecondition []precondition[isSubjectOnEventIDPrecondition]
 }
 
-func NewPreconditions() *Preconditions {
-	return &Preconditions{}
+type Precondition func(preconditions *PreconditionsBody)
+
+func Preconditions(preconditions ...Precondition) *PreconditionsBody {
+	myPreconditions := &PreconditionsBody{}
+
+	for _, addPrecondition := range preconditions {
+		addPrecondition(myPreconditions)
+	}
+
+	return myPreconditions
 }
 
-func (preconditions *Preconditions) IsSubjectPristine(subject string) *Preconditions {
-	preconditions.isSubjectPristinePreconditions = append(
-		preconditions.isSubjectPristinePreconditions,
-		precondition[isSubjectPristinePrecondition]{
-			Type: isSubjectPristine,
-			Payload: isSubjectPristinePrecondition{
-				Subject: subject,
+func IsSubjectPristine(subject string) Precondition {
+	return func(preconditions *PreconditionsBody) {
+		preconditions.isSubjectPristinePreconditions = append(
+			preconditions.isSubjectPristinePreconditions,
+			precondition[isSubjectPristinePrecondition]{
+				Type: isSubjectPristine,
+				Payload: isSubjectPristinePrecondition{
+					Subject: subject,
+				},
 			},
-		},
-	)
-
-	return preconditions
+		)
+	}
 }
 
-func (preconditions *Preconditions) IsSubjectOnEventID(subject string, eventID string) *Preconditions {
-	preconditions.isSubjectOnEventIDPrecondition = append(
-		preconditions.isSubjectOnEventIDPrecondition,
-		precondition[isSubjectOnEventIDPrecondition]{
-			Type: isSubjectOnEventID,
-			Payload: isSubjectOnEventIDPrecondition{
-				Subject: subject,
-				EventID: eventID,
+func IsSubjectOnEventID(subject string, eventID string) Precondition {
+	return func(preconditions *PreconditionsBody) {
+		preconditions.isSubjectOnEventIDPrecondition = append(
+			preconditions.isSubjectOnEventIDPrecondition,
+			precondition[isSubjectOnEventIDPrecondition]{
+				Type: isSubjectOnEventID,
+				Payload: isSubjectOnEventIDPrecondition{
+					Subject: subject,
+					EventID: eventID,
+				},
 			},
-		},
-	)
-
-	return preconditions
+		)
+	}
 }
 
-func (preconditions *Preconditions) MarshalJSON() ([]byte, error) {
+func (preconditions *PreconditionsBody) MarshalJSON() ([]byte, error) {
 	rawJSONPreconditions := make(
 		[]json.RawMessage,
 		0,

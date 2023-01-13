@@ -14,17 +14,15 @@ import (
 )
 
 type writeEventsRequestBody struct {
-	Preconditions *Preconditions    `json:"preconditions,omitempty"`
-	Events        []event.Candidate `json:"events"`
+	Preconditions *PreconditionsBody `json:"preconditions,omitempty"`
+	Events        []event.Candidate  `json:"events"`
 }
 
-func (client *Client) WriteEvents(eventCandidates []event.Candidate) ([]event.Context, error) {
-	return client.WriteEventsWithPreconditions(NewPreconditions(), eventCandidates)
-}
+type WriteEventsOption func(body *writeEventsRequestBody)
 
-func (client *Client) WriteEventsWithPreconditions(preconditions *Preconditions, eventCandidates []event.Candidate) ([]event.Context, error) {
+func (client *Client) WriteEvents(eventCandidates []event.Candidate, preconditions ...Precondition) ([]event.Context, error) {
 	requestBody := writeEventsRequestBody{
-		preconditions,
+		Preconditions(preconditions...),
 		eventCandidates,
 	}
 

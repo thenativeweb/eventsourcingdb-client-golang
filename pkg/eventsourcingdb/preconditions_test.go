@@ -18,7 +18,7 @@ func removeTabsAndNewlines(text string) string {
 
 func TestPreconditions(t *testing.T) {
 	t.Run("marshals to an empty array.", func(t *testing.T) {
-		preconditions := eventsourcingdb.NewPreconditions()
+		preconditions := eventsourcingdb.Preconditions()
 
 		jsonResult, err := json.Marshal(preconditions)
 
@@ -27,7 +27,7 @@ func TestPreconditions(t *testing.T) {
 	})
 
 	t.Run("marshals all preconditions and flattens them into one array.", func(t *testing.T) {
-		preconditions := eventsourcingdb.NewPreconditions().
+		preconditions := eventsourcingdb.Preconditions().
 			IsSubjectPristine("/bar").
 			IsSubjectPristine("/foo").
 			IsSubjectOnEventID("/heck", "1337").

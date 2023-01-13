@@ -15,10 +15,6 @@ func NewTimestamp(time time.Time) Timestamp {
 	return Timestamp{Time: time.UTC()}
 }
 
-func Now() Timestamp {
-	return NewTimestamp(time.Now())
-}
-
 func (timestamp Timestamp) MarshalJSON() ([]byte, error) {
 	ts := timestamp.Time.Format(TimeFormat)
 	return json.Marshal(ts)
