@@ -215,7 +215,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 			assert.NoError(t, err)
 
-			readEvents := client.ReadEvents(context.Background(), "/users", false)
+			readEvents := client.ReadEvents(context.Background(), "/users", eventsourcingdb.ReadNonRecursively())
 
 			var lastEventID string
 			for readEvent := range readEvents {

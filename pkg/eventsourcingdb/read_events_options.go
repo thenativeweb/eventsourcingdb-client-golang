@@ -1,52 +1,103 @@
 package eventsourcingdb
 
+import (
+	"errors"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
+)
+
 type IfEventIsMissingDuringRead string
 
 const (
-	ReadNothingIfEventIsMissingDuringRead    IfEventIsMissingDuringRead = "read-nothing"
-	ReadEverythingIfEventIsMissingDuringRead IfEventIsMissingDuringRead = "read-everything"
+	ReadNothing    IfEventIsMissingDuringRead = "read-nothing"
+	ReadEverything IfEventIsMissingDuringRead = "read-everything"
 )
 
-type ReadFromLatestEvent struct {
+type ReadRecursivelyOption func() bool
+
+func ReadRecursively() ReadRecursivelyOption {
+	return func() bool {
+		return true
+	}
+}
+
+func ReadNonRecursively() ReadRecursivelyOption {
+	return func() bool {
+		return false
+	}
+}
+
+type readFromLatestEvent struct {
 	Subject          string                     `json:"subject"`
 	Type             string                     `json:"type"`
 	IfEventIsMissing IfEventIsMissingDuringRead `json:"ifEventIsMissing"`
 }
 
-type ReadEventsOptions struct {
-	OptionRecursive       bool                 `json:"recursive"`
-	OptionChronological   *bool                `json:"chronological,omitempty"`
-	OptionLowerBoundID    *int                 `json:"lowerBoundId,omitempty"`
-	OptionUpperBoundID    *int                 `json:"upperBoundId,omitempty"`
-	OptionFromLatestEvent *ReadFromLatestEvent `json:"fromLatestEvent,omitempty"`
+type readEventsOptions struct {
+	Recursive       bool                 `json:"recursive"`
+	Chronological   *bool                `json:"chronological,omitempty"`
+	LowerBoundID    *int                 `json:"lowerBoundId,omitempty"`
+	UpperBoundID    *int                 `json:"upperBoundId,omitempty"`
+	FromLatestEvent *readFromLatestEvent `json:"fromLatestEvent,omitempty"`
 }
 
-func NewReadEventsOptions(recursive bool) ReadEventsOptions {
-	return ReadEventsOptions{
-		OptionRecursive: recursive,
+type ReadEventsOption func(options *readEventsOptions) error
+
+func ReadChronologically() ReadEventsOption {
+	return func(options *readEventsOptions) error {
+		value := true
+		options.Chronological = &value
+
+		return nil
 	}
 }
 
-func (options ReadEventsOptions) Chronological(chronological bool) ReadEventsOptions {
-	options.OptionChronological = &chronological
+func ReadReversedChronologically() ReadEventsOption {
+	return func(options *readEventsOptions) error {
+		value := false
+		options.Chronological = &value
 
-	return options
+		return nil
+	}
 }
 
-func (options ReadEventsOptions) LowerBoundID(lowerBoundID int) ReadEventsOptions {
-	options.OptionLowerBoundID = &lowerBoundID
+func ReadFromLowerBoundID(lowerBoundID int) ReadEventsOption {
+	return func(options *readEventsOptions) error {
+		if options.FromLatestEvent != nil {
+			return errors.New("ReadFromLowerBoundID and ReadFromLatestEvent are mutually exclusive")
+		}
 
-	return options
+		options.LowerBoundID = &lowerBoundID
+
+		return nil
+	}
 }
 
-func (options ReadEventsOptions) UpperBoundID(upperBoundID int) ReadEventsOptions {
-	options.OptionUpperBoundID = &upperBoundID
+func ReadUntilUpperBoundID(upperBoundID int) ReadEventsOption {
+	return func(options *readEventsOptions) error {
+		options.UpperBoundID = &upperBoundID
 
-	return options
+		return nil
+	}
 }
 
-func (options ReadEventsOptions) FromLatestEvent(fromLatestEvent ReadFromLatestEvent) ReadEventsOptions {
-	options.OptionFromLatestEvent = &fromLatestEvent
+func ReadFromLatestEvent(subject, eventType string, ifEventIsMissing IfEventIsMissingDuringRead) ReadEventsOption {
+	return func(options *readEventsOptions) error {
+		if options.LowerBoundID != nil {
+			return errors.New("ReadFromLowerBoundID and ReadFromLatestEvent are mutually exclusive")
+		}
+		if err := event.ValidateSubject(subject); err != nil {
+			return err
+		}
+		if err := event.ValidateType(eventType); err != nil {
+			return err
+		}
 
-	return options
+		options.FromLatestEvent = &readFromLatestEvent{
+			Subject:          subject,
+			Type:             eventType,
+			IfEventIsMissing: ifEventIsMissing,
+		}
+
+		return nil
+	}
 }

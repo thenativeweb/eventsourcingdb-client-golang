@@ -13,20 +13,6 @@ import (
 	"net/http"
 )
 
-type ObserveRecursivelyOption func() bool
-
-func ObserveRecursively() ObserveRecursivelyOption {
-	return func() bool {
-		return true
-	}
-}
-
-func ObserveNonRecursively() ObserveRecursivelyOption {
-	return func() bool {
-		return false
-	}
-}
-
 type observeEventsRequest struct {
 	Subject string               `json:"subject,omitempty"`
 	Options observeEventsOptions `json:"options,omitempty"`
@@ -57,7 +43,11 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 			Recursive: recursive(),
 		}
 		for _, applyOption := range options {
-			applyOption(&requestOptions)
+			if err := applyOption(&requestOptions); err != nil {
+				resultChannel <- newObserveEventsError(err)
+
+				return
+			}
 		}
 
 		requestBody := observeEventsRequest{

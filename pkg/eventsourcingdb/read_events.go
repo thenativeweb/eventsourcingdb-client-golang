@@ -15,7 +15,7 @@ import (
 
 type readEventsRequest struct {
 	Subject string            `json:"subject,omitempty"`
-	Options ReadEventsOptions `json:"options,omitempty"`
+	Options readEventsOptions `json:"options,omitempty"`
 }
 
 type ReadEventsResult struct {
@@ -34,14 +34,25 @@ func newStoreItem(item StoreItem) ReadEventsResult {
 	}
 }
 
-func (client *Client) ReadEventsWithOptions(ctx context.Context, subject string, options ReadEventsOptions) <-chan ReadEventsResult {
+func (client *Client) ReadEvents(ctx context.Context, subject string, recursive ReadRecursivelyOption, options ...ReadEventsOption) <-chan ReadEventsResult {
 	resultChannel := make(chan ReadEventsResult, 1)
 
 	go func() {
 		defer close(resultChannel)
+		readOptions := readEventsOptions{
+			Recursive: recursive(),
+		}
+		for _, applyOption := range options {
+			if err := applyOption(&readOptions); err != nil {
+				resultChannel <- newReadEventsError(err)
+
+				return
+			}
+		}
+
 		requestBody := readEventsRequest{
 			Subject: subject,
-			Options: options,
+			Options: readOptions,
 		}
 		requestBodyAsJSON, err := json.Marshal(requestBody)
 		if err != nil {
@@ -121,8 +132,4 @@ func (client *Client) ReadEventsWithOptions(ctx context.Context, subject string,
 	}()
 
 	return resultChannel
-}
-
-func (client *Client) ReadEvents(ctx context.Context, subject string, recursive bool) <-chan ReadEventsResult {
-	return client.ReadEventsWithOptions(ctx, subject, NewReadEventsOptions(recursive))
 }

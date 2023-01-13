@@ -65,7 +65,7 @@ func TestReadEvents(t *testing.T) {
 	t.Run("returns an error when trying to read from a non-reachable server.", func(t *testing.T) {
 		client := database.WithInvalidURL.GetClient()
 
-		resultChan := client.ReadEvents(context.Background(), "/", false)
+		resultChan := client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadNonRecursively())
 
 		firstResult := <-resultChan
 
@@ -76,7 +76,7 @@ func TestReadEvents(t *testing.T) {
 	t.Run("supports authorization.", func(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
 
-		resultChan := client.ReadEvents(context.Background(), "/", false)
+		resultChan := client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadNonRecursively())
 
 		data, ok := <-resultChan
 
@@ -84,7 +84,7 @@ func TestReadEvents(t *testing.T) {
 	})
 
 	t.Run("reads from a single stream.", func(t *testing.T) {
-		resultChan := client.ReadEvents(context.Background(), "/users/registered", false)
+		resultChan := client.ReadEvents(context.Background(), "/users/registered", eventsourcingdb.ReadNonRecursively())
 
 		firstEvent := getNextEvent(t, resultChan)
 		matchRegisteredEvent(t, firstEvent, events.Events.Registered.JaneDoe)
@@ -98,10 +98,10 @@ func TestReadEvents(t *testing.T) {
 	})
 
 	t.Run("reads from a stream including sub-streams.", func(t *testing.T) {
-		resultChan := client.ReadEventsWithOptions(
+		resultChan := client.ReadEvents(
 			context.Background(),
 			"/users",
-			eventsourcingdb.NewReadEventsOptions(true),
+			eventsourcingdb.ReadRecursively(),
 		)
 
 		firstEvent := getNextEvent(t, resultChan)
@@ -121,12 +121,12 @@ func TestReadEvents(t *testing.T) {
 		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
 	})
 
-	t.Run("reads the events in non-chronological order.", func(t *testing.T) {
-		resultChan := client.ReadEventsWithOptions(
+	t.Run("reads the events in reversed chronological order.", func(t *testing.T) {
+		resultChan := client.ReadEvents(
 			context.Background(),
 			"/users/registered",
-			eventsourcingdb.NewReadEventsOptions(false).
-				Chronological(false),
+			eventsourcingdb.ReadNonRecursively(),
+			eventsourcingdb.ReadReversedChronologically(),
 		)
 
 		firstEvent := getNextEvent(t, resultChan)
@@ -141,15 +141,15 @@ func TestReadEvents(t *testing.T) {
 	})
 
 	t.Run("reads events starting from the latest event matching the given event name.", func(t *testing.T) {
-		resultChan := client.ReadEventsWithOptions(
+		resultChan := client.ReadEvents(
 			context.Background(),
 			"/users/loggedIn",
-			eventsourcingdb.NewReadEventsOptions(true).
-				FromLatestEvent(eventsourcingdb.ReadFromLatestEvent{
-					Subject:          "/users/loggedIn",
-					Type:             events.PrefixEventType("loggedIn"),
-					IfEventIsMissing: eventsourcingdb.ReadEverythingIfEventIsMissingDuringRead,
-				}),
+			eventsourcingdb.ReadRecursively(),
+			eventsourcingdb.ReadFromLatestEvent(
+				"/users/loggedIn",
+				events.PrefixEventType("loggedIn"),
+				eventsourcingdb.ReadEverything,
+			),
 		)
 
 		firstEvent := getNextEvent(t, resultChan)
@@ -161,11 +161,11 @@ func TestReadEvents(t *testing.T) {
 	})
 
 	t.Run("reads events starting from the lower bound ID.", func(t *testing.T) {
-		resultChan := client.ReadEventsWithOptions(
+		resultChan := client.ReadEvents(
 			context.Background(),
 			"/users",
-			eventsourcingdb.NewReadEventsOptions(true).
-				LowerBoundID(2),
+			eventsourcingdb.ReadRecursively(),
+			eventsourcingdb.ReadFromLowerBoundID(2),
 		)
 
 		firstEvent := getNextEvent(t, resultChan)
@@ -180,11 +180,11 @@ func TestReadEvents(t *testing.T) {
 	})
 
 	t.Run("reads events up to the upper bound ID.", func(t *testing.T) {
-		resultChan := client.ReadEventsWithOptions(
+		resultChan := client.ReadEvents(
 			context.Background(),
 			"/users",
-			eventsourcingdb.NewReadEventsOptions(true).
-				UpperBoundID(1),
+			eventsourcingdb.ReadRecursively(),
+			eventsourcingdb.ReadUntilUpperBoundID(1),
 		)
 
 		firstEvent := getNextEvent(t, resultChan)
@@ -202,15 +202,48 @@ func TestReadEvents(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 
-		resultChan := client.ReadEventsWithOptions(
+		resultChan := client.ReadEvents(
 			ctx,
 			"/users",
-			eventsourcingdb.NewReadEventsOptions(true).
-				UpperBoundID(1),
+			eventsourcingdb.ReadRecursively(),
+			eventsourcingdb.ReadUntilUpperBoundID(1),
 		)
 
 		_, err := (<-resultChan).GetData()
 		assert.Error(t, err)
 		assert.True(t, errors.IsContextCanceledError(err))
+	})
+
+	t.Run("returns an error if mutually exclusive options are used", func(t *testing.T) {
+		client := database.WithoutAuthorization.GetClient()
+
+		results := client.ReadEvents(
+			context.Background(),
+			"/",
+			eventsourcingdb.ReadRecursively(),
+			eventsourcingdb.ReadFromLowerBoundID(0),
+			eventsourcingdb.ReadFromLatestEvent("/", "com.foo.bar", eventsourcingdb.ReadEverything),
+		)
+
+		result := <-results
+		_, err := result.GetData()
+
+		assert.ErrorContains(t, err, "mutually exclusive")
+	})
+
+	t.Run("returns an error if incorrect options are used", func(t *testing.T) {
+		client := database.WithoutAuthorization.GetClient()
+
+		results := client.ReadEvents(
+			context.Background(),
+			"/",
+			eventsourcingdb.ReadRecursively(),
+			eventsourcingdb.ReadFromLatestEvent("", "com.foo.bar", eventsourcingdb.ReadEverything),
+		)
+
+		result := <-results
+		_, err := result.GetData()
+
+		assert.ErrorContains(t, err, "malformed event subject")
 	})
 }

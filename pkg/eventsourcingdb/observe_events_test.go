@@ -156,7 +156,7 @@ func TestObserveEvents(t *testing.T) {
 			eventsourcingdb.ObserveFromLatestEvent(
 				"/users/loggedIn",
 				events.PrefixEventType("loggedin"),
-				eventsourcingdb.ReadNothingIfEventIsMissingDuringObserve,
+				eventsourcingdb.ObserveNothing,
 			),
 		)
 
@@ -199,5 +199,38 @@ func TestObserveEvents(t *testing.T) {
 		_, err := (<-resultChan).GetData()
 		assert.Error(t, err)
 		assert.True(t, errors.IsContextCanceledError(err), fmt.Sprintf("%v", err))
+	})
+
+	t.Run("returns an error if mutually exclusive options are used", func(t *testing.T) {
+		client := database.WithoutAuthorization.GetClient()
+
+		results := client.ObserveEvents(
+			context.Background(),
+			"/",
+			eventsourcingdb.ObserveRecursively(),
+			eventsourcingdb.ObserveFromLowerBoundID(0),
+			eventsourcingdb.ObserveFromLatestEvent("/", "com.foo.bar", eventsourcingdb.WaitForEvent),
+		)
+
+		result := <-results
+		_, err := result.GetData()
+
+		assert.ErrorContains(t, err, "mutually exclusive")
+	})
+
+	t.Run("returns an error if incorrect options are used", func(t *testing.T) {
+		client := database.WithoutAuthorization.GetClient()
+
+		results := client.ObserveEvents(
+			context.Background(),
+			"/",
+			eventsourcingdb.ObserveRecursively(),
+			eventsourcingdb.ObserveFromLatestEvent("", "com.foo.bar", eventsourcingdb.WaitForEvent),
+		)
+
+		result := <-results
+		_, err := result.GetData()
+
+		assert.ErrorContains(t, err, "malformed event subject")
 	})
 }
