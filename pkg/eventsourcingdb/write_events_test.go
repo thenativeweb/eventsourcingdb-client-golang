@@ -1,0 +1,209 @@
+package eventsourcingdb_test
+
+import (
+	"context"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
+	eventsourcingdb2 "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
+	"testing"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestWriteEvents(t *testing.T) {
+	t.Run("returns an error when trying to write to a non-reachable server.", func(t *testing.T) {
+		client := database.WithInvalidURL.GetClient()
+
+		subject := "/" + uuid.New().String()
+		janeRegistered := events.Events.Registered.JaneDoe
+
+		_, err := client.WriteEvents([]event.Candidate{
+			event.NewCandidate(events.TestSource, subject, janeRegistered.Type, janeRegistered.Data),
+		})
+
+		assert.Error(t, err)
+	})
+
+	t.Run("supports authorization.", func(t *testing.T) {
+		client := database.WithAuthorization.GetClient()
+
+		subject := "/" + uuid.New().String()
+		janeRegistered := events.Events.Registered.JaneDoe
+
+		_, err := client.WriteEvents([]event.Candidate{
+			event.NewCandidate(events.TestSource, subject, janeRegistered.Type, janeRegistered.Data),
+		})
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("writes a single event.", func(t *testing.T) {
+		client := database.WithoutAuthorization.GetClient()
+
+		subject := "/" + uuid.New().String()
+		janeRegistered := events.Events.Registered.JaneDoe
+
+		_, err := client.WriteEvents([]event.Candidate{
+			event.NewCandidate(events.TestSource, subject, janeRegistered.Type, janeRegistered.Data),
+		})
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("returns the written event metadata.", func(t *testing.T) {
+		client := database.WithoutAuthorization.GetClient()
+
+		janeRegistered := events.Events.Registered.JaneDoe
+		johnRegistered := events.Events.Registered.JohnDoe
+		johnLoggedIn := events.Events.LoggedIn.JohnDoe
+
+		_, err := client.WriteEvents([]event.Candidate{
+			event.NewCandidate(events.TestSource, "/users/registered", janeRegistered.Type, janeRegistered.Data),
+		})
+		assert.NoError(t, err)
+
+		writtenEventsMetadata, err := client.WriteEvents([]event.Candidate{
+			event.NewCandidate(events.TestSource, "/users/registered", johnRegistered.Type, johnRegistered.Data),
+			event.NewCandidate(events.TestSource, "/users/loggedIn", johnLoggedIn.Type, johnLoggedIn.Data),
+		})
+
+		assert.Len(t, writtenEventsMetadata, 2)
+		assert.Equal(t, events.TestSource, writtenEventsMetadata[0].Source)
+		assert.Equal(t, events.PrefixEventType("registered"), writtenEventsMetadata[0].Type)
+		assert.Equal(t, "/users/registered", writtenEventsMetadata[0].Subject)
+		assert.Equal(t, "1", writtenEventsMetadata[0].ID)
+		assert.Equal(t, events.TestSource, writtenEventsMetadata[1].Source)
+		assert.Equal(t, events.PrefixEventType("loggedIn"), writtenEventsMetadata[1].Type)
+		assert.Equal(t, "/users/loggedIn", writtenEventsMetadata[1].Subject)
+		assert.Equal(t, "2", writtenEventsMetadata[1].ID)
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("writes multiple events.", func(t *testing.T) {
+		client := database.WithoutAuthorization.GetClient()
+
+		subject := "/" + uuid.New().String()
+		janeRegistered := events.Events.Registered.JaneDoe
+		johnRegistered := events.Events.Registered.JohnDoe
+
+		_, err := client.WriteEvents([]event.Candidate{
+			event.NewCandidate(events.TestSource, subject, janeRegistered.Type, janeRegistered.Data),
+			event.NewCandidate(events.TestSource, subject, johnRegistered.Type, johnRegistered.Data),
+		})
+		assert.NoError(t, err)
+	})
+
+	t.Run("returns an error when trying to write an empty list of events.", func(t *testing.T) {
+		client := database.WithoutAuthorization.GetClient()
+		_, err := client.WriteEvents([]event.Candidate{})
+
+		assert.Error(t, err)
+	})
+}
+
+func TestWriteEventsWithPreconditions(t *testing.T) {
+	t.Run("when using the 'is stream pristine' precondition", func(t *testing.T) {
+		t.Run("writes events if the stream is pristine.", func(t *testing.T) {
+			client := database.WithoutAuthorization.GetClient()
+
+			subject := "/" + uuid.New().String()
+			janeRegistered := events.Events.Registered.JaneDoe
+
+			_, err := client.WriteEventsWithPreconditions(
+				eventsourcingdb2.NewPreconditions().IsSubjectPristine(subject),
+				[]event.Candidate{
+					event.NewCandidate(events.TestSource, subject, janeRegistered.Type, janeRegistered.Data),
+				},
+			)
+
+			assert.NoError(t, err)
+		})
+
+		t.Run("returns an error if the stream is not pristine.", func(t *testing.T) {
+			client := database.WithoutAuthorization.GetClient()
+
+			subject := "/" + uuid.New().String()
+			janeRegistered := events.Events.Registered.JaneDoe
+			johnRegistered := events.Events.Registered.JohnDoe
+
+			_, err := client.WriteEvents([]event.Candidate{
+				event.NewCandidate(events.TestSource, subject, janeRegistered.Type, janeRegistered.Data),
+			})
+
+			assert.NoError(t, err)
+
+			_, err = client.WriteEventsWithPreconditions(
+				eventsourcingdb2.NewPreconditions().IsSubjectPristine(subject),
+				[]event.Candidate{
+					event.NewCandidate(events.TestSource, subject, johnRegistered.Type, johnRegistered.Data),
+				},
+			)
+
+			assert.Error(t, err)
+		})
+	})
+
+	t.Run("when using the 'is stream on event ID' precondition", func(t *testing.T) {
+		t.Run("writes events if the last event in the stream has the given event ID.", func(t *testing.T) {
+			client := database.WithoutAuthorization.GetClient()
+
+			janeRegistered := events.Events.Registered.JaneDoe
+			johnRegistered := events.Events.Registered.JohnDoe
+			fredRegistered := events.Events.Registered.ApfelFred
+
+			_, err := client.WriteEvents([]event.Candidate{
+				event.NewCandidate(events.TestSource, "/users", janeRegistered.Type, janeRegistered.Data),
+				event.NewCandidate(events.TestSource, "/users", johnRegistered.Type, johnRegistered.Data),
+			})
+
+			assert.NoError(t, err)
+
+			readEvents := client.ReadEvents(context.Background(), "/users", false)
+
+			var lastEventID string
+			for readEvent := range readEvents {
+				data, err := readEvent.GetData()
+				assert.NoError(t, err)
+
+				lastEventID = data.Event.ID
+			}
+
+			_, err = client.WriteEventsWithPreconditions(
+				eventsourcingdb2.NewPreconditions().IsSubjectOnEventID("/users", lastEventID),
+				[]event.Candidate{
+					event.NewCandidate(events.TestSource, "/users", fredRegistered.Type, fredRegistered.Data),
+				},
+			)
+
+			assert.NoError(t, err)
+		})
+
+		t.Run("returns an error if the last event in the stream does not have the given event ID.", func(t *testing.T) {
+			client := database.WithoutAuthorization.GetClient()
+
+			janeRegistered := events.Events.Registered.JaneDoe
+			johnRegistered := events.Events.Registered.JohnDoe
+			fredRegistered := events.Events.Registered.ApfelFred
+
+			_, err := client.WriteEvents([]event.Candidate{
+				event.NewCandidate(events.TestSource, "/users", janeRegistered.Type, janeRegistered.Data),
+				event.NewCandidate(events.TestSource, "/users", johnRegistered.Type, johnRegistered.Data),
+			})
+
+			assert.NoError(t, err)
+
+			lastEventID := "1337"
+
+			_, err = client.WriteEventsWithPreconditions(
+				eventsourcingdb2.NewPreconditions().IsSubjectOnEventID("/users", lastEventID),
+				[]event.Candidate{
+					event.NewCandidate(events.TestSource, "/users", fredRegistered.Type, fredRegistered.Data),
+				},
+			)
+
+			assert.Error(t, err)
+		})
+	})
+}
