@@ -27,11 +27,12 @@ func TestPreconditions(t *testing.T) {
 	})
 
 	t.Run("marshals all preconditions and flattens them into one array.", func(t *testing.T) {
-		preconditions := eventsourcingdb.Preconditions().
-			IsSubjectPristine("/bar").
-			IsSubjectPristine("/foo").
-			IsSubjectOnEventID("/heck", "1337").
-			IsSubjectOnEventID("/meck", "420")
+		preconditions := eventsourcingdb.Preconditions(
+			eventsourcingdb.IsSubjectPristine("/bar"),
+			eventsourcingdb.IsSubjectPristine("/foo"),
+			eventsourcingdb.IsSubjectOnEventID("/heck", "1337"),
+			eventsourcingdb.IsSubjectOnEventID("/meck", "420"),
+		)
 
 		jsonResult, err := json.Marshal(preconditions)
 
