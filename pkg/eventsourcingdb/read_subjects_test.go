@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
 	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
 	"testing"
 )
@@ -84,7 +85,7 @@ func TestReadSubjects(t *testing.T) {
 
 		assert.NoError(t, err)
 
-		readSubjectResults := client.ReadSubjectsWithBaseSubject(context.Background(), "/foobar")
+		readSubjectResults := client.ReadSubjects(context.Background(), eventsourcingdb.BaseSubject("/foobar"))
 		subjects := make([]string, 0, 2)
 
 		for result := range readSubjectResults {
@@ -111,5 +112,15 @@ func TestReadSubjects(t *testing.T) {
 
 		superfluousResult, ok := <-readSubjectResults
 		assert.False(t, ok, fmt.Sprintf("channel did not close %+v", superfluousResult))
+	})
+
+	t.Run("returns an error when the base subject is malformed.", func(t *testing.T) {
+		client := database.WithoutAuthorization.GetClient()
+
+		results := client.ReadSubjects(context.Background(), eventsourcingdb.BaseSubject("schkibididopdop"))
+		result := <-results
+
+		_, err := result.GetData()
+		assert.ErrorContains(t, err, "malformed event subject")
 	})
 }

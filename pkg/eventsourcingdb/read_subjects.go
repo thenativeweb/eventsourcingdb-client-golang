@@ -42,15 +42,23 @@ type readSubjectsResponseItem struct {
 	Payload json.RawMessage `json:"payload"`
 }
 
-func (client *Client) ReadSubjectsWithBaseSubject(ctx context.Context, baseSubject string) <-chan ReadSubjectsResult {
+func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOption) <-chan ReadSubjectsResult {
 	resultChannel := make(chan ReadSubjectsResult, 1)
 
 	go func() {
 		defer close(resultChannel)
 
 		requestBody := readSubjectsRequestBody{
-			BaseSubject: baseSubject,
+			BaseSubject: "/",
 		}
+		for _, applyOption := range options {
+			if err := applyOption(&requestBody); err != nil {
+				resultChannel <- newReadSubjectsError(err)
+
+				return
+			}
+		}
+
 		requestBodyAsJSON, err := json.Marshal(requestBody)
 		if err != nil {
 			resultChannel <- newReadSubjectsError(err)
@@ -129,8 +137,4 @@ func (client *Client) ReadSubjectsWithBaseSubject(ctx context.Context, baseSubje
 	}()
 
 	return resultChannel
-}
-
-func (client *Client) ReadSubjects(ctx context.Context) <-chan ReadSubjectsResult {
-	return client.ReadSubjectsWithBaseSubject(ctx, "/")
 }
