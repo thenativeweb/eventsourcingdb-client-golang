@@ -72,7 +72,7 @@ func TestObserveEvents(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		resultChan := client.ObserveEvents(ctx, "/", false)
+		resultChan := client.ObserveEvents(ctx, "/", eventsourcingdb.ObserveNonRecursively())
 
 		firstResult := <-resultChan
 
@@ -85,7 +85,7 @@ func TestObserveEvents(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		resultChan := client.ObserveEvents(ctx, "/", false)
+		resultChan := client.ObserveEvents(ctx, "/", eventsourcingdb.ObserveNonRecursively())
 
 		data, ok := <-resultChan
 
@@ -97,7 +97,7 @@ func TestObserveEvents(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		resultChan := client.ObserveEvents(ctx, "/users/registered", false)
+		resultChan := client.ObserveEvents(ctx, "/users/registered", eventsourcingdb.ObserveNonRecursively())
 
 		firstEvent := getNextEvent(t, resultChan)
 		matchRegisteredEvent(t, firstEvent, events.Events.Registered.JaneDoe)
@@ -125,10 +125,10 @@ func TestObserveEvents(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		resultChan := client.ObserveEventsWithOptions(
+		resultChan := client.ObserveEvents(
 			ctx,
 			"/users",
-			eventsourcingdb.NewObserveEventsOptions(true),
+			eventsourcingdb.ObserveRecursively(),
 		)
 
 		firstEvent := getNextEvent(t, resultChan)
@@ -149,15 +149,15 @@ func TestObserveEvents(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		resultChan := client.ObserveEventsWithOptions(
+		resultChan := client.ObserveEvents(
 			ctx,
 			"/users/loggedIn",
-			eventsourcingdb.NewObserveEventsOptions(true).
-				FromLatestEvent(eventsourcingdb.ObserveFromLatestEvent{
-					Subject:          "/users/loggedIn",
-					Type:             events.PrefixEventType("loggedin"),
-					IfEventIsMissing: eventsourcingdb.ReadNothingIfEventIsMissingDuringObserve,
-				}),
+			eventsourcingdb.ObserveRecursively(),
+			eventsourcingdb.ObserveFromLatestEvent(
+				"/users/loggedIn",
+				events.PrefixEventType("loggedin"),
+				eventsourcingdb.ReadNothingIfEventIsMissingDuringObserve,
+			),
 		)
 
 		secondEvent := getNextEvent(t, resultChan)
@@ -169,11 +169,11 @@ func TestObserveEvents(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		resultChan := client.ObserveEventsWithOptions(
+		resultChan := client.ObserveEvents(
 			ctx,
 			"/users",
-			eventsourcingdb.NewObserveEventsOptions(true).
-				LowerBoundID(2),
+			eventsourcingdb.ObserveRecursively(),
+			eventsourcingdb.ObserveFromLowerBoundID(2),
 		)
 
 		firstEvent := getNextEvent(t, resultChan)
@@ -189,11 +189,11 @@ func TestObserveEvents(t *testing.T) {
 
 		cancel()
 
-		resultChan := client.ObserveEventsWithOptions(
+		resultChan := client.ObserveEvents(
 			ctx,
 			"/users",
-			eventsourcingdb.NewObserveEventsOptions(true).
-				LowerBoundID(2),
+			eventsourcingdb.ObserveRecursively(),
+			eventsourcingdb.ObserveFromLowerBoundID(2),
 		)
 
 		_, err := (<-resultChan).GetData()

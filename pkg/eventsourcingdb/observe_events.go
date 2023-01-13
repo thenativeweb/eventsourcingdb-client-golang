@@ -13,9 +13,23 @@ import (
 	"net/http"
 )
 
+type ObserveRecursivelyOption func() bool
+
+func ObserveRecursively() ObserveRecursivelyOption {
+	return func() bool {
+		return true
+	}
+}
+
+func ObserveNonRecursively() ObserveRecursivelyOption {
+	return func() bool {
+		return false
+	}
+}
+
 type observeEventsRequest struct {
 	Subject string               `json:"subject,omitempty"`
-	Options ObserveEventsOptions `json:"options,omitempty"`
+	Options observeEventsOptions `json:"options,omitempty"`
 }
 
 type ObserveEventsResult struct {
@@ -34,14 +48,21 @@ func newObserveEventsValue(item StoreItem) ObserveEventsResult {
 	}
 }
 
-func (client *Client) ObserveEventsWithOptions(ctx context.Context, subject string, options ObserveEventsOptions) <-chan ObserveEventsResult {
+func (client *Client) ObserveEvents(ctx context.Context, subject string, recursive ObserveRecursivelyOption, options ...ObserveEventsOption) <-chan ObserveEventsResult {
 	resultChannel := make(chan ObserveEventsResult, 1)
 
 	go func() {
 		defer close(resultChannel)
+		requestOptions := observeEventsOptions{
+			Recursive: recursive(),
+		}
+		for _, applyOption := range options {
+			applyOption(&requestOptions)
+		}
+
 		requestBody := observeEventsRequest{
 			Subject: subject,
-			Options: options,
+			Options: requestOptions,
 		}
 		requestBodyAsJSON, err := json.Marshal(requestBody)
 		if err != nil {
@@ -123,8 +144,4 @@ func (client *Client) ObserveEventsWithOptions(ctx context.Context, subject stri
 	}()
 
 	return resultChannel
-}
-
-func (client *Client) ObserveEvents(ctx context.Context, subject string, recursive bool) <-chan ObserveEventsResult {
-	return client.ObserveEventsWithOptions(ctx, subject, NewObserveEventsOptions(recursive))
 }

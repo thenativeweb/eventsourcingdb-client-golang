@@ -7,32 +7,32 @@ const (
 	WaitForEventIfEventIsMissingDuringObserve IfEventIsMissingDuringObserve = "wait-for-event"
 )
 
-type ObserveFromLatestEvent struct {
+type observeFromLatestEvent struct {
 	Subject          string                        `json:"subject"`
 	Type             string                        `json:"type"`
 	IfEventIsMissing IfEventIsMissingDuringObserve `json:"ifEventIsMissing"`
 }
 
-type ObserveEventsOptions struct {
-	OptionRecursive       bool                    `json:"recursive"`
-	OptionLowerBoundID    *int                    `json:"lowerBoundId,omitempty"`
-	OptionFromLatestEvent *ObserveFromLatestEvent `json:"fromLatestEvent,omitempty"`
+type observeEventsOptions struct {
+	Recursive       bool                    `json:"recursive"`
+	LowerBoundID    *int                    `json:"lowerBoundId,omitempty"`
+	FromLatestEvent *observeFromLatestEvent `json:"fromLatestEvent,omitempty"`
 }
 
-func NewObserveEventsOptions(recursive bool) ObserveEventsOptions {
-	return ObserveEventsOptions{
-		OptionRecursive: recursive,
+type ObserveEventsOption func(options *observeEventsOptions)
+
+func ObserveFromLowerBoundID(lowerBoundID int) ObserveEventsOption {
+	return func(options *observeEventsOptions) {
+		options.LowerBoundID = &lowerBoundID
 	}
 }
 
-func (options ObserveEventsOptions) LowerBoundID(lowerBoundID int) ObserveEventsOptions {
-	options.OptionLowerBoundID = &lowerBoundID
-
-	return options
-}
-
-func (options ObserveEventsOptions) FromLatestEvent(fromLatestEvent ObserveFromLatestEvent) ObserveEventsOptions {
-	options.OptionFromLatestEvent = &fromLatestEvent
-
-	return options
+func ObserveFromLatestEvent(subject, eventType string, ifEventIsMissing IfEventIsMissingDuringObserve) ObserveEventsOption {
+	return func(options *observeEventsOptions) {
+		options.FromLatestEvent = &observeFromLatestEvent{
+			Subject:          subject,
+			Type:             eventType,
+			IfEventIsMissing: ifEventIsMissing,
+		}
+	}
 }
