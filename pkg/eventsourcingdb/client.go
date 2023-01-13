@@ -7,7 +7,7 @@ import (
 	"github.com/Masterminds/semver"
 )
 
-type ClientConfiguration struct {
+type clientConfiguration struct {
 	baseURL         string
 	timeout         time.Duration
 	accessToken     string
@@ -15,39 +15,34 @@ type ClientConfiguration struct {
 	maxTries        int
 }
 
-type Client struct {
-	configuration ClientConfiguration
+func getDefaultConfiguration(baseURL string) clientConfiguration {
+	return clientConfiguration{
+		baseURL:         baseURL,
+		timeout:         10 * time.Second,
+		accessToken:     "",
+		protocolVersion: *semver.MustParse("1.0.0"),
+		maxTries:        10,
+	}
 }
 
-func NewClientWithOptions(baseURL string, options ClientOptions) Client {
+type Client struct {
+	configuration clientConfiguration
+}
+
+func NewClient(baseURL string, options ...ClientOption) (Client, error) {
 	if strconv.IntSize != 64 {
 		panic("64-bit architecture required")
 	}
 
-	defaultOptions := GetDefaultClientOptions()
-	configuration := ClientConfiguration{
-		baseURL:         baseURL,
-		timeout:         defaultOptions.Timeout,
-		accessToken:     defaultOptions.AccessToken,
-		protocolVersion: *semver.MustParse(defaultOptions.ProtocolVersion),
-		maxTries:        10,
-	}
+	configuration := getDefaultConfiguration(baseURL)
 
-	if options.Timeout != 0 {
-		configuration.timeout = options.Timeout
-	}
-	if options.AccessToken != "" {
-		configuration.accessToken = options.AccessToken
-	}
-	if options.ProtocolVersion != "" {
-		configuration.protocolVersion = *semver.MustParse(options.ProtocolVersion)
+	for _, applyOption := range options {
+		if err := applyOption(&configuration); err != nil {
+			return Client{}, err
+		}
 	}
 
 	client := Client{configuration}
 
-	return client
-}
-
-func NewClient(baseURL string) Client {
-	return NewClientWithOptions(baseURL, GetDefaultClientOptions())
+	return client, nil
 }

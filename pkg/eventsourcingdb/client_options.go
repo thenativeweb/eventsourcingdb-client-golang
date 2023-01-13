@@ -1,17 +1,43 @@
 package eventsourcingdb
 
-import "time"
+import (
+	"errors"
+	"fmt"
+	"github.com/Masterminds/semver"
+	"time"
+)
 
-type ClientOptions struct {
-	Timeout         time.Duration
-	AccessToken     string
-	ProtocolVersion string
+type ClientOption func(configuration *clientConfiguration) error
+
+func ClientWithTimeout(timeout time.Duration) ClientOption {
+	return func(configuration *clientConfiguration) error {
+		configuration.timeout = timeout
+
+		return nil
+	}
 }
 
-func GetDefaultClientOptions() ClientOptions {
-	return ClientOptions{
-		Timeout:         10 * time.Second,
-		AccessToken:     "",
-		ProtocolVersion: "1.0.0",
+func ClientWithAccessToken(accessToken string) ClientOption {
+	return func(configuration *clientConfiguration) error {
+		if accessToken == "" {
+			return errors.New("the access token should not be empty")
+		}
+
+		configuration.accessToken = accessToken
+
+		return nil
+	}
+}
+
+func ClientWithProtocolVersion(protocolVersion string) ClientOption {
+	return func(configuration *clientConfiguration) error {
+		version, err := semver.NewVersion(protocolVersion)
+		if err != nil {
+			return fmt.Errorf("the protocol version must be a valid semver version: %w", err)
+		}
+
+		configuration.protocolVersion = *version
+
+		return nil
 	}
 }

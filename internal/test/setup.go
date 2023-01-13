@@ -21,7 +21,7 @@ func Setup(dockerfilePath string) (Database, error) {
 	withAuthorization, err := NewContainerizedTestingDatabase(
 		image,
 		[]string{"server", "--dev", "--ui", "--access-token", accessToken},
-		eventsourcingdb.ClientOptions{AccessToken: accessToken},
+		eventsourcingdb.ClientWithAccessToken(accessToken),
 	)
 	if err != nil {
 		return Database{}, err
@@ -30,13 +30,16 @@ func Setup(dockerfilePath string) (Database, error) {
 	withoutAuthorization, err := NewContainerizedTestingDatabase(
 		image,
 		[]string{"server", "--dev", "--ui"},
-		eventsourcingdb.ClientOptions{},
 	)
 	if err != nil {
 		return Database{}, err
 	}
 
-	withInvalidURL := NewTestingDatabase(eventsourcingdb.NewClient("http://localhost.invalid"))
+	client, err := eventsourcingdb.NewClient("http://localhost.invalid")
+	if err != nil {
+		return Database{}, err
+	}
+	withInvalidURL := NewTestingDatabase(client)
 
 	database := Database{
 		withAuthorization,

@@ -3,30 +3,30 @@ package test
 import (
 	"context"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/retry"
-	docker2 "github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/docker"
-	client2 "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/docker"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb"
 	"strconv"
 )
 
 type ContainerizedTestingDatabase struct {
 	TestingDatabase
 
-	image   docker2.Image
-	options client2.ClientOptions
+	image   docker.Image
+	options []eventsourcingdb.ClientOption
 	command []string
 
-	container docker2.Container
+	container docker.Container
 
 	isFirstRun bool
 }
 
-func NewContainerizedTestingDatabase(image docker2.Image, command []string, clientOptions client2.ClientOptions) (ContainerizedTestingDatabase, error) {
+func NewContainerizedTestingDatabase(image docker.Image, command []string, clientOptions ...eventsourcingdb.ClientOption) (ContainerizedTestingDatabase, error) {
 	database := ContainerizedTestingDatabase{
 		TestingDatabase: TestingDatabase{},
 		image:           image,
 		options:         clientOptions,
 		command:         command,
-		container:       docker2.Container{},
+		container:       docker.Container{},
 		isFirstRun:      true,
 	}
 
@@ -48,7 +48,7 @@ func NewContainerizedTestingDatabase(image docker2.Image, command []string, clie
 	return database, nil
 }
 
-func (database *ContainerizedTestingDatabase) GetClient() client2.Client {
+func (database *ContainerizedTestingDatabase) GetClient() eventsourcingdb.Client {
 	if database.isFirstRun {
 		database.isFirstRun = false
 
@@ -61,8 +61,8 @@ func (database *ContainerizedTestingDatabase) GetClient() client2.Client {
 }
 
 type startResult struct {
-	client    client2.Client
-	container docker2.Container
+	client    eventsourcingdb.Client
+	container docker.Container
 }
 
 func (database *ContainerizedTestingDatabase) start() (startResult, error) {
@@ -77,7 +77,10 @@ func (database *ContainerizedTestingDatabase) start() (startResult, error) {
 	}
 
 	baseURL := "http://localhost:" + strconv.Itoa(port)
-	client := client2.NewClientWithOptions(baseURL, database.options)
+	client, err := eventsourcingdb.NewClient(baseURL, database.options...)
+	if err != nil {
+		return startResult{}, err
+	}
 
 	err = retry.WithBackoff(context.Background(), 10, func() error {
 		return client.Ping()

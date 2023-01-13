@@ -8,7 +8,7 @@ import (
 	"strconv"
 )
 
-func runDatabase(runContainerFn func() (container docker.Container, err error), clientOptions eventsourcingdb.ClientOptions) (docker.Container, string, eventsourcingdb.Client, error) {
+func runDatabase(runContainerFn func() (container docker.Container, err error), clientOptions []eventsourcingdb.ClientOption) (docker.Container, string, eventsourcingdb.Client, error) {
 	container, err := runContainerFn()
 	if err != nil {
 		return docker.Container{}, "", eventsourcingdb.Client{}, err
@@ -20,7 +20,10 @@ func runDatabase(runContainerFn func() (container docker.Container, err error), 
 	}
 
 	baseURL := "http://localhost:" + strconv.Itoa(port)
-	client := eventsourcingdb.NewClientWithOptions(baseURL, clientOptions)
+	client, err := eventsourcingdb.NewClient(baseURL, clientOptions...)
+	if err != nil {
+		return docker.Container{}, "", eventsourcingdb.Client{}, err
+	}
 
 	err = retry.WithBackoff(context.Background(), 10, func() error {
 		return client.Ping()

@@ -1,3 +1,17 @@
 # eventsourcing-client-golang
 
-TBD
+## initialize the client
+
+```go
+
+```
+
+## ping the database
+
+## write events
+
+## read subjects
+
+## read events
+
+## observe events
