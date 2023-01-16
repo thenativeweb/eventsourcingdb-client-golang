@@ -83,7 +83,7 @@ func TestReadEvents(t *testing.T) {
 		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
 	})
 
-	t.Run("reads from a single stream.", func(t *testing.T) {
+	t.Run("reads events from a single subject.", func(t *testing.T) {
 		resultChan := client.ReadEvents(context.Background(), "/users/registered", eventsourcingdb.ReadNonRecursively())
 
 		firstEvent := getNextEvent(t, resultChan)
@@ -97,7 +97,7 @@ func TestReadEvents(t *testing.T) {
 		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
 	})
 
-	t.Run("reads from a stream including sub-streams.", func(t *testing.T) {
+	t.Run("reads events from a subject including child subjects.", func(t *testing.T) {
 		resultChan := client.ReadEvents(
 			context.Background(),
 			"/users",
