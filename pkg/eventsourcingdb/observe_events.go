@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"net/http"
+
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/authorization"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/ndjson"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/result"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/retry"
-	"net/http"
 )
 
 type observeEventsRequest struct {
@@ -30,7 +30,7 @@ func newObserveEventsError(err error) ObserveEventsResult {
 
 func newObserveEventsValue(item StoreItem) ObserveEventsResult {
 	return ObserveEventsResult{
-		result.NewResultWithData[StoreItem](item),
+		result.NewResultWithData(item),
 	}
 }
 
@@ -90,7 +90,7 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 		}
 
 		if response.StatusCode != http.StatusOK {
-			resultChannel <- newObserveEventsError(errors.New(fmt.Sprintf("failed to observe events: %s", response.Status)))
+			resultChannel <- newObserveEventsError(fmt.Errorf("failed to observe events: %s", response.Status))
 			return
 		}
 
@@ -117,7 +117,7 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 
 				resultChannel <- newObserveEventsValue(storeItem)
 			default:
-				resultChannel <- newObserveEventsError(errors.New(fmt.Sprintf("unexpected stream item %+v", data)))
+				resultChannel <- newObserveEventsError(fmt.Errorf("unexpected stream item %+v", data))
 				return
 			}
 		}

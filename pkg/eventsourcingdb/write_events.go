@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"io"
+	"net/http"
+
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/authorization"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/retry"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
-	"io"
-	"net/http"
 )
 
 type writeEventsRequestBody struct {
@@ -66,7 +66,7 @@ func (client *Client) WriteEvents(eventCandidates []event.Candidate, preconditio
 		return nil, err
 	}
 	if response.StatusCode != http.StatusOK {
-		return nil, errors.New(fmt.Sprintf("failed to write events, database responded with status: %s", response.Status))
+		return nil, fmt.Errorf("failed to write events, database responded with status: %s", response.Status)
 	}
 
 	responseBody, err := io.ReadAll(response.Body)

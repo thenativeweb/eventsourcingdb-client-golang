@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"net/http"
+
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/authorization"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/ndjson"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/result"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/retry"
-	"net/http"
 )
 
 type readEventsRequest struct {
@@ -30,7 +30,7 @@ func newReadEventsError(err error) ReadEventsResult {
 
 func newStoreItem(item StoreItem) ReadEventsResult {
 	return ReadEventsResult{
-		result.NewResultWithData[StoreItem](item),
+		result.NewResultWithData(item),
 	}
 }
 
@@ -87,7 +87,7 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 			return
 		}
 		if response.StatusCode != http.StatusOK {
-			resultChannel <- newReadEventsError(errors.New(fmt.Sprintf("failed to read events: %s", response.Status)))
+			resultChannel <- newReadEventsError(fmt.Errorf("failed to read events: %s", response.Status))
 			return
 		}
 
@@ -111,7 +111,7 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 
 				resultChannel <- newStoreItem(storeItem)
 			default:
-				resultChannel <- newReadEventsError(errors.New(fmt.Sprintf("unexpected stream item %+v", data)))
+				resultChannel <- newReadEventsError(fmt.Errorf("unexpected stream item %+v", data))
 				return
 			}
 		}

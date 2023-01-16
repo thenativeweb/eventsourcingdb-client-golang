@@ -4,9 +4,10 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"io"
+
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/result"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
-	"io"
 )
 
 type UnmarshalStreamResult[TData any] struct {
@@ -21,7 +22,7 @@ func newError[TData any](err error) UnmarshalStreamResult[TData] {
 
 func newData[TData any](data TData) UnmarshalStreamResult[TData] {
 	return UnmarshalStreamResult[TData]{
-		result.NewResultWithData[TData](data),
+		result.NewResultWithData(data),
 	}
 }
 
@@ -63,7 +64,6 @@ func UnmarshalStream[TData any](ctx context.Context, reader io.Reader) <-chan Un
 				}
 
 				resultChannel <- newData(data)
-			default:
 			}
 		}
 	}()
