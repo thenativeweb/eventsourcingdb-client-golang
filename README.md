@@ -1,3 +1,1 @@
 # eventsourcing-client-golang
-
-TBD
