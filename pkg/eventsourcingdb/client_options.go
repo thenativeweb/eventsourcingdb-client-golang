@@ -20,7 +20,7 @@ func ClientWithTimeout(timeout time.Duration) ClientOption {
 func ClientWithAccessToken(accessToken string) ClientOption {
 	return func(configuration *clientConfiguration) error {
 		if accessToken == "" {
-			return errors.New("the access token should not be empty")
+			return errors.New("the access token must not be empty")
 		}
 
 		configuration.accessToken = accessToken
