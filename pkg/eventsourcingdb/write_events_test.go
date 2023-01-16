@@ -61,6 +61,28 @@ func TestWriteEvents(t *testing.T) {
 		assert.ErrorContains(t, err, "malformed event source")
 	})
 
+	t.Run("returns an error if a precondition uses an invalid source.", func(t *testing.T) {
+		client := database.WithoutAuthorization.GetClient()
+
+		_, err := client.WriteEvents(
+			[]event.Candidate{
+				event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}),
+			},
+			eventsourcingdb.IsSubjectPristine("invalid"),
+		)
+		assert.ErrorContains(t, err, "precondition is invalid")
+		assert.ErrorContains(t, err, "malformed event subject")
+
+		_, err = client.WriteEvents(
+			[]event.Candidate{
+				event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}),
+			},
+			eventsourcingdb.IsSubjectOnEventID("invalid", "123"),
+		)
+		assert.ErrorContains(t, err, "precondition is invalid")
+		assert.ErrorContains(t, err, "malformed event subject")
+	})
+
 	t.Run("supports authorization.", func(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
 		source := event.NewSource(events.TestSource)

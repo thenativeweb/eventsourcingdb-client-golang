@@ -26,6 +26,9 @@ func (client *Client) WriteEvents(eventCandidates []event.Candidate, preconditio
 		eventCandidates,
 	}
 
+	if err := requestBody.Preconditions.validate(); err != nil {
+		return nil, err
+	}
 	for i := 0; i < len(eventCandidates); i++ {
 		if err := eventCandidates[i].Validate(); err != nil {
 			return nil, err
