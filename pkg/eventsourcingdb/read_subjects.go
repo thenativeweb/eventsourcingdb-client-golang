@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"net/http"
+
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/authorization"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/ndjson"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/result"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/retry"
-	"net/http"
 )
 
 type Subject struct {
@@ -29,7 +29,7 @@ func newReadSubjectsError(err error) ReadSubjectsResult {
 
 func newSubject(subject Subject) ReadSubjectsResult {
 	return ReadSubjectsResult{
-		result.NewResultWithData[string](subject.Subject),
+		result.NewResultWithData(subject.Subject),
 	}
 }
 
@@ -92,7 +92,7 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOp
 			return
 		}
 		if response.StatusCode != http.StatusOK {
-			results <- newReadSubjectsError(errors.New(fmt.Sprintf("failed to write events: %s", response.Status)))
+			results <- newReadSubjectsError(fmt.Errorf("failed to write events: %s", response.Status))
 			return
 		}
 
@@ -116,7 +116,7 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOp
 
 				results <- newSubject(subject)
 			default:
-				results <- newReadSubjectsError(errors.New(fmt.Sprintf("unexpected stream item %+v", data)))
+				results <- newReadSubjectsError(fmt.Errorf("unexpected stream item %+v", data))
 				return
 			}
 		}

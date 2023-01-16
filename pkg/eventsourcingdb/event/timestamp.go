@@ -20,7 +20,7 @@ func (timestamp Timestamp) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ts)
 }
 
-func (timestamp Timestamp) UnmarshalJSON(data []byte) error {
+func (timestamp *Timestamp) UnmarshalJSON(data []byte) error {
 	var timeString string
 	if err := json.Unmarshal(data, &timeString); err != nil {
 		return err

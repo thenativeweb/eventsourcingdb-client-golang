@@ -8,7 +8,7 @@ import (
 var typeRegex *regexp.Regexp
 
 func init() {
-	typeRegex = regexp.MustCompile("^[0-9A-Za-z_-]{2,}\\.([0-9A-Za-z_-]+\\.)+[0-9A-Za-z_-]+$")
+	typeRegex = regexp.MustCompile(`^[0-9A-Za-z_-]{2,}\.([0-9A-Za-z_-]+\.)+[0-9A-Za-z_-]+$`)
 }
 
 func ValidateType(eventType string) error {
