@@ -24,20 +24,20 @@ type precondition[TContent any] struct {
 }
 
 type PreconditionsBody struct {
-	isSubjectPristinePreconditions []precondition[isSubjectPristinePrecondition]
-	isSubjectOnEventIDPrecondition []precondition[isSubjectOnEventIDPrecondition]
+	isSubjectPristinePreconditions  []precondition[isSubjectPristinePrecondition]
+	isSubjectOnEventIDPreconditions []precondition[isSubjectOnEventIDPrecondition]
 }
 
 type Precondition func(preconditions *PreconditionsBody)
 
 func Preconditions(preconditions ...Precondition) *PreconditionsBody {
-	myPreconditions := &PreconditionsBody{}
+	preconditionsBody := &PreconditionsBody{}
 
 	for _, addPrecondition := range preconditions {
-		addPrecondition(myPreconditions)
+		addPrecondition(preconditionsBody)
 	}
 
-	return myPreconditions
+	return preconditionsBody
 }
 
 func IsSubjectPristine(subject string) Precondition {
@@ -56,8 +56,8 @@ func IsSubjectPristine(subject string) Precondition {
 
 func IsSubjectOnEventID(subject string, eventID string) Precondition {
 	return func(preconditions *PreconditionsBody) {
-		preconditions.isSubjectOnEventIDPrecondition = append(
-			preconditions.isSubjectOnEventIDPrecondition,
+		preconditions.isSubjectOnEventIDPreconditions = append(
+			preconditions.isSubjectOnEventIDPreconditions,
 			precondition[isSubjectOnEventIDPrecondition]{
 				Type: isSubjectOnEventID,
 				Payload: isSubjectOnEventIDPrecondition{
@@ -73,7 +73,7 @@ func (preconditions *PreconditionsBody) MarshalJSON() ([]byte, error) {
 	rawJSONPreconditions := make(
 		[]json.RawMessage,
 		0,
-		len(preconditions.isSubjectPristinePreconditions)+len(preconditions.isSubjectOnEventIDPrecondition),
+		len(preconditions.isSubjectPristinePreconditions)+len(preconditions.isSubjectOnEventIDPreconditions),
 	)
 
 	for _, precondition := range preconditions.isSubjectPristinePreconditions {
@@ -86,7 +86,7 @@ func (preconditions *PreconditionsBody) MarshalJSON() ([]byte, error) {
 		rawJSONPreconditions = append(rawJSONPreconditions, rawJSONPrecondition)
 	}
 
-	for _, precondition := range preconditions.isSubjectOnEventIDPrecondition {
+	for _, precondition := range preconditions.isSubjectOnEventIDPreconditions {
 		rawJSONPrecondition, err := json.Marshal(precondition)
 
 		if err != nil {
