@@ -26,7 +26,7 @@ func (timestamp Timestamp) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	// Parse the string as a time value in the ISO 8601 format
+	// Parse the string as a time value in the RFC3339 format with nanoseconds
 	parsedTime, err := time.Parse(TimeFormat, timeString)
 	if err != nil {
 		return err
