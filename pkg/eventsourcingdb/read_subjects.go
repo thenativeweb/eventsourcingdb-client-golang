@@ -43,17 +43,17 @@ type readSubjectsResponseItem struct {
 }
 
 func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOption) <-chan ReadSubjectsResult {
-	resultChannel := make(chan ReadSubjectsResult, 1)
+	results := make(chan ReadSubjectsResult, 1)
 
 	go func() {
-		defer close(resultChannel)
+		defer close(results)
 
 		requestBody := readSubjectsRequestBody{
 			BaseSubject: "/",
 		}
 		for _, applyOption := range options {
 			if err := applyOption(&requestBody); err != nil {
-				resultChannel <- newReadSubjectsError(err)
+				results <- newReadSubjectsError(err)
 
 				return
 			}
@@ -61,7 +61,7 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOp
 
 		requestBodyAsJSON, err := json.Marshal(requestBody)
 		if err != nil {
-			resultChannel <- newReadSubjectsError(err)
+			results <- newReadSubjectsError(err)
 
 			return
 		}
@@ -72,7 +72,7 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOp
 		url := client.configuration.baseURL + "/api/read-subjects"
 		request, err := http.NewRequest("POST", url, bytes.NewReader(requestBodyAsJSON))
 		if err != nil {
-			resultChannel <- newReadSubjectsError(err)
+			results <- newReadSubjectsError(err)
 
 			return
 		}
@@ -87,7 +87,7 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOp
 			return err
 		})
 		if err != nil {
-			resultChannel <- newReadSubjectsError(err)
+			results <- newReadSubjectsError(err)
 
 			return
 		}
@@ -95,13 +95,13 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOp
 
 		err = client.validateProtocolVersion(response)
 		if err != nil {
-			resultChannel <- newReadSubjectsError(err)
+			results <- newReadSubjectsError(err)
 
 			return
 		}
 
 		if response.StatusCode != http.StatusOK {
-			resultChannel <- newReadSubjectsError(errors.New(fmt.Sprintf("failed to write events: %s", response.Status)))
+			results <- newReadSubjectsError(errors.New(fmt.Sprintf("failed to write events: %s", response.Status)))
 
 			return
 		}
@@ -113,7 +113,7 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOp
 		for unmarshalResult := range unmarshalResults {
 			data, err := unmarshalResult.GetData()
 			if err != nil {
-				resultChannel <- newReadSubjectsError(err)
+				results <- newReadSubjectsError(err)
 
 				return
 			}
@@ -122,19 +122,19 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOp
 			case "subject":
 				var subject Subject
 				if err := json.Unmarshal(data.Payload, &subject); err != nil {
-					resultChannel <- newReadSubjectsError(err)
+					results <- newReadSubjectsError(err)
 
 					return
 				}
 
-				resultChannel <- newSubject(subject)
+				results <- newSubject(subject)
 			default:
-				resultChannel <- newReadSubjectsError(errors.New(fmt.Sprintf("unexpected stream item %+v", data)))
+				results <- newReadSubjectsError(errors.New(fmt.Sprintf("unexpected stream item %+v", data)))
 
 				return
 			}
 		}
 	}()
 
-	return resultChannel
+	return results
 }
