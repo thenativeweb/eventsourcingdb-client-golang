@@ -54,7 +54,6 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOp
 		for _, applyOption := range options {
 			if err := applyOption(&requestBody); err != nil {
 				results <- newReadSubjectsError(err)
-
 				return
 			}
 		}
@@ -62,7 +61,6 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOp
 		requestBodyAsJSON, err := json.Marshal(requestBody)
 		if err != nil {
 			results <- newReadSubjectsError(err)
-
 			return
 		}
 
@@ -73,7 +71,6 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOp
 		request, err := http.NewRequest("POST", url, bytes.NewReader(requestBodyAsJSON))
 		if err != nil {
 			results <- newReadSubjectsError(err)
-
 			return
 		}
 
@@ -83,12 +80,10 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOp
 
 		err = retry.WithBackoff(ctx, client.configuration.maxTries, func() error {
 			response, err = httpClient.Do(request)
-
 			return err
 		})
 		if err != nil {
 			results <- newReadSubjectsError(err)
-
 			return
 		}
 		defer response.Body.Close()
@@ -96,13 +91,11 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOp
 		err = client.validateProtocolVersion(response)
 		if err != nil {
 			results <- newReadSubjectsError(err)
-
 			return
 		}
 
 		if response.StatusCode != http.StatusOK {
 			results <- newReadSubjectsError(errors.New(fmt.Sprintf("failed to write events: %s", response.Status)))
-
 			return
 		}
 
@@ -114,7 +107,6 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOp
 			data, err := unmarshalResult.GetData()
 			if err != nil {
 				results <- newReadSubjectsError(err)
-
 				return
 			}
 
@@ -123,14 +115,12 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOp
 				var subject Subject
 				if err := json.Unmarshal(data.Payload, &subject); err != nil {
 					results <- newReadSubjectsError(err)
-
 					return
 				}
 
 				results <- newSubject(subject)
 			default:
 				results <- newReadSubjectsError(errors.New(fmt.Sprintf("unexpected stream item %+v", data)))
-
 				return
 			}
 		}
