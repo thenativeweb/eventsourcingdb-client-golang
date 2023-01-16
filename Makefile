@@ -5,9 +5,9 @@ else
 OPEN := xdg-open
 endif
 
-qa: analyse test
+qa: analyze test
 
-analyse:
+analyze:
 	@go vet ./...
 	@go run honnef.co/go/tools/cmd/staticcheck@latest -f stylish -checks all ./...
 
@@ -24,4 +24,4 @@ coverage:
 	@go tool cover -html=./coverage/cover.out -o ./coverage/cover.html
 	@$(OPEN) ./coverage/cover.html
 
-.PHONY: analyse benchmark coverage qa test
+.PHONY: analyze benchmark coverage qa test
