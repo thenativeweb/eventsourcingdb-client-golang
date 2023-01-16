@@ -154,8 +154,8 @@ func TestWriteEvents(t *testing.T) {
 }
 
 func TestWriteEventsWithPreconditions(t *testing.T) {
-	t.Run("when using the 'is stream pristine' precondition", func(t *testing.T) {
-		t.Run("writes events if the stream is pristine.", func(t *testing.T) {
+	t.Run("when using the 'is subject pristine' precondition", func(t *testing.T) {
+		t.Run("writes events if the subject is pristine.", func(t *testing.T) {
 			client := database.WithoutAuthorization.GetClient()
 			source := event.NewSource(events.TestSource)
 
@@ -172,7 +172,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
-		t.Run("returns an error if the stream is not pristine.", func(t *testing.T) {
+		t.Run("returns an error if the subject is not pristine.", func(t *testing.T) {
 			client := database.WithoutAuthorization.GetClient()
 			source := event.NewSource(events.TestSource)
 
@@ -197,8 +197,8 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 		})
 	})
 
-	t.Run("when using the 'is stream on event ID' precondition", func(t *testing.T) {
-		t.Run("writes events if the last event in the stream has the given event ID.", func(t *testing.T) {
+	t.Run("when using the 'is subject on event ID' precondition", func(t *testing.T) {
+		t.Run("writes events if the last event of the subject has the given event ID.", func(t *testing.T) {
 			client := database.WithoutAuthorization.GetClient()
 			source := event.NewSource(events.TestSource)
 
@@ -235,7 +235,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
-		t.Run("returns an error if the last event in the stream does not have the given event ID.", func(t *testing.T) {
+		t.Run("returns an error if the last event of the subject does not have the given event ID.", func(t *testing.T) {
 			client := database.WithoutAuthorization.GetClient()
 			source := event.NewSource(events.TestSource)
 

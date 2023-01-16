@@ -33,7 +33,7 @@ func TestReadSubjects(t *testing.T) {
 		}
 	})
 
-	t.Run("closes the channel when no more stream names exist.", func(t *testing.T) {
+	t.Run("closes the channel when no more subjects exist.", func(t *testing.T) {
 		client := database.WithoutAuthorization.GetClient()
 
 		readSubjectResults := client.ReadSubjects(context.Background())
@@ -48,7 +48,7 @@ func TestReadSubjects(t *testing.T) {
 		assert.False(t, ok)
 	})
 
-	t.Run("reads all stream names starting from /.", func(t *testing.T) {
+	t.Run("reads all subjects starting from /.", func(t *testing.T) {
 		client := database.WithoutAuthorization.GetClient()
 
 		subject := "/" + uuid.New().String()
@@ -73,7 +73,7 @@ func TestReadSubjects(t *testing.T) {
 		assert.Equal(t, []string{"/", subject}, subjects)
 	})
 
-	t.Run("reads stream names starting from the given base stream name.", func(t *testing.T) {
+	t.Run("reads subjects starting from the given base subject.", func(t *testing.T) {
 		client := database.WithoutAuthorization.GetClient()
 
 		subject := "/foobar/" + uuid.New().String()
