@@ -2,6 +2,8 @@ package eventsourcingdb
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
 )
 
 const (
@@ -26,6 +28,21 @@ type precondition[TContent any] struct {
 type PreconditionsBody struct {
 	isSubjectPristinePreconditions  []precondition[isSubjectPristinePrecondition]
 	isSubjectOnEventIDPreconditions []precondition[isSubjectOnEventIDPrecondition]
+}
+
+func (preconditions *PreconditionsBody) validate() error {
+	for _, precondition := range preconditions.isSubjectPristinePreconditions {
+		if err := event.ValidateSubject(precondition.Payload.Subject); err != nil {
+			return fmt.Errorf("precondition is invalid: %w", err)
+		}
+	}
+	for _, precondition := range preconditions.isSubjectOnEventIDPreconditions {
+		if err := event.ValidateSubject(precondition.Payload.Subject); err != nil {
+			return fmt.Errorf("precondition is invalid: %w", err)
+		}
+	}
+
+	return nil
 }
 
 type Precondition func(preconditions *PreconditionsBody)
