@@ -92,7 +92,7 @@ func TestObserveEvents(t *testing.T) {
 		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
 	})
 
-	t.Run("observes from a single stream.", func(t *testing.T) {
+	t.Run("observes events from a single subject.", func(t *testing.T) {
 		client := prepareClientWithEvents(t)
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -120,7 +120,7 @@ func TestObserveEvents(t *testing.T) {
 		matchRegisteredEvent(t, thirdEvent, events.Events.Registered.ApfelFred)
 	})
 
-	t.Run("observes from a stream including sub-streams.", func(t *testing.T) {
+	t.Run("observes events from a subject including child subjects.", func(t *testing.T) {
 		client := prepareClientWithEvents(t)
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
