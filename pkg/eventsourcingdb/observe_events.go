@@ -45,7 +45,6 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 		for _, applyOption := range options {
 			if err := applyOption(&requestOptions); err != nil {
 				resultChannel <- newObserveEventsError(err)
-
 				return
 			}
 		}
@@ -57,7 +56,6 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 		requestBodyAsJSON, err := json.Marshal(requestBody)
 		if err != nil {
 			resultChannel <- newObserveEventsError(err)
-
 			return
 		}
 
@@ -68,7 +66,6 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 		request, err := http.NewRequest("POST", url, bytes.NewReader(requestBodyAsJSON))
 		if err != nil {
 			resultChannel <- newObserveEventsError(err)
-
 			return
 		}
 
@@ -78,12 +75,10 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 
 		err = retry.WithBackoff(ctx, client.configuration.maxTries, func() error {
 			response, err = httpClient.Do(request)
-
 			return err
 		})
 		if err != nil {
 			resultChannel <- newObserveEventsError(err)
-
 			return
 		}
 		defer response.Body.Close()
@@ -91,13 +86,11 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 		err = client.validateProtocolVersion(response)
 		if err != nil {
 			resultChannel <- newObserveEventsError(err)
-
 			return
 		}
 
 		if response.StatusCode != http.StatusOK {
 			resultChannel <- newObserveEventsError(errors.New(fmt.Sprintf("failed to observe events: %s", response.Status)))
-
 			return
 		}
 
@@ -109,7 +102,6 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 			data, err := unmarshalResult.GetData()
 			if err != nil {
 				resultChannel <- newObserveEventsError(err)
-
 				return
 			}
 
@@ -120,14 +112,12 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 				var storeItem StoreItem
 				if err := json.Unmarshal(data.Payload, &storeItem); err != nil {
 					resultChannel <- newObserveEventsError(err)
-
 					return
 				}
 
 				resultChannel <- newObserveEventsValue(storeItem)
 			default:
 				resultChannel <- newObserveEventsError(errors.New(fmt.Sprintf("unexpected stream item %+v", data)))
-
 				return
 			}
 		}

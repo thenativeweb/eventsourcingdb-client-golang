@@ -73,11 +73,9 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOp
 			results <- newReadSubjectsError(err)
 			return
 		}
-
 		authorization.AddAccessToken(request, client.configuration.accessToken)
 
 		var response *http.Response
-
 		err = retry.WithBackoff(ctx, client.configuration.maxTries, func() error {
 			response, err = httpClient.Do(request)
 			return err
@@ -93,7 +91,6 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOp
 			results <- newReadSubjectsError(err)
 			return
 		}
-
 		if response.StatusCode != http.StatusOK {
 			results <- newReadSubjectsError(errors.New(fmt.Sprintf("failed to write events: %s", response.Status)))
 			return
@@ -101,7 +98,6 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOp
 
 		unmarshalContext, cancelUnmarshalling := context.WithCancel(ctx)
 		defer cancelUnmarshalling()
-
 		unmarshalResults := ndjson.UnmarshalStream[readSubjectsResponseItem](unmarshalContext, response.Body)
 		for unmarshalResult := range unmarshalResults {
 			data, err := unmarshalResult.GetData()

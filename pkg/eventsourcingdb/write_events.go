@@ -45,7 +45,6 @@ func (client *Client) WriteEvents(eventCandidates []event.Candidate, preconditio
 	if err != nil {
 		return nil, err
 	}
-
 	authorization.AddAccessToken(request, client.configuration.accessToken)
 
 	var response *http.Response
@@ -63,14 +62,13 @@ func (client *Client) WriteEvents(eventCandidates []event.Candidate, preconditio
 	if err != nil {
 		return nil, err
 	}
+	if response.StatusCode != http.StatusOK {
+		return nil, errors.New(fmt.Sprintf("failed to write events, database responded with status: %s", response.Status))
+	}
 
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
-	}
-
-	if response.StatusCode != http.StatusOK {
-		return nil, errors.New(fmt.Sprintf("failed to write events: %s", responseBody))
 	}
 
 	var writeEventsResult []event.Context

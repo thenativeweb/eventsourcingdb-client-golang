@@ -45,7 +45,6 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 		for _, applyOption := range options {
 			if err := applyOption(&readOptions); err != nil {
 				resultChannel <- newReadEventsError(err)
-
 				return
 			}
 		}
@@ -57,7 +56,6 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 		requestBodyAsJSON, err := json.Marshal(requestBody)
 		if err != nil {
 			resultChannel <- newReadEventsError(err)
-
 			return
 		}
 
@@ -68,22 +66,17 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 		request, err := http.NewRequest("POST", url, bytes.NewReader(requestBodyAsJSON))
 		if err != nil {
 			resultChannel <- newReadEventsError(err)
-
 			return
 		}
-
 		authorization.AddAccessToken(request, client.configuration.accessToken)
 
 		var response *http.Response
-
 		err = retry.WithBackoff(ctx, client.configuration.maxTries, func() error {
 			response, err = httpClient.Do(request)
-
 			return err
 		})
 		if err != nil {
 			resultChannel <- newReadEventsError(err)
-
 			return
 		}
 		defer response.Body.Close()
@@ -91,25 +84,20 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 		err = client.validateProtocolVersion(response)
 		if err != nil {
 			resultChannel <- newReadEventsError(err)
-
 			return
 		}
-
 		if response.StatusCode != http.StatusOK {
 			resultChannel <- newReadEventsError(errors.New(fmt.Sprintf("failed to read events: %s", response.Status)))
-
 			return
 		}
 
 		unmarshalContext, cancelUnmarshalling := context.WithCancel(ctx)
 		defer cancelUnmarshalling()
-
 		unmarshalResults := ndjson.UnmarshalStream[ndjson.StreamItem](unmarshalContext, response.Body)
 		for unmarshalResult := range unmarshalResults {
 			data, err := unmarshalResult.GetData()
 			if err != nil {
 				resultChannel <- newReadEventsError(err)
-
 				return
 			}
 
@@ -118,14 +106,12 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 				var storeItem StoreItem
 				if err := json.Unmarshal(data.Payload, &storeItem); err != nil {
 					resultChannel <- newReadEventsError(err)
-
 					return
 				}
 
 				resultChannel <- newStoreItem(storeItem)
 			default:
 				resultChannel <- newReadEventsError(errors.New(fmt.Sprintf("unexpected stream item %+v", data)))
-
 				return
 			}
 		}

@@ -78,7 +78,6 @@ func (preconditions *PreconditionsBody) MarshalJSON() ([]byte, error) {
 
 	for _, precondition := range preconditions.isSubjectPristinePreconditions {
 		rawJSONPrecondition, err := json.Marshal(precondition)
-
 		if err != nil {
 			return []byte{}, err
 		}
@@ -88,7 +87,6 @@ func (preconditions *PreconditionsBody) MarshalJSON() ([]byte, error) {
 
 	for _, precondition := range preconditions.isSubjectOnEventIDPreconditions {
 		rawJSONPrecondition, err := json.Marshal(precondition)
-
 		if err != nil {
 			return []byte{}, err
 		}
