@@ -3,13 +3,14 @@ package eventsourcingdb_test
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
 	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
-	"testing"
 )
 
 func TestReadSubjects(t *testing.T) {
@@ -105,8 +106,8 @@ func TestReadSubjects(t *testing.T) {
 		cancel()
 		readSubjectResults := client.ReadSubjects(ctx)
 
-		cancelledResult := <-readSubjectResults
-		_, err := cancelledResult.GetData()
+		canceledResult := <-readSubjectResults
+		_, err := canceledResult.GetData()
 		assert.Error(t, err)
 		assert.True(t, customErrors.IsContextCanceledError(err))
 
