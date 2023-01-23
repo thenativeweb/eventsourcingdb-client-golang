@@ -35,8 +35,8 @@ type readFromLatestEvent struct {
 type readEventsOptions struct {
 	Recursive       bool                 `json:"recursive"`
 	Chronological   *bool                `json:"chronological,omitempty"`
-	LowerBoundID    *int                 `json:"lowerBoundId,omitempty"`
-	UpperBoundID    *int                 `json:"upperBoundId,omitempty"`
+	LowerBoundID    *string              `json:"lowerBoundId,omitempty"`
+	UpperBoundID    *string              `json:"upperBoundId,omitempty"`
 	FromLatestEvent *readFromLatestEvent `json:"fromLatestEvent,omitempty"`
 }
 
@@ -60,7 +60,7 @@ func ReadReversedChronologically() ReadEventsOption {
 	}
 }
 
-func ReadFromLowerBoundID(lowerBoundID int) ReadEventsOption {
+func ReadFromLowerBoundID(lowerBoundID string) ReadEventsOption {
 	return func(options *readEventsOptions) error {
 		if options.FromLatestEvent != nil {
 			return errors.New("ReadFromLowerBoundID and ReadFromLatestEvent are mutually exclusive")
@@ -72,7 +72,7 @@ func ReadFromLowerBoundID(lowerBoundID int) ReadEventsOption {
 	}
 }
 
-func ReadUntilUpperBoundID(upperBoundID int) ReadEventsOption {
+func ReadUntilUpperBoundID(upperBoundID string) ReadEventsOption {
 	return func(options *readEventsOptions) error {
 		options.UpperBoundID = &upperBoundID
 

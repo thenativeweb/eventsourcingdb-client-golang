@@ -165,7 +165,7 @@ func TestReadEvents(t *testing.T) {
 			context.Background(),
 			"/users",
 			eventsourcingdb.ReadRecursively(),
-			eventsourcingdb.ReadFromLowerBoundID(2),
+			eventsourcingdb.ReadFromLowerBoundID("2"),
 		)
 
 		firstEvent := getNextEvent(t, resultChan)
@@ -184,7 +184,7 @@ func TestReadEvents(t *testing.T) {
 			context.Background(),
 			"/users",
 			eventsourcingdb.ReadRecursively(),
-			eventsourcingdb.ReadUntilUpperBoundID(1),
+			eventsourcingdb.ReadUntilUpperBoundID("1"),
 		)
 
 		firstEvent := getNextEvent(t, resultChan)
@@ -206,7 +206,7 @@ func TestReadEvents(t *testing.T) {
 			ctx,
 			"/users",
 			eventsourcingdb.ReadRecursively(),
-			eventsourcingdb.ReadUntilUpperBoundID(1),
+			eventsourcingdb.ReadUntilUpperBoundID("1"),
 		)
 
 		_, err := (<-resultChan).GetData()
@@ -214,14 +214,14 @@ func TestReadEvents(t *testing.T) {
 		assert.True(t, errors.IsContextCanceledError(err))
 	})
 
-	t.Run("returns an error if mutually exclusive options are used", func(t *testing.T) {
+	t.Run("returns an error if mutually exclusive options are used.", func(t *testing.T) {
 		client := database.WithoutAuthorization.GetClient()
 
 		results := client.ReadEvents(
 			context.Background(),
 			"/",
 			eventsourcingdb.ReadRecursively(),
-			eventsourcingdb.ReadFromLowerBoundID(0),
+			eventsourcingdb.ReadFromLowerBoundID("0"),
 			eventsourcingdb.ReadFromLatestEvent("/", "com.foo.bar", eventsourcingdb.ReadEverything),
 		)
 
@@ -231,7 +231,7 @@ func TestReadEvents(t *testing.T) {
 		assert.ErrorContains(t, err, "mutually exclusive")
 	})
 
-	t.Run("returns an error if incorrect options are used", func(t *testing.T) {
+	t.Run("returns an error if incorrect options are used.", func(t *testing.T) {
 		client := database.WithoutAuthorization.GetClient()
 
 		results := client.ReadEvents(

@@ -173,7 +173,7 @@ func TestObserveEvents(t *testing.T) {
 			ctx,
 			"/users",
 			eventsourcingdb.ObserveRecursively(),
-			eventsourcingdb.ObserveFromLowerBoundID(2),
+			eventsourcingdb.ObserveFromLowerBoundID("2"),
 		)
 
 		firstEvent := getNextEvent(t, resultChan)
@@ -193,7 +193,7 @@ func TestObserveEvents(t *testing.T) {
 			ctx,
 			"/users",
 			eventsourcingdb.ObserveRecursively(),
-			eventsourcingdb.ObserveFromLowerBoundID(2),
+			eventsourcingdb.ObserveFromLowerBoundID("2"),
 		)
 
 		_, err := (<-resultChan).GetData()
@@ -208,7 +208,7 @@ func TestObserveEvents(t *testing.T) {
 			context.Background(),
 			"/",
 			eventsourcingdb.ObserveRecursively(),
-			eventsourcingdb.ObserveFromLowerBoundID(0),
+			eventsourcingdb.ObserveFromLowerBoundID("0"),
 			eventsourcingdb.ObserveFromLatestEvent("/", "com.foo.bar", eventsourcingdb.WaitForEvent),
 		)
 

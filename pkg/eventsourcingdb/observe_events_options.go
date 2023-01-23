@@ -34,13 +34,13 @@ type observeFromLatestEvent struct {
 
 type observeEventsOptions struct {
 	Recursive       bool                    `json:"recursive"`
-	LowerBoundID    *int                    `json:"lowerBoundId,omitempty"`
+	LowerBoundID    *string                 `json:"lowerBoundId,omitempty"`
 	FromLatestEvent *observeFromLatestEvent `json:"fromLatestEvent,omitempty"`
 }
 
 type ObserveEventsOption func(options *observeEventsOptions) error
 
-func ObserveFromLowerBoundID(lowerBoundID int) ObserveEventsOption {
+func ObserveFromLowerBoundID(lowerBoundID string) ObserveEventsOption {
 	return func(options *observeEventsOptions) error {
 		if options.FromLatestEvent != nil {
 			return errors.New("ObserveFromLowerBoundID and ObserveFromLatestEvent are mutually exclusive")
