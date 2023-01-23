@@ -214,7 +214,7 @@ func TestReadEvents(t *testing.T) {
 		assert.True(t, errors.IsContextCanceledError(err))
 	})
 
-	t.Run("returns an error if mutually exclusive options are used", func(t *testing.T) {
+	t.Run("returns an error if mutually exclusive options are used.", func(t *testing.T) {
 		client := database.WithoutAuthorization.GetClient()
 
 		results := client.ReadEvents(
@@ -231,7 +231,7 @@ func TestReadEvents(t *testing.T) {
 		assert.ErrorContains(t, err, "mutually exclusive")
 	})
 
-	t.Run("returns an error if incorrect options are used", func(t *testing.T) {
+	t.Run("returns an error if incorrect options are used.", func(t *testing.T) {
 		client := database.WithoutAuthorization.GetClient()
 
 		results := client.ReadEvents(
