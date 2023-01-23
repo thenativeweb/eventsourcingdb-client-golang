@@ -165,7 +165,7 @@ func TestReadEvents(t *testing.T) {
 			context.Background(),
 			"/users",
 			eventsourcingdb.ReadRecursively(),
-			eventsourcingdb.ReadFromLowerBoundID(2),
+			eventsourcingdb.ReadFromLowerBoundID("2"),
 		)
 
 		firstEvent := getNextEvent(t, resultChan)
@@ -184,7 +184,7 @@ func TestReadEvents(t *testing.T) {
 			context.Background(),
 			"/users",
 			eventsourcingdb.ReadRecursively(),
-			eventsourcingdb.ReadUntilUpperBoundID(1),
+			eventsourcingdb.ReadUntilUpperBoundID("1"),
 		)
 
 		firstEvent := getNextEvent(t, resultChan)
@@ -206,7 +206,7 @@ func TestReadEvents(t *testing.T) {
 			ctx,
 			"/users",
 			eventsourcingdb.ReadRecursively(),
-			eventsourcingdb.ReadUntilUpperBoundID(1),
+			eventsourcingdb.ReadUntilUpperBoundID("1"),
 		)
 
 		_, err := (<-resultChan).GetData()
@@ -221,7 +221,7 @@ func TestReadEvents(t *testing.T) {
 			context.Background(),
 			"/",
 			eventsourcingdb.ReadRecursively(),
-			eventsourcingdb.ReadFromLowerBoundID(0),
+			eventsourcingdb.ReadFromLowerBoundID("0"),
 			eventsourcingdb.ReadFromLatestEvent("/", "com.foo.bar", eventsourcingdb.ReadEverything),
 		)
 
