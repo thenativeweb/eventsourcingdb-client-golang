@@ -8,6 +8,8 @@ import (
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
+	"net"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -251,5 +253,54 @@ func TestObserveEvents(t *testing.T) {
 
 		assert.True(t, errors.IsInvalidParameterError(err))
 		assert.ErrorContains(t, err, "parameter 'ObserveFromLatestEvent' is invalid: malformed event type")
+	})
+
+	t.Run("returns an error if the client is configured with an invalid baseURL.", func(t *testing.T) {
+		client, _ := eventsourcingdb.NewClient("&&%%$&")
+
+		results := client.ObserveEvents(context.Background(), "/", eventsourcingdb.ObserveRecursively())
+
+		result := <-results
+		_, err := result.GetData()
+
+		assert.True(t, errors.IsInvalidParameterError(err))
+		assert.ErrorContains(t, err, "parameter 'client.configuration.baseURL' is invalid:")
+	})
+
+	t.Run("returns a sever error if the server responds with HTTP 5xx on every try", func(t *testing.T) {
+		localServerAddress := "localhost:3000"
+
+		mux := http.NewServeMux()
+		mux.HandleFunc("/api/observe-events", func(writer http.ResponseWriter, request *http.Request) {
+			writer.WriteHeader(http.StatusBadGateway)
+		})
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		go func() {
+			localServer := &http.Server{
+				Addr:    localServerAddress,
+				Handler: mux,
+				BaseContext: func(listener net.Listener) context.Context {
+					return ctx
+				},
+			}
+
+			// TODO: choose random free port
+			_ = localServer.ListenAndServe()
+		}()
+
+		client, err := eventsourcingdb.NewClient("http://"+localServerAddress, eventsourcingdb.ClientWithMaxTries(2))
+		assert.NoError(t, err)
+
+		results := client.ObserveEvents(context.Background(), "/", eventsourcingdb.ObserveRecursively())
+		result := <-results
+		_, err = result.GetData()
+
+		assert.Error(t, err)
+		assert.True(t, errors.IsServerError(err))
+		assert.ErrorContains(t, err, "retries exceeded")
+		assert.ErrorContains(t, err, "Bad Gateway")
 	})
 }
