@@ -102,6 +102,11 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 			return err
 		})
 		if err != nil {
+			if customErrors.IsContextCanceledError(err) {
+				resultChannel <- newObserveEventsError(err)
+				return
+			}
+
 			resultChannel <- newObserveEventsError(
 				customErrors.NewServerError(err.Error()),
 			)
@@ -137,6 +142,11 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 		for unmarshalResult := range unmarshalResults {
 			data, err := unmarshalResult.GetData()
 			if err != nil {
+				if customErrors.IsContextCanceledError(err) {
+					resultChannel <- newObserveEventsError(err)
+					return
+				}
+
 				resultChannel <- newObserveEventsError(
 					customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: %s", err.Error())),
 				)

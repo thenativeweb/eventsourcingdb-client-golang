@@ -9,6 +9,18 @@ import (
 
 type ClientOption func(configuration *clientConfiguration) error
 
+func ClientWithMaxTries(maxTries int) ClientOption {
+	return func(configuration *clientConfiguration) error {
+		if maxTries < 1 {
+			return errors.New("maxTries must be 1 or greater")
+		}
+
+		configuration.maxTries = maxTries
+
+		return nil
+	}
+}
+
 func ClientWithTimeout(timeout time.Duration) ClientOption {
 	return func(configuration *clientConfiguration) error {
 		configuration.timeout = timeout

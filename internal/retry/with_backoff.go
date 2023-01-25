@@ -20,7 +20,7 @@ func WithBackoff(ctx context.Context, tries int, fn func() error) error {
 		return errors.New("tries must be greater than 0")
 	}
 
-	var retryError retryError
+	var retryError RetryError
 
 	for triesCount := 0; triesCount < tries; triesCount++ {
 		// On the first iteration triesCount is 0, so the timeout is 0, and we do not wait.

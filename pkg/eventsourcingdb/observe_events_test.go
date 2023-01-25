@@ -77,7 +77,8 @@ func TestObserveEvents(t *testing.T) {
 		firstResult := <-resultChan
 
 		_, err := firstResult.GetData()
-		assert.Error(t, err)
+		assert.True(t, errors.IsServerError(err))
+		assert.ErrorContains(t, err, "server error: retries exceeded")
 	})
 
 	t.Run("supports authorization.", func(t *testing.T) {
@@ -215,10 +216,10 @@ func TestObserveEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.ErrorContains(t, err, "mutually exclusive")
+		assert.ErrorContains(t, err, "parameter 'ObserveFromLatestEvent' is invalid: ObserveFromLowerBoundID and ObserveFromLatestEvent are mutually exclusive")
 	})
 
-	t.Run("returns an error if incorrect options are used", func(t *testing.T) {
+	t.Run("returns an error if an incorrect subject is used in ObserveFromLatestEvent.", func(t *testing.T) {
 		client := database.WithoutAuthorization.GetClient()
 
 		results := client.ObserveEvents(
@@ -231,8 +232,24 @@ func TestObserveEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.ErrorContains(t, err, "malformed event subject")
+		assert.True(t, errors.IsInvalidParameterError(err))
+		assert.ErrorContains(t, err, "parameter 'ObserveFromLatestEvent' is invalid: malformed event subject")
 	})
 
-	t.Run()
+	t.Run("returns an error if an incorrect type is used in ObserveFromLatestEvent.", func(t *testing.T) {
+		client := database.WithoutAuthorization.GetClient()
+
+		results := client.ObserveEvents(
+			context.Background(),
+			"/",
+			eventsourcingdb.ObserveRecursively(),
+			eventsourcingdb.ObserveFromLatestEvent("/", ".bar", eventsourcingdb.WaitForEvent),
+		)
+
+		result := <-results
+		_, err := result.GetData()
+
+		assert.True(t, errors.IsInvalidParameterError(err))
+		assert.ErrorContains(t, err, "parameter 'ObserveFromLatestEvent' is invalid: malformed event type")
+	})
 }
