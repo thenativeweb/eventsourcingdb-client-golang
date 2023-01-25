@@ -233,4 +233,6 @@ func TestObserveEvents(t *testing.T) {
 
 		assert.ErrorContains(t, err, "malformed event subject")
 	})
+
+	t.Run()
 }
