@@ -1,4 +1,4 @@
-package httpUtil
+package httputil
 
 import "net/http"
 

@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httpUtil"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
 	"io"
 	"net/http"
@@ -68,7 +68,7 @@ func (client *Client) WriteEvents(eventCandidates []event.Candidate, preconditio
 	err = retry.WithBackoff(context.Background(), client.configuration.maxTries, func() error {
 		response, err = httpClient.Do(request)
 
-		if httpUtil.IsServerError(response) {
+		if httputil.IsServerError(response) {
 			return fmt.Errorf("server error: %s", response.Status)
 		}
 
@@ -84,7 +84,7 @@ func (client *Client) WriteEvents(eventCandidates []event.Candidate, preconditio
 		return nil, errors.NewClientError(err.Error())
 	}
 
-	if httpUtil.IsClientError(response) {
+	if httputil.IsClientError(response) {
 		return nil, errors.NewClientError(response.Status)
 	}
 	if response.StatusCode != http.StatusOK {

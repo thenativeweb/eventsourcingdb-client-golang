@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httpUtil"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
 	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
 	"net/http"
 	"net/url"
@@ -98,7 +98,7 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOp
 		err = retry.WithBackoff(ctx, client.configuration.maxTries, func() error {
 			response, err = httpClient.Do(request)
 
-			if httpUtil.IsServerError(response) {
+			if httputil.IsServerError(response) {
 				return fmt.Errorf("server error: %s", response.Status)
 			}
 
@@ -125,7 +125,7 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOp
 			return
 		}
 
-		if httpUtil.IsClientError(response) {
+		if httputil.IsClientError(response) {
 			results <- newReadSubjectsError(
 				customErrors.NewClientError(response.Status),
 			)
