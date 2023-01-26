@@ -3,6 +3,7 @@ package eventsourcingdb
 import (
 	"errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
+	"strconv"
 )
 
 type IfEventIsMissingDuringRead string
@@ -76,6 +77,14 @@ func ReadFromLowerBoundID(lowerBoundID string) ReadEventsOption {
 				return errors.New("ReadFromLowerBoundID and ReadFromLatestEvent are mutually exclusive")
 			}
 
+			parsedLowerBoundID, err := strconv.Atoi(lowerBoundID)
+			if err != nil {
+				return errors.New("lowerBoundID must contain an integer")
+			}
+			if parsedLowerBoundID < 0 {
+				return errors.New("lowerBoundID must be 0 or greater")
+			}
+
 			options.LowerBoundID = &lowerBoundID
 
 			return nil
@@ -87,6 +96,14 @@ func ReadFromLowerBoundID(lowerBoundID string) ReadEventsOption {
 func ReadUntilUpperBoundID(upperBoundID string) ReadEventsOption {
 	return ReadEventsOption{
 		apply: func(options *readEventsOptions) error {
+			parsedUpperBoundID, err := strconv.Atoi(upperBoundID)
+			if err != nil {
+				return errors.New("upperBoundID must contain an integer")
+			}
+			if parsedUpperBoundID < 0 {
+				return errors.New("upperBoundID must be 0 or greater")
+			}
+
 			options.UpperBoundID = &upperBoundID
 
 			return nil
