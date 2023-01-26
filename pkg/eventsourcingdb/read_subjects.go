@@ -79,6 +79,7 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOp
 					err.Error(),
 				),
 			)
+			return
 		}
 
 		httpClient := &http.Client{

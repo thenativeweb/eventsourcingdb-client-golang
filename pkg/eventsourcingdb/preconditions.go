@@ -33,12 +33,12 @@ type PreconditionsBody struct {
 func (preconditions *PreconditionsBody) validate() error {
 	for _, precondition := range preconditions.isSubjectPristinePreconditions {
 		if err := event.ValidateSubject(precondition.Payload.Subject); err != nil {
-			return fmt.Errorf("precondition is invalid: %w", err)
+			return fmt.Errorf("IsSubjectPristine is invalid: %w", err)
 		}
 	}
 	for _, precondition := range preconditions.isSubjectOnEventIDPreconditions {
 		if err := event.ValidateSubject(precondition.Payload.Subject); err != nil {
-			return fmt.Errorf("precondition is invalid: %w", err)
+			return fmt.Errorf("IsSubjectOnEventID is invalid: %w", err)
 		}
 	}
 

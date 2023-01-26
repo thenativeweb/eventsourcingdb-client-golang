@@ -74,6 +74,7 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 					err.Error(),
 				),
 			)
+			return
 		}
 
 		httpClient := &http.Client{

@@ -5,8 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httpUtil"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/authorization"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/retry"
@@ -27,57 +30,80 @@ func (client *Client) WriteEvents(eventCandidates []event.Candidate, preconditio
 	}
 
 	if err := requestBody.Preconditions.validate(); err != nil {
-		return nil, err
+		return nil, errors.NewInvalidParameterError("preconditions", err.Error())
+	}
+	if len(eventCandidates) < 1 {
+		return nil, errors.NewInvalidParameterError("eventCandidates", "eventCandidates must contain at least one EventCandidate")
 	}
 	for i := 0; i < len(eventCandidates); i++ {
 		if err := eventCandidates[i].Validate(); err != nil {
-			return nil, err
+			return nil, errors.NewInvalidParameterError("eventCandidate", err.Error())
 		}
 	}
 
 	requestBodyAsJSON, err := json.Marshal(requestBody)
 	if err != nil {
-		return nil, err
+		return nil, errors.NewInternalError(err)
+	}
+
+	routeURL := client.configuration.baseURL + "/api/write-events"
+	if _, err := url.Parse(routeURL); err != nil {
+		return nil, errors.NewInvalidParameterError(
+			"client.configuration.baseURL",
+			err.Error(),
+		)
 	}
 
 	httpClient := &http.Client{
 		Timeout: client.configuration.timeout,
 	}
-	url := client.configuration.baseURL + "/api/write-events"
-	request, err := http.NewRequest("POST", url, bytes.NewReader(requestBodyAsJSON))
+	request, err := http.NewRequest("POST", routeURL, bytes.NewReader(requestBodyAsJSON))
 	if err != nil {
-		return nil, err
+		return nil, errors.NewInternalError(err)
 	}
+
 	authorization.AddAccessToken(request, client.configuration.accessToken)
 
 	var response *http.Response
 	err = retry.WithBackoff(context.Background(), client.configuration.maxTries, func() error {
 		response, err = httpClient.Do(request)
 
+		if httpUtil.IsServerError(response) {
+			return fmt.Errorf("server error: %s", response.Status)
+		}
+
 		return err
 	})
 	if err != nil {
-		return nil, err
+		if errors.IsContextCanceledError(err) {
+			return nil, err
+		}
+
+		return nil, errors.NewServerError(err.Error())
 	}
 	defer response.Body.Close()
 
 	err = client.validateProtocolVersion(response)
 	if err != nil {
-		return nil, err
+		return nil, errors.NewClientError(err.Error())
+	}
+
+	if httpUtil.IsClientError(response) {
+		return nil, errors.NewClientError(response.Status)
 	}
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to write events, database responded with status: %s", response.Status)
+		return nil, errors.NewServerError(fmt.Sprintf("unexpected response status: %s", response.Status))
 	}
 
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {
-		return nil, err
+		return nil, errors.NewServerError(fmt.Sprintf("failed to read the response body: %s", err.Error()))
 	}
 
 	var writeEventsResult []event.Context
 	err = json.Unmarshal(responseBody, &writeEventsResult)
 	if err != nil {
-		return nil, err
+		return nil, errors.NewServerError(fmt.Sprintf("failed to parse the response body: %s", err.Error()))
 	}
 
 	return writeEventsResult, nil
