@@ -5,15 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
-	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
-	"net/http"
-	"net/url"
-
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/authorization"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/ndjson"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/result"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/retry"
+	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
+	"net/http"
 )
 
 type Subject struct {
@@ -71,21 +69,11 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectOp
 			return
 		}
 
-		routeURL := client.configuration.baseURL + "/api/read-subjects"
-		if _, err := url.Parse(routeURL); err != nil {
-			results <- newReadSubjectsError(
-				customErrors.NewInvalidParameterError(
-					"client.configuration.baseURL",
-					err.Error(),
-				),
-			)
-			return
-		}
-
+		routeURL := client.configuration.baseURL.JoinPath("api", "read-subjects")
 		httpClient := &http.Client{
 			Timeout: client.configuration.timeout,
 		}
-		request, err := http.NewRequest("POST", routeURL, bytes.NewReader(requestBodyAsJSON))
+		request, err := http.NewRequest("POST", routeURL.String(), bytes.NewReader(requestBodyAsJSON))
 		if err != nil {
 			results <- newReadSubjectsError(
 				customErrors.NewInternalError(err),

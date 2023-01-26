@@ -20,10 +20,10 @@ func NewRetryError() *RetryError {
 func (retryError *RetryError) Error() string {
 	var message strings.Builder
 
-	message.WriteString("retries exceeded\n")
+	message.WriteString("retries exceeded")
 
 	for retryCount, err := range retryError.errors {
-		message.WriteString(fmt.Sprintf("\ttry %d: %s\n", retryCount+1, err.Error()))
+		message.WriteString(fmt.Sprintf("\n\ttry %d: %s", retryCount+1, err.Error()))
 	}
 
 	return message.String()

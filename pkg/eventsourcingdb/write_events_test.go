@@ -82,62 +82,6 @@ func TestWriteEvents(t *testing.T) {
 		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: malformed event source '://wurstsoße': source must be a valid URI")
 	})
 
-	t.Run("returns an error if the IsSubjectPristine precondition uses an invalid subject.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
-
-		_, err := client.WriteEvents(
-			[]event.Candidate{
-				event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}),
-			},
-			eventsourcingdb.IsSubjectPristine("invalid"),
-		)
-
-		assert.True(t, errors.IsInvalidParameterError(err))
-		assert.ErrorContains(t, err, "parameter 'preconditions' is invalid: IsSubjectPristine is invalid: malformed event subject 'invalid': subject must be an absolute, slash-separated path")
-	})
-
-	t.Run("returns an error if the IsSubjectOnEventID precondition uses an invalid subject.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
-
-		_, err := client.WriteEvents(
-			[]event.Candidate{
-				event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}),
-			},
-			eventsourcingdb.IsSubjectOnEventID("invalid", "123"),
-		)
-
-		assert.True(t, errors.IsInvalidParameterError(err))
-		assert.ErrorContains(t, err, "parameter 'preconditions' is invalid: IsSubjectOnEventID is invalid: malformed event subject 'invalid': subject must be an absolute, slash-separated path")
-	})
-
-	t.Run("returns an error if the IsSubjectOnEventID precondition uses an eventID that does not contain an integer.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
-
-		_, err := client.WriteEvents(
-			[]event.Candidate{
-				event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}),
-			},
-			eventsourcingdb.IsSubjectOnEventID("/", "borzel"),
-		)
-
-		assert.True(t, errors.IsInvalidParameterError(err))
-		assert.ErrorContains(t, err, "parameter 'preconditions' is invalid: IsSubjectOnEventID is invalid: eventID must contain an integer")
-	})
-
-	t.Run("returns an error if the IsSubjectOnEventID precondition uses an eventID that contains a negative integer", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
-
-		_, err := client.WriteEvents(
-			[]event.Candidate{
-				event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}),
-			},
-			eventsourcingdb.IsSubjectOnEventID("/", "-1"),
-		)
-
-		assert.True(t, errors.IsInvalidParameterError(err))
-		assert.ErrorContains(t, err, "parameter 'preconditions' is invalid: IsSubjectOnEventID is invalid: eventID must be 0 or greater")
-	})
-
 	t.Run("supports authorization.", func(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
 		source := event.NewSource(events.TestSource)
@@ -222,23 +166,6 @@ func TestWriteEvents(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("returns an error if the client is configured with an invalid baseURL.", func(t *testing.T) {
-		client, _ := eventsourcingdb.NewClient("&&%%$&")
-		source := event.NewSource(events.TestSource)
-		subject := "/" + uuid.New().String()
-
-		janeRegistered := events.Events.Registered.JaneDoe
-
-		_, err := client.WriteEvents(
-			[]event.Candidate{
-				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data),
-			},
-		)
-
-		assert.True(t, errors.IsInvalidParameterError(err))
-		assert.ErrorContains(t, err, "parameter 'client.configuration.baseURL' is invalid:")
-	})
-
 	t.Run("returns a sever error if the server responds with HTTP 5xx on every try", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
 			mux.HandleFunc("/api/write-events", func(writer http.ResponseWriter, request *http.Request) {
@@ -247,7 +174,7 @@ func TestWriteEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, eventsourcingdb.ClientWithMaxTries(2))
+		client, err := eventsourcingdb.NewClient(serverAddress, eventsourcingdb.MaxTries(2))
 		assert.NoError(t, err)
 
 		source := event.NewSource(events.TestSource)
@@ -410,6 +337,20 @@ func TestWriteEvents(t *testing.T) {
 
 func TestWriteEventsWithPreconditions(t *testing.T) {
 	t.Run("when using the 'is subject pristine' precondition", func(t *testing.T) {
+		t.Run("returns an error if the IsSubjectPristine precondition uses an invalid subject.", func(t *testing.T) {
+			client := database.WithoutAuthorization.GetClient()
+
+			_, err := client.WriteEvents(
+				[]event.Candidate{
+					event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}),
+				},
+				eventsourcingdb.IsSubjectPristine("invalid"),
+			)
+
+			assert.True(t, errors.IsInvalidParameterError(err))
+			assert.ErrorContains(t, err, "parameter 'preconditions' is invalid: IsSubjectPristine is invalid: malformed event subject 'invalid': subject must be an absolute, slash-separated path")
+		})
+
 		t.Run("writes events if the subject is pristine.", func(t *testing.T) {
 			client := database.WithoutAuthorization.GetClient()
 			source := event.NewSource(events.TestSource)
@@ -453,6 +394,48 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 	})
 
 	t.Run("when using the 'is subject on event ID' precondition", func(t *testing.T) {
+		t.Run("returns an error if the IsSubjectOnEventID precondition uses an invalid subject.", func(t *testing.T) {
+			client := database.WithoutAuthorization.GetClient()
+
+			_, err := client.WriteEvents(
+				[]event.Candidate{
+					event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}),
+				},
+				eventsourcingdb.IsSubjectOnEventID("invalid", "123"),
+			)
+
+			assert.True(t, errors.IsInvalidParameterError(err))
+			assert.ErrorContains(t, err, "parameter 'preconditions' is invalid: IsSubjectOnEventID is invalid: malformed event subject 'invalid': subject must be an absolute, slash-separated path")
+		})
+
+		t.Run("returns an error if the IsSubjectOnEventID precondition uses an eventID that does not contain an integer.", func(t *testing.T) {
+			client := database.WithoutAuthorization.GetClient()
+
+			_, err := client.WriteEvents(
+				[]event.Candidate{
+					event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}),
+				},
+				eventsourcingdb.IsSubjectOnEventID("/", "borzel"),
+			)
+
+			assert.True(t, errors.IsInvalidParameterError(err))
+			assert.ErrorContains(t, err, "parameter 'preconditions' is invalid: IsSubjectOnEventID is invalid: eventID must contain an integer")
+		})
+
+		t.Run("returns an error if the IsSubjectOnEventID precondition uses an eventID that contains a negative integer", func(t *testing.T) {
+			client := database.WithoutAuthorization.GetClient()
+
+			_, err := client.WriteEvents(
+				[]event.Candidate{
+					event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}),
+				},
+				eventsourcingdb.IsSubjectOnEventID("/", "-1"),
+			)
+
+			assert.True(t, errors.IsInvalidParameterError(err))
+			assert.ErrorContains(t, err, "parameter 'preconditions' is invalid: IsSubjectOnEventID is invalid: eventID must be 0 or greater")
+		})
+
 		t.Run("writes events if the last event of the subject has the given event ID.", func(t *testing.T) {
 			client := database.WithoutAuthorization.GetClient()
 			source := event.NewSource(events.TestSource)

@@ -150,18 +150,6 @@ func TestReadSubjects(t *testing.T) {
 		assert.ErrorContains(t, err, "parameter 'BaseSubject' is invalid: malformed event subject")
 	})
 
-	t.Run("returns an error if the client is configured with an invalid baseURL.", func(t *testing.T) {
-		client, _ := eventsourcingdb.NewClient("&&%%$&")
-
-		results := client.ReadSubjects(context.Background())
-
-		result := <-results
-		_, err := result.GetData()
-
-		assert.True(t, customErrors.IsInvalidParameterError(err))
-		assert.ErrorContains(t, err, "parameter 'client.configuration.baseURL' is invalid:")
-	})
-
 	t.Run("returns a sever error if the server responds with HTTP 5xx on every try", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
 			mux.HandleFunc("/api/read-subjects", func(writer http.ResponseWriter, request *http.Request) {
@@ -170,7 +158,7 @@ func TestReadSubjects(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, eventsourcingdb.ClientWithMaxTries(2))
+		client, err := eventsourcingdb.NewClient(serverAddress, eventsourcingdb.MaxTries(2))
 		assert.NoError(t, err)
 
 		results := client.ReadSubjects(context.Background())

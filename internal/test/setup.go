@@ -22,7 +22,7 @@ func Setup(dockerfilePath string) (Database, error) {
 	withAuthorization, err := NewContainerizedTestingDatabase(
 		image,
 		[]string{"server", "--dev", "--ui", "--access-token", accessToken},
-		eventsourcingdb.ClientWithAccessToken(accessToken),
+		eventsourcingdb.AccessToken(accessToken),
 	)
 	if err != nil {
 		return Database{}, err
@@ -38,8 +38,8 @@ func Setup(dockerfilePath string) (Database, error) {
 
 	client, err := eventsourcingdb.NewClient(
 		"http://localhost.invalid",
-		eventsourcingdb.ClientWithMaxTries(3),
-		eventsourcingdb.ClientWithTimeout(1*time.Second),
+		eventsourcingdb.MaxTries(3),
+		eventsourcingdb.Timeout(1*time.Second),
 	)
 	if err != nil {
 		return Database{}, err

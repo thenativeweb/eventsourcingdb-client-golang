@@ -5,7 +5,7 @@ import (
 	"net"
 )
 
-func isPortFree(port int) bool {
+func isPortAvailable(port int) bool {
 	listener, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
 
 	if err != nil {
@@ -19,10 +19,10 @@ func isPortFree(port int) bool {
 	return true
 }
 
-func GetFreePort() int {
+func GetAvailablePort() int {
 	port := 3000
 
-	for !isPortFree(port) {
+	for !isPortAvailable(port) {
 		port += 1
 	}
 

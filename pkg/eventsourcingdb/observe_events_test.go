@@ -308,18 +308,6 @@ func TestObserveEvents(t *testing.T) {
 		assert.ErrorContains(t, err, "parameter 'ObserveFromLatestEvent' is invalid: malformed event type")
 	})
 
-	t.Run("returns an error if the client is configured with an invalid baseURL.", func(t *testing.T) {
-		client, _ := eventsourcingdb.NewClient("&&%%$&")
-
-		results := client.ObserveEvents(context.Background(), "/", eventsourcingdb.ObserveRecursively())
-
-		result := <-results
-		_, err := result.GetData()
-
-		assert.True(t, errors.IsInvalidParameterError(err))
-		assert.ErrorContains(t, err, "parameter 'client.configuration.baseURL' is invalid:")
-	})
-
 	t.Run("returns a sever error if the server responds with HTTP 5xx on every try", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
 			mux.HandleFunc("/api/observe-events", func(writer http.ResponseWriter, request *http.Request) {
@@ -328,7 +316,7 @@ func TestObserveEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, eventsourcingdb.ClientWithMaxTries(2))
+		client, err := eventsourcingdb.NewClient(serverAddress, eventsourcingdb.MaxTries(2))
 		assert.NoError(t, err)
 
 		results := client.ObserveEvents(context.Background(), "/", eventsourcingdb.ObserveRecursively())

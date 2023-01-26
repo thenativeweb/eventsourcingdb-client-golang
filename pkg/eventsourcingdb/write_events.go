@@ -5,15 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/authorization"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/retry"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
 	"io"
 	"net/http"
-	"net/url"
-
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/authorization"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/retry"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
 )
 
 type writeEventsRequestBody struct {
@@ -46,18 +44,11 @@ func (client *Client) WriteEvents(eventCandidates []event.Candidate, preconditio
 		return nil, errors.NewInternalError(err)
 	}
 
-	routeURL := client.configuration.baseURL + "/api/write-events"
-	if _, err := url.Parse(routeURL); err != nil {
-		return nil, errors.NewInvalidParameterError(
-			"client.configuration.baseURL",
-			err.Error(),
-		)
-	}
-
+	routeURL := client.configuration.baseURL.JoinPath("api", "write-events")
 	httpClient := &http.Client{
 		Timeout: client.configuration.timeout,
 	}
-	request, err := http.NewRequest("POST", routeURL, bytes.NewReader(requestBodyAsJSON))
+	request, err := http.NewRequest("POST", routeURL.String(), bytes.NewReader(requestBodyAsJSON))
 	if err != nil {
 		return nil, errors.NewInternalError(err)
 	}
