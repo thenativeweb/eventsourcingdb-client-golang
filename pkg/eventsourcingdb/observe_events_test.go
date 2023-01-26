@@ -186,7 +186,7 @@ func TestObserveEvents(t *testing.T) {
 		matchLoggedInEvent(t, secondEvent, events.Events.LoggedIn.JohnDoe)
 	})
 
-	t.Run("returns a ContextCanceledError when the context is canceled.", func(t *testing.T) {
+	t.Run("returns a ContextCanceledError when the context is canceled before the request is sent.", func(t *testing.T) {
 		client := prepareClientWithEvents(t)
 		ctx, cancel := context.WithCancel(context.Background())
 
@@ -201,7 +201,26 @@ func TestObserveEvents(t *testing.T) {
 
 		_, err := (<-resultChan).GetData()
 		assert.Error(t, err)
-		assert.True(t, errors.IsContextCanceledError(err), fmt.Sprintf("%v", err))
+		assert.True(t, errors.IsContextCanceledError(err))
+	})
+
+	t.Run("returns a ContextCanceledError when the context is canceled while reading the ndjson stream.", func(t *testing.T) {
+		client := prepareClientWithEvents(t)
+		ctx, cancel := context.WithCancel(context.Background())
+
+		resultChan := client.ObserveEvents(
+			ctx,
+			"/users",
+			eventsourcingdb.ObserveRecursively(),
+			eventsourcingdb.ObserveFromLowerBoundID("3"),
+		)
+
+		<-resultChan
+		cancel()
+
+		_, err := (<-resultChan).GetData()
+		assert.Error(t, err)
+		assert.True(t, errors.IsContextCanceledError(err))
 	})
 
 	t.Run("returns an error if mutually exclusive options are used", func(t *testing.T) {
@@ -219,6 +238,40 @@ func TestObserveEvents(t *testing.T) {
 		_, err := result.GetData()
 
 		assert.ErrorContains(t, err, "parameter 'ObserveFromLatestEvent' is invalid: ObserveFromLowerBoundID and ObserveFromLatestEvent are mutually exclusive")
+	})
+
+	t.Run("returns an error if the given lowerBoundID does not contain an integer.", func(t *testing.T) {
+		client := database.WithoutAuthorization.GetClient()
+
+		results := client.ObserveEvents(
+			context.Background(),
+			"/",
+			eventsourcingdb.ObserveRecursively(),
+			eventsourcingdb.ObserveFromLowerBoundID("lmao"),
+		)
+
+		result := <-results
+		_, err := result.GetData()
+
+		assert.True(t, errors.IsInvalidParameterError(err))
+		assert.ErrorContains(t, err, "parameter 'ObserveFromLowerBoundID' is invalid: lowerBoundID must contain an integer")
+	})
+
+	t.Run("returns an error if the given lowerBoundID contains an integer that is negative.", func(t *testing.T) {
+		client := database.WithoutAuthorization.GetClient()
+
+		results := client.ObserveEvents(
+			context.Background(),
+			"/",
+			eventsourcingdb.ObserveRecursively(),
+			eventsourcingdb.ObserveFromLowerBoundID("-1"),
+		)
+
+		result := <-results
+		_, err := result.GetData()
+
+		assert.True(t, errors.IsInvalidParameterError(err))
+		assert.ErrorContains(t, err, "parameter 'ObserveFromLowerBoundID' is invalid: lowerBoundID must be 0 or greater")
 	})
 
 	t.Run("returns an error if an incorrect subject is used in ObserveFromLatestEvent.", func(t *testing.T) {

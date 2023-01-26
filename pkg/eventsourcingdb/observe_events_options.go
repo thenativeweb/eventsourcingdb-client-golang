@@ -3,6 +3,7 @@ package eventsourcingdb
 import (
 	"errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
+	"strconv"
 )
 
 type IfEventIsMissingDuringObserve string
@@ -48,6 +49,14 @@ func ObserveFromLowerBoundID(lowerBoundID string) ObserveEventsOption {
 		apply: func(options *observeEventsOptions) error {
 			if options.FromLatestEvent != nil {
 				return errors.New("ObserveFromLowerBoundID and ObserveFromLatestEvent are mutually exclusive")
+			}
+
+			parsedLowerBoundID, err := strconv.Atoi(lowerBoundID)
+			if err != nil {
+				return errors.New("lowerBoundID must contain an integer")
+			}
+			if parsedLowerBoundID < 0 {
+				return errors.New("lowerBoundID must be 0 or greater")
 			}
 
 			options.LowerBoundID = &lowerBoundID
