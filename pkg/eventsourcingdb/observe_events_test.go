@@ -287,4 +287,177 @@ func TestObserveEvents(t *testing.T) {
 		assert.ErrorContains(t, err, "retries exceeded")
 		assert.ErrorContains(t, err, "Bad Gateway")
 	})
+
+	t.Run("returns an error if the server's protocol version does not match.", func(t *testing.T) {
+		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
+			mux.HandleFunc("/api/observe-events", func(writer http.ResponseWriter, request *http.Request) {
+				writer.Header().Add("X-EventSourcingDB-Protocol-Version", "0.0.0")
+				writer.WriteHeader(http.StatusUnprocessableEntity)
+			})
+		})
+		defer stopServer()
+
+		client, err := eventsourcingdb.NewClient(serverAddress)
+		assert.NoError(t, err)
+
+		results := client.ObserveEvents(context.Background(), "/", eventsourcingdb.ObserveRecursively())
+		result := <-results
+		_, err = result.GetData()
+
+		assert.Error(t, err)
+		assert.True(t, errors.IsClientError(err))
+		assert.ErrorContains(t, err, "client error: protocol version mismatch, server '0.0.0', client '1.0.0'")
+	})
+
+	t.Run("returns a client error if the server returns a 4xx status code.", func(t *testing.T) {
+		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
+			mux.HandleFunc("/api/observe-events", func(writer http.ResponseWriter, request *http.Request) {
+				writer.WriteHeader(http.StatusBadRequest)
+			})
+		})
+		defer stopServer()
+
+		client, err := eventsourcingdb.NewClient(serverAddress)
+		assert.NoError(t, err)
+
+		results := client.ObserveEvents(context.Background(), "/", eventsourcingdb.ObserveRecursively())
+		result := <-results
+		_, err = result.GetData()
+
+		assert.Error(t, err)
+		assert.True(t, errors.IsClientError(err))
+		assert.ErrorContains(t, err, "Bad Request")
+	})
+
+	t.Run("returns a server error if the server returns a non 200, 5xx or 4xx status code.", func(t *testing.T) {
+		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
+			mux.HandleFunc("/api/observe-events", func(writer http.ResponseWriter, request *http.Request) {
+				writer.WriteHeader(http.StatusAccepted)
+			})
+		})
+		defer stopServer()
+
+		client, err := eventsourcingdb.NewClient(serverAddress)
+		assert.NoError(t, err)
+
+		results := client.ObserveEvents(context.Background(), "/", eventsourcingdb.ObserveRecursively())
+		result := <-results
+		_, err = result.GetData()
+
+		assert.Error(t, err)
+		assert.True(t, errors.IsServerError(err))
+		assert.ErrorContains(t, err, "unexpected response status: 202 Accepted")
+	})
+
+	t.Run("returns a server error if the server sends a stream item that can't be unmarshalled.", func(t *testing.T) {
+		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
+			mux.HandleFunc("/api/observe-events", func(writer http.ResponseWriter, request *http.Request) {
+				if _, err := writer.Write([]byte("{\"type\": 42}\n")); err != nil {
+					panic(err)
+				}
+			})
+		})
+		defer stopServer()
+
+		client, err := eventsourcingdb.NewClient(serverAddress)
+		assert.NoError(t, err)
+
+		results := client.ObserveEvents(context.Background(), "/", eventsourcingdb.ObserveRecursively())
+		result := <-results
+		_, err = result.GetData()
+
+		assert.Error(t, err)
+		assert.True(t, errors.IsServerError(err))
+		assert.ErrorContains(t, err, "server error: unsupported stream item encountered: cannot unmarshal")
+	})
+
+	t.Run("returns a server error if the server sends a stream item that can't be unmarshalled.", func(t *testing.T) {
+		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
+			mux.HandleFunc("/api/observe-events", func(writer http.ResponseWriter, request *http.Request) {
+				if _, err := writer.Write([]byte("{\"clowns\": 8}\n")); err != nil {
+					panic(err)
+				}
+			})
+		})
+		defer stopServer()
+
+		client, err := eventsourcingdb.NewClient(serverAddress)
+		assert.NoError(t, err)
+
+		results := client.ObserveEvents(context.Background(), "/", eventsourcingdb.ObserveRecursively())
+		result := <-results
+		_, err = result.GetData()
+
+		assert.Error(t, err)
+		assert.True(t, errors.IsServerError(err))
+		assert.ErrorContains(t, err, "server error: unsupported stream item encountered:")
+		assert.ErrorContains(t, err, "does not have a recognized type")
+	})
+
+	t.Run("returns a server error if the server sends a an error item through the ndjson stream.", func(t *testing.T) {
+		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
+			mux.HandleFunc("/api/observe-events", func(writer http.ResponseWriter, request *http.Request) {
+				if _, err := writer.Write([]byte("{\"type\": \"error\", \"payload\": {\"error\": \"aliens have abducted the server\"}}\n")); err != nil {
+					panic(err)
+				}
+			})
+		})
+		defer stopServer()
+
+		client, err := eventsourcingdb.NewClient(serverAddress)
+		assert.NoError(t, err)
+
+		results := client.ObserveEvents(context.Background(), "/", eventsourcingdb.ObserveRecursively())
+		result := <-results
+		_, err = result.GetData()
+
+		assert.Error(t, err)
+		assert.True(t, errors.IsServerError(err))
+		assert.ErrorContains(t, err, "server error: aliens have abducted the server")
+	})
+
+	t.Run("returns a server error if the server sends a an error item through the ndjson stream, but the error can't be unmarshalled.", func(t *testing.T) {
+		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
+			mux.HandleFunc("/api/observe-events", func(writer http.ResponseWriter, request *http.Request) {
+				if _, err := writer.Write([]byte("{\"type\": \"error\", \"payload\": {\"error\": 8}}\n")); err != nil {
+					panic(err)
+				}
+			})
+		})
+		defer stopServer()
+
+		client, err := eventsourcingdb.NewClient(serverAddress)
+		assert.NoError(t, err)
+
+		results := client.ObserveEvents(context.Background(), "/", eventsourcingdb.ObserveRecursively())
+		result := <-results
+		_, err = result.GetData()
+
+		assert.Error(t, err)
+		assert.True(t, errors.IsServerError(err))
+		assert.ErrorContains(t, err, "server error: unsupported stream error encountered:")
+	})
+
+	t.Run("returns a server error if the server sends an item that can't be unmarshalled.", func(t *testing.T) {
+		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
+			mux.HandleFunc("/api/observe-events", func(writer http.ResponseWriter, request *http.Request) {
+				if _, err := writer.Write([]byte("{\"type\": \"item\", \"payload\": {\"event\": 8}}\n")); err != nil {
+					panic(err)
+				}
+			})
+		})
+		defer stopServer()
+
+		client, err := eventsourcingdb.NewClient(serverAddress)
+		assert.NoError(t, err)
+
+		results := client.ObserveEvents(context.Background(), "/", eventsourcingdb.ObserveRecursively())
+		result := <-results
+		_, err = result.GetData()
+
+		assert.Error(t, err)
+		assert.True(t, errors.IsServerError(err))
+		assert.ErrorContains(t, err, "server error: unsupported stream item encountered:")
+		assert.ErrorContains(t, err, "(trying to unmarshal")
+	})
 }

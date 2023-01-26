@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httpUtil"
 	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
@@ -160,17 +159,17 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 				var serverError streamError
 				if err := json.Unmarshal(data.Payload, &serverError); err != nil {
 					resultChannel <- newObserveEventsError(
-						customErrors.NewServerError(serverError.Error),
+						customErrors.NewServerError(fmt.Sprintf("unsupported stream error encountered: %s", err.Error())),
 					)
 					return
 				}
 
-				resultChannel <- newObserveEventsError(errors.New(serverError.Error))
+				resultChannel <- newObserveEventsError(customErrors.NewServerError(serverError.Error))
 			case "item":
 				var storeItem StoreItem
 				if err := json.Unmarshal(data.Payload, &storeItem); err != nil {
 					resultChannel <- newObserveEventsError(
-						customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: %s (trying to unmarshal %v)", err.Error(), data)),
+						customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: '%s' (trying to unmarshal '%+v')", err.Error(), data)),
 					)
 					return
 				}
@@ -178,7 +177,7 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 				resultChannel <- newObserveEventsValue(storeItem)
 			default:
 				resultChannel <- newObserveEventsError(
-					customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: %v", data)),
+					customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: '%+v' does not have a recognized type", data)),
 				)
 				return
 			}

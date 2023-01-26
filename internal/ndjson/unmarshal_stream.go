@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/result"
@@ -59,7 +60,7 @@ func UnmarshalStream[TData any](ctx context.Context, reader io.Reader) <-chan Un
 
 				var data TData
 				if err := json.Unmarshal([]byte(currentLine), &data); err != nil {
-					resultChannel <- newError[TData](err)
+					resultChannel <- newError[TData](fmt.Errorf("cannot unmarshal '%s': %w", currentLine, err))
 					break
 				}
 
