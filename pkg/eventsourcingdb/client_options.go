@@ -2,42 +2,51 @@ package eventsourcingdb
 
 import (
 	"errors"
-	"fmt"
-	"github.com/Masterminds/semver"
 	"time"
 )
 
-type ClientOption func(configuration *clientConfiguration) error
+type ClientOption struct {
+	apply func(configuration *clientConfiguration) error
+	name  string
+}
 
-func ClientWithTimeout(timeout time.Duration) ClientOption {
-	return func(configuration *clientConfiguration) error {
-		configuration.timeout = timeout
+func MaxTries(maxTries int) ClientOption {
+	return ClientOption{
+		apply: func(configuration *clientConfiguration) error {
+			if maxTries < 1 {
+				return errors.New("maxTries must be 1 or greater")
+			}
 
-		return nil
+			configuration.maxTries = maxTries
+
+			return nil
+		},
+		name: "MaxTries",
 	}
 }
 
-func ClientWithAccessToken(accessToken string) ClientOption {
-	return func(configuration *clientConfiguration) error {
-		if accessToken == "" {
-			return errors.New("the access token must not be empty")
-		}
+func Timeout(timeout time.Duration) ClientOption {
+	return ClientOption{
+		apply: func(configuration *clientConfiguration) error {
+			configuration.timeout = timeout
 
-		configuration.accessToken = accessToken
-
-		return nil
+			return nil
+		},
+		name: "Timeout",
 	}
 }
 
-func ClientWithProtocolVersion(protocolVersion string) ClientOption {
-	return func(configuration *clientConfiguration) error {
-		version, err := semver.NewVersion(protocolVersion)
-		if err != nil {
-			return fmt.Errorf("the protocol version must be a valid semver version: %w", err)
-		}
+func AccessToken(accessToken string) ClientOption {
+	return ClientOption{
+		apply: func(configuration *clientConfiguration) error {
+			if accessToken == "" {
+				return errors.New("the access token must not be empty")
+			}
 
-		configuration.protocolVersion = *version
+			configuration.accessToken = accessToken
 
-		return nil
+			return nil
+		},
+		name: "AccessToken",
 	}
 }

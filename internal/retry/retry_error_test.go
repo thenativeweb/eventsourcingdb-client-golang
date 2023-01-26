@@ -21,7 +21,7 @@ func TestRetryError(t *testing.T) {
 		err.AppendError(errors.New("something went wrong"))
 
 		assert.Error(t, err)
-		assert.Equal(t, "retries exceeded: something went wrong", err.Error())
+		assert.Equal(t, "retries exceeded\n\ttry 1: something went wrong", err.Error())
 	})
 
 	t.Run("handles nested errors in correct order.", func(t *testing.T) {
@@ -31,6 +31,6 @@ func TestRetryError(t *testing.T) {
 		err.AppendError(errors.New("#3"))
 
 		assert.Error(t, err)
-		assert.Equal(t, "retries exceeded: #1: #2: #3", err.Error())
+		assert.Equal(t, "retries exceeded\n\ttry 1: #1\n\ttry 2: #2\n\ttry 3: #3", err.Error())
 	})
 }

@@ -3,6 +3,7 @@ package eventsourcingdb
 import (
 	"errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
+	"strconv"
 )
 
 type IfEventIsMissingDuringObserve string
@@ -38,38 +39,55 @@ type observeEventsOptions struct {
 	FromLatestEvent *observeFromLatestEvent `json:"fromLatestEvent,omitempty"`
 }
 
-type ObserveEventsOption func(options *observeEventsOptions) error
+type ObserveEventsOption struct {
+	apply func(options *observeEventsOptions) error
+	name  string
+}
 
 func ObserveFromLowerBoundID(lowerBoundID string) ObserveEventsOption {
-	return func(options *observeEventsOptions) error {
-		if options.FromLatestEvent != nil {
-			return errors.New("ObserveFromLowerBoundID and ObserveFromLatestEvent are mutually exclusive")
-		}
+	return ObserveEventsOption{
+		apply: func(options *observeEventsOptions) error {
+			if options.FromLatestEvent != nil {
+				return errors.New("ObserveFromLowerBoundID and ObserveFromLatestEvent are mutually exclusive")
+			}
 
-		options.LowerBoundID = &lowerBoundID
+			parsedLowerBoundID, err := strconv.Atoi(lowerBoundID)
+			if err != nil {
+				return errors.New("lowerBoundID must contain an integer")
+			}
+			if parsedLowerBoundID < 0 {
+				return errors.New("lowerBoundID must be 0 or greater")
+			}
 
-		return nil
+			options.LowerBoundID = &lowerBoundID
+
+			return nil
+		},
+		name: "ObserveFromLowerBoundID",
 	}
 }
 
 func ObserveFromLatestEvent(subject, eventType string, ifEventIsMissing IfEventIsMissingDuringObserve) ObserveEventsOption {
-	return func(options *observeEventsOptions) error {
-		if options.LowerBoundID != nil {
-			return errors.New("ObserveFromLowerBoundID and ObserveFromLatestEvent are mutually exclusive")
-		}
-		if err := event.ValidateSubject(subject); err != nil {
-			return err
-		}
-		if err := event.ValidateType(eventType); err != nil {
-			return err
-		}
+	return ObserveEventsOption{
+		apply: func(options *observeEventsOptions) error {
+			if options.LowerBoundID != nil {
+				return errors.New("ObserveFromLowerBoundID and ObserveFromLatestEvent are mutually exclusive")
+			}
+			if err := event.ValidateSubject(subject); err != nil {
+				return err
+			}
+			if err := event.ValidateType(eventType); err != nil {
+				return err
+			}
 
-		options.FromLatestEvent = &observeFromLatestEvent{
-			Subject:          subject,
-			Type:             eventType,
-			IfEventIsMissing: ifEventIsMissing,
-		}
+			options.FromLatestEvent = &observeFromLatestEvent{
+				Subject:          subject,
+				Type:             eventType,
+				IfEventIsMissing: ifEventIsMissing,
+			}
 
-		return nil
+			return nil
+		},
+		name: "ObserveFromLatestEvent",
 	}
 }

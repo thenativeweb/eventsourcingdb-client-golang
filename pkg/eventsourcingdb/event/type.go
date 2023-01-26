@@ -14,7 +14,7 @@ func init() {
 func ValidateType(eventType string) error {
 	didMatch := typeRegex.MatchString(eventType)
 	if !didMatch {
-		return fmt.Errorf("malformed event type '%s', must be reverse domain name", eventType)
+		return fmt.Errorf("malformed event type '%s': type must be reverse domain name", eventType)
 	}
 
 	return nil

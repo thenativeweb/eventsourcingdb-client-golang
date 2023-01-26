@@ -1,6 +1,8 @@
 package eventsourcingdb
 
 import (
+	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -8,14 +10,14 @@ import (
 )
 
 type clientConfiguration struct {
-	baseURL         string
+	baseURL         *url.URL
 	timeout         time.Duration
 	accessToken     string
 	protocolVersion semver.Version
 	maxTries        int
 }
 
-func getDefaultConfiguration(baseURL string) clientConfiguration {
+func getDefaultConfiguration(baseURL *url.URL) clientConfiguration {
 	return clientConfiguration{
 		baseURL:         baseURL,
 		timeout:         10 * time.Second,
@@ -31,14 +33,22 @@ type Client struct {
 
 func NewClient(baseURL string, options ...ClientOption) (Client, error) {
 	if strconv.IntSize != 64 {
-		panic("64-bit architecture required")
+		return Client{}, errors.NewClientError("64-bit architecture required")
 	}
 
-	configuration := getDefaultConfiguration(baseURL)
+	parsedBaseURL, err := url.Parse(baseURL)
+	if err != nil {
+		return Client{}, errors.NewInvalidParameterError("baseURL", err.Error())
+	}
+	if parsedBaseURL.Scheme != "http" && parsedBaseURL.Scheme != "https" {
+		return Client{}, errors.NewInvalidParameterError("baseURL", "must use HTTP or HTTPS")
+	}
 
-	for _, applyOption := range options {
-		if err := applyOption(&configuration); err != nil {
-			return Client{}, err
+	configuration := getDefaultConfiguration(parsedBaseURL)
+
+	for _, option := range options {
+		if err := option.apply(&configuration); err != nil {
+			return Client{}, errors.NewInvalidParameterError(option.name, err.Error())
 		}
 	}
 

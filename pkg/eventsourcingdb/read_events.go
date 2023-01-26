@@ -5,12 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/authorization"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/ndjson"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/result"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/retry"
+	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
+	"net/http"
 )
 
 type readEventsRequest struct {
@@ -35,16 +36,18 @@ func newStoreItem(item StoreItem) ReadEventsResult {
 }
 
 func (client *Client) ReadEvents(ctx context.Context, subject string, recursive ReadRecursivelyOption, options ...ReadEventsOption) <-chan ReadEventsResult {
-	resultChannel := make(chan ReadEventsResult, 1)
+	results := make(chan ReadEventsResult, 1)
 
 	go func() {
-		defer close(resultChannel)
+		defer close(results)
 		readOptions := readEventsOptions{
 			Recursive: recursive(),
 		}
-		for _, applyOption := range options {
-			if err := applyOption(&readOptions); err != nil {
-				resultChannel <- newReadEventsError(err)
+		for _, option := range options {
+			if err := option.apply(&readOptions); err != nil {
+				results <- newReadEventsError(
+					customErrors.NewInvalidParameterError(option.name, err.Error()),
+				)
 				return
 			}
 		}
@@ -55,67 +58,117 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 		}
 		requestBodyAsJSON, err := json.Marshal(requestBody)
 		if err != nil {
-			resultChannel <- newReadEventsError(err)
+			results <- newReadEventsError(
+				customErrors.NewInternalError(err),
+			)
 			return
 		}
 
+		routeURL := client.configuration.baseURL.JoinPath("api", "read-events")
 		httpClient := &http.Client{
 			Timeout: client.configuration.timeout,
 		}
-		url := client.configuration.baseURL + "/api/read-events"
-		request, err := http.NewRequest("POST", url, bytes.NewReader(requestBodyAsJSON))
+		request, err := http.NewRequest("POST", routeURL.String(), bytes.NewReader(requestBodyAsJSON))
 		if err != nil {
-			resultChannel <- newReadEventsError(err)
+			results <- newReadEventsError(
+				customErrors.NewInternalError(err),
+			)
 			return
 		}
+
 		authorization.AddAccessToken(request, client.configuration.accessToken)
 
 		var response *http.Response
 		err = retry.WithBackoff(ctx, client.configuration.maxTries, func() error {
 			response, err = httpClient.Do(request)
+
+			if httputil.IsServerError(response) {
+				return fmt.Errorf("server error: %s", response.Status)
+			}
+
 			return err
 		})
 		if err != nil {
-			resultChannel <- newReadEventsError(err)
+			if customErrors.IsContextCanceledError(err) {
+				results <- newReadEventsError(err)
+				return
+			}
+
+			results <- newReadEventsError(
+				customErrors.NewServerError(err.Error()),
+			)
 			return
 		}
 		defer response.Body.Close()
 
 		err = client.validateProtocolVersion(response)
 		if err != nil {
-			resultChannel <- newReadEventsError(err)
+			results <- newReadEventsError(
+				customErrors.NewClientError(err.Error()),
+			)
+			return
+		}
+
+		if httputil.IsClientError(response) {
+			results <- newReadEventsError(
+				customErrors.NewClientError(response.Status),
+			)
 			return
 		}
 		if response.StatusCode != http.StatusOK {
-			resultChannel <- newReadEventsError(fmt.Errorf("failed to read events: %s", response.Status))
+			results <- newReadEventsError(
+				customErrors.NewServerError(fmt.Sprintf("unexpected response status: %s", response.Status)),
+			)
 			return
 		}
 
 		unmarshalContext, cancelUnmarshalling := context.WithCancel(ctx)
 		defer cancelUnmarshalling()
+
 		unmarshalResults := ndjson.UnmarshalStream[ndjson.StreamItem](unmarshalContext, response.Body)
 		for unmarshalResult := range unmarshalResults {
 			data, err := unmarshalResult.GetData()
 			if err != nil {
-				resultChannel <- newReadEventsError(err)
+				if customErrors.IsContextCanceledError(err) {
+					results <- newReadEventsError(err)
+					return
+				}
+
+				results <- newReadEventsError(
+					customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: %s", err.Error())),
+				)
 				return
 			}
 
 			switch data.Type {
-			case "item":
-				var storeItem StoreItem
-				if err := json.Unmarshal(data.Payload, &storeItem); err != nil {
-					resultChannel <- newReadEventsError(err)
+			case "error":
+				var serverError streamError
+				if err := json.Unmarshal(data.Payload, &serverError); err != nil {
+					results <- newReadEventsError(
+						customErrors.NewServerError(fmt.Sprintf("unsupported stream error encountered: %s", err.Error())),
+					)
 					return
 				}
 
-				resultChannel <- newStoreItem(storeItem)
+				results <- newReadEventsError(customErrors.NewServerError(serverError.Error))
+			case "item":
+				var storeItem StoreItem
+				if err := json.Unmarshal(data.Payload, &storeItem); err != nil {
+					results <- newReadEventsError(
+						customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: '%s' (trying to unmarshal '%+v')", err.Error(), data)),
+					)
+					return
+				}
+
+				results <- newStoreItem(storeItem)
 			default:
-				resultChannel <- newReadEventsError(fmt.Errorf("unexpected stream item %+v", data))
+				results <- newReadEventsError(
+					customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: '%+v' does not have a recognized type", data)),
+				)
 				return
 			}
 		}
 	}()
 
-	return resultChannel
+	return results
 }

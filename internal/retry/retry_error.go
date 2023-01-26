@@ -1,27 +1,34 @@
 package retry
 
-type retryError struct {
+import (
+	"fmt"
+	"strings"
+)
+
+type RetryError struct {
 	errors []error
 }
 
-func NewRetryError() *retryError {
-	retryError := &retryError{
+func NewRetryError() *RetryError {
+	retryError := &RetryError{
 		errors: []error{},
 	}
 
 	return retryError
 }
 
-func (retryError *retryError) Error() string {
-	message := "retries exceeded"
+func (retryError *RetryError) Error() string {
+	var message strings.Builder
 
-	for _, err := range retryError.errors {
-		message += ": " + err.Error()
+	message.WriteString("retries exceeded")
+
+	for retryCount, err := range retryError.errors {
+		message.WriteString(fmt.Sprintf("\n\ttry %d: %s", retryCount+1, err.Error()))
 	}
 
-	return message
+	return message.String()
 }
 
-func (retryError *retryError) AppendError(err error) {
+func (retryError *RetryError) AppendError(err error) {
 	retryError.errors = append(retryError.errors, err)
 }
