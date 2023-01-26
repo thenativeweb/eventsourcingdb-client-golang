@@ -37,7 +37,7 @@ func (client *Client) WriteEvents(eventCandidates []event.Candidate, preconditio
 	}
 	for i := 0; i < len(eventCandidates); i++ {
 		if err := eventCandidates[i].Validate(); err != nil {
-			return nil, errors.NewInvalidParameterError("eventCandidate", err.Error())
+			return nil, errors.NewInvalidParameterError("eventCandidates", err.Error())
 		}
 	}
 
@@ -75,10 +75,6 @@ func (client *Client) WriteEvents(eventCandidates []event.Candidate, preconditio
 		return err
 	})
 	if err != nil {
-		if errors.IsContextCanceledError(err) {
-			return nil, err
-		}
-
 		return nil, errors.NewServerError(err.Error())
 	}
 	defer response.Body.Close()

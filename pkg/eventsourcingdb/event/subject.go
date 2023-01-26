@@ -15,7 +15,7 @@ func init() {
 func ValidateSubject(subject string) error {
 	didMatch := subjectRegex.MatchString(subject)
 	if !didMatch {
-		return fmt.Errorf("malformed event subject '%s', must be an absolute, slash-separated path", subject)
+		return fmt.Errorf("malformed event subject '%s': subject must be an absolute, slash-separated path", subject)
 	}
 
 	return nil

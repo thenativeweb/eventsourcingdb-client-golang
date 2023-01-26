@@ -2,8 +2,10 @@ package eventsourcingdb
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
+	"strconv"
 )
 
 const (
@@ -39,6 +41,14 @@ func (preconditions *PreconditionsBody) validate() error {
 	for _, precondition := range preconditions.isSubjectOnEventIDPreconditions {
 		if err := event.ValidateSubject(precondition.Payload.Subject); err != nil {
 			return fmt.Errorf("IsSubjectOnEventID is invalid: %w", err)
+		}
+
+		parsedEventID, err := strconv.Atoi(precondition.Payload.EventID)
+		if err != nil {
+			return errors.New("IsSubjectOnEventID is invalid: eventID must contain an integer")
+		}
+		if parsedEventID < 0 {
+			return errors.New("IsSubjectOnEventID is invalid: eventID must be 0 or greater")
 		}
 	}
 
