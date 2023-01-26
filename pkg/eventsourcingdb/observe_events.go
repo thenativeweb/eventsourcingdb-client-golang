@@ -66,9 +66,6 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 			return
 		}
 
-		httpClient := &http.Client{
-			Timeout: client.configuration.timeout,
-		}
 		routeURL := client.configuration.baseURL + "/api/observe-events"
 		if _, err := url.Parse(routeURL); err != nil {
 			resultChannel <- newObserveEventsError(
@@ -79,6 +76,9 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 			)
 		}
 
+		httpClient := &http.Client{
+			Timeout: client.configuration.timeout,
+		}
 		request, err := http.NewRequest(http.MethodPost, routeURL, bytes.NewReader(requestBodyAsJSON))
 		if err != nil {
 			resultChannel <- newObserveEventsError(
@@ -90,7 +90,6 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 		authorization.AddAccessToken(request, client.configuration.accessToken)
 
 		var response *http.Response
-
 		err = retry.WithBackoff(ctx, client.configuration.maxTries, func() error {
 			response, err = httpClient.Do(request)
 

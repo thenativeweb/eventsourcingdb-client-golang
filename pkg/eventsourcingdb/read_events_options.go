@@ -40,64 +40,82 @@ type readEventsOptions struct {
 	FromLatestEvent *readFromLatestEvent `json:"fromLatestEvent,omitempty"`
 }
 
-type ReadEventsOption func(options *readEventsOptions) error
+type ReadEventsOption struct {
+	apply func(options *readEventsOptions) error
+	name  string
+}
 
 func ReadChronologically() ReadEventsOption {
-	return func(options *readEventsOptions) error {
-		value := true
-		options.Chronological = &value
+	return ReadEventsOption{
+		apply: func(options *readEventsOptions) error {
+			value := true
+			options.Chronological = &value
 
-		return nil
+			return nil
+		},
+		name: "ReadChronologically",
 	}
 }
 
 func ReadReversedChronologically() ReadEventsOption {
-	return func(options *readEventsOptions) error {
-		value := false
-		options.Chronological = &value
+	return ReadEventsOption{
+		apply: func(options *readEventsOptions) error {
+			value := false
+			options.Chronological = &value
 
-		return nil
+			return nil
+		},
+		name: "ReadReversedChronologically",
 	}
 }
 
 func ReadFromLowerBoundID(lowerBoundID string) ReadEventsOption {
-	return func(options *readEventsOptions) error {
-		if options.FromLatestEvent != nil {
-			return errors.New("ReadFromLowerBoundID and ReadFromLatestEvent are mutually exclusive")
-		}
+	return ReadEventsOption{
+		apply: func(options *readEventsOptions) error {
+			if options.FromLatestEvent != nil {
+				return errors.New("ReadFromLowerBoundID and ReadFromLatestEvent are mutually exclusive")
+			}
 
-		options.LowerBoundID = &lowerBoundID
+			options.LowerBoundID = &lowerBoundID
 
-		return nil
+			return nil
+		},
+		name: "ReadFromLowerBoundID",
 	}
 }
 
 func ReadUntilUpperBoundID(upperBoundID string) ReadEventsOption {
-	return func(options *readEventsOptions) error {
-		options.UpperBoundID = &upperBoundID
+	return ReadEventsOption{
+		apply: func(options *readEventsOptions) error {
+			options.UpperBoundID = &upperBoundID
 
-		return nil
+			return nil
+		},
+		name: "ReadUntilUpperBoundID",
 	}
 }
 
 func ReadFromLatestEvent(subject, eventType string, ifEventIsMissing IfEventIsMissingDuringRead) ReadEventsOption {
-	return func(options *readEventsOptions) error {
-		if options.LowerBoundID != nil {
-			return errors.New("ReadFromLowerBoundID and ReadFromLatestEvent are mutually exclusive")
-		}
-		if err := event.ValidateSubject(subject); err != nil {
-			return err
-		}
-		if err := event.ValidateType(eventType); err != nil {
-			return err
-		}
+	return ReadEventsOption{
+		apply: func(options *readEventsOptions) error {
+			if options.LowerBoundID != nil {
+				return errors.New("ReadFromLowerBoundID and ReadFromLatestEvent are mutually exclusive")
+			}
+			if err := event.ValidateSubject(subject); err != nil {
+				return err
+			}
+			if err := event.ValidateType(eventType); err != nil {
+				return err
+			}
 
-		options.FromLatestEvent = &readFromLatestEvent{
-			Subject:          subject,
-			Type:             eventType,
-			IfEventIsMissing: ifEventIsMissing,
-		}
+			options.FromLatestEvent = &readFromLatestEvent{
+				Subject:          subject,
+				Type:             eventType,
+				IfEventIsMissing: ifEventIsMissing,
+			}
 
-		return nil
+			return nil
+		},
+		name: "ReadFromLatestEvent",
 	}
 }
