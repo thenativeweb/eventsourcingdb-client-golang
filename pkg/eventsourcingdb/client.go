@@ -10,14 +10,14 @@ import (
 )
 
 type clientConfiguration struct {
-	baseURL         *url.URL
+	baseURL         url.URL
 	timeout         time.Duration
 	accessToken     string
 	protocolVersion semver.Version
 	maxTries        int
 }
 
-func getDefaultConfiguration(baseURL *url.URL) clientConfiguration {
+func getDefaultConfiguration(baseURL url.URL) clientConfiguration {
 	return clientConfiguration{
 		baseURL:         baseURL,
 		timeout:         10 * time.Second,
@@ -44,7 +44,7 @@ func NewClient(baseURL string, options ...ClientOption) (Client, error) {
 		return Client{}, errors.NewInvalidParameterError("baseURL", "must use HTTP or HTTPS")
 	}
 
-	configuration := getDefaultConfiguration(parsedBaseURL)
+	configuration := getDefaultConfiguration(*parsedBaseURL)
 
 	for _, option := range options {
 		if err := option.apply(&configuration); err != nil {
