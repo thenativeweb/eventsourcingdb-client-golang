@@ -42,6 +42,7 @@ func (candidate Candidate) validateData() error {
 	itemsToValidate := []valueWithPath{
 		{path: "[root element]", value: reflect.ValueOf(candidate.Data)},
 	}
+	seenPointers := map[any]struct{}{}
 
 	for len(itemsToValidate) > 0 {
 		currentItem, fieldsToValidate := itemsToValidate[0], itemsToValidate[1:]
@@ -69,6 +70,12 @@ func (candidate Candidate) validateData() error {
 		case reflect.Interface:
 			fallthrough
 		case reflect.Pointer:
+			pointer := currentItem.value.UnsafeAddr()
+			if _, ok := seenPointers[pointer]; ok {
+				return fmt.Errorf("path '%s': cycle detected", currentItem.path)
+			}
+			seenPointers[pointer] = struct{}{}
+
 			fieldsToValidate = append(fieldsToValidate, valueWithPath{
 				value: currentItem.value.Elem(),
 				path:  currentItem.path,
@@ -76,6 +83,12 @@ func (candidate Candidate) validateData() error {
 
 		// containers
 		case reflect.Map:
+			pointer := currentItem.value.UnsafeAddr()
+			if _, ok := seenPointers[pointer]; ok {
+				return fmt.Errorf("path '%s': cycle detected", currentItem.path)
+			}
+			seenPointers[pointer] = struct{}{}
+
 			mapKeys := currentItem.value.MapKeys()
 			keyKind := mapKeys[0].Kind()
 
@@ -101,6 +114,7 @@ func (candidate Candidate) validateData() error {
 					value: currentItem.value.MapIndex(key),
 				})
 			}
+			
 		case reflect.Struct:
 			for i := 0; i < currentItem.value.NumField(); i++ {
 				field := currentItem.value.Type().Field(i)
@@ -113,9 +127,16 @@ func (candidate Candidate) validateData() error {
 					value: currentItem.value.Field(i),
 				})
 			}
-		case reflect.Array:
-			fallthrough
+
 		case reflect.Slice:
+			pointer := currentItem.value.UnsafeAddr()
+			if _, ok := seenPointers[pointer]; ok {
+				return fmt.Errorf("path '%s': cycle detected", currentItem.path)
+			}
+			seenPointers[pointer] = struct{}{}
+			fallthrough
+
+		case reflect.Array:
 			for i := 0; i < currentItem.value.Len(); i++ {
 				fieldsToValidate = append(fieldsToValidate, valueWithPath{
 					path:  fmt.Sprintf("%s.%d", i),
