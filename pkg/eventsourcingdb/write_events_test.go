@@ -53,7 +53,7 @@ func TestWriteEvents(t *testing.T) {
 		)
 
 		assert.True(t, errors.IsInvalidParameterError(err))
-		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: malformed event subject 'foobar': subject must be an absolute, slash-separated path")
+		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: event candidate failed to validate: malformed event subject 'foobar': subject must be an absolute, slash-separated path")
 	})
 
 	t.Run("returns an error if a candidate type is malformed", func(t *testing.T) {
@@ -66,7 +66,7 @@ func TestWriteEvents(t *testing.T) {
 		)
 
 		assert.True(t, errors.IsInvalidParameterError(err))
-		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: malformed event type 'barbaz': type must be reverse domain name")
+		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: event candidate failed to validate: malformed event type 'barbaz': type must be a reverse domain name")
 	})
 
 	t.Run("returns an error if a candidate source is malformed", func(t *testing.T) {
@@ -79,7 +79,7 @@ func TestWriteEvents(t *testing.T) {
 		)
 
 		assert.True(t, errors.IsInvalidParameterError(err))
-		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: malformed event source '://wurstsoße': source must be a valid URI")
+		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: event candidate failed to validate: malformed event source '://wurstsoße': source must be a valid URI")
 	})
 
 	t.Run("supports authorization.", func(t *testing.T) {

@@ -43,9 +43,10 @@ func (candidate Candidate) validateData() error {
 		{path: "[root element]", value: reflect.ValueOf(candidate.Data)},
 	}
 	seenPointers := map[any]struct{}{}
+	var currentItem valueWithPath
 
 	for len(itemsToValidate) > 0 {
-		currentItem, fieldsToValidate := itemsToValidate[0], itemsToValidate[1:]
+		currentItem, itemsToValidate = itemsToValidate[0], itemsToValidate[1:]
 
 		currentItem.value.CanAddr()
 
@@ -76,7 +77,7 @@ func (candidate Candidate) validateData() error {
 			}
 			seenPointers[pointer] = struct{}{}
 
-			fieldsToValidate = append(fieldsToValidate, valueWithPath{
+			itemsToValidate = append(itemsToValidate, valueWithPath{
 				value: currentItem.value.Elem(),
 				path:  currentItem.path,
 			})
@@ -109,12 +110,12 @@ func (candidate Candidate) validateData() error {
 			}
 
 			for _, key := range mapKeys {
-				fieldsToValidate = append(fieldsToValidate, valueWithPath{
+				itemsToValidate = append(itemsToValidate, valueWithPath{
 					path:  fmt.Sprintf("%s.%s", currentItem.path, key),
 					value: currentItem.value.MapIndex(key),
 				})
 			}
-			
+
 		case reflect.Struct:
 			for i := 0; i < currentItem.value.NumField(); i++ {
 				field := currentItem.value.Type().Field(i)
@@ -122,7 +123,7 @@ func (candidate Candidate) validateData() error {
 					return fmt.Errorf("path '%s': unsupported unexported field: %s", currentItem.path, field.Name)
 				}
 
-				fieldsToValidate = append(fieldsToValidate, valueWithPath{
+				itemsToValidate = append(itemsToValidate, valueWithPath{
 					path:  fmt.Sprintf("%s.%s", currentItem.path, field.Name),
 					value: currentItem.value.Field(i),
 				})
@@ -138,8 +139,8 @@ func (candidate Candidate) validateData() error {
 
 		case reflect.Array:
 			for i := 0; i < currentItem.value.Len(); i++ {
-				fieldsToValidate = append(fieldsToValidate, valueWithPath{
-					path:  fmt.Sprintf("%s.%d", i),
+				itemsToValidate = append(itemsToValidate, valueWithPath{
+					path:  fmt.Sprintf("%s.%d", currentItem.path, i),
 					value: currentItem.value.Index(i),
 				})
 			}
@@ -170,15 +171,19 @@ func (candidate Candidate) validateData() error {
 
 func (candidate Candidate) Validate() error {
 	if err := ValidateSource(candidate.Source); err != nil {
-		return err
+		return fmt.Errorf("event candidate failed to validate: %w", err)
 	}
 
 	if err := ValidateSubject(candidate.Subject); err != nil {
-		return err
+		return fmt.Errorf("event candidate failed to validate: %w", err)
 	}
 
 	if err := ValidateType(candidate.Type); err != nil {
-		return err
+		return fmt.Errorf("event candidate failed to validate: %w", err)
+	}
+
+	if err := candidate.validateData(); err != nil {
+		return fmt.Errorf("event candidate failed to validate: event data is unsupported: %w", err)
 	}
 
 	return nil
