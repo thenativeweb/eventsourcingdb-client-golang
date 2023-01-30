@@ -63,8 +63,12 @@ func (candidate Candidate) validateData() error {
 
 	for len(itemsToValidate) > 0 {
 		currentItem, itemsToValidate = itemsToValidate[0], itemsToValidate[1:]
+		currentPath := currentItem.path
+		currentValue := currentItem.value
+		currentKind := currentValue.Kind()
+		currentType := currentValue.Type()
 
-		switch currentItem.value.Kind() {
+		switch currentKind {
 		// Unsupported data types, i.e. types that can't be json.Marshal'ed without
 		// custom types and a custom json.Marshaler implementation.
 		// Since we switch over value.Kind() and not value.Type(), a custom type
@@ -81,16 +85,16 @@ func (candidate Candidate) validateData() error {
 		case reflect.Complex64:
 			fallthrough
 		case reflect.Func:
-			if !implementsJSONMarshaler(currentItem.value) {
-				return fmt.Errorf("value of type '%s' at path '%s' is not supported, either implement json.Marshaler on this type, or remove it from the struct", currentItem.value.Type().String(), currentItem.path)
+			if !implementsJSONMarshaler(currentValue) {
+				return fmt.Errorf("value of type '%s' at path '%s' is not supported, either implement json.Marshaler on this type, or remove it from the struct", currentType.String(), currentPath)
 			}
 
 		// Indirections i.e. values that point to other values.
 		case reflect.Pointer:
 			// Pointers can cause circular references, so we memorize pointers we have seen.
-			pointer := currentItem.value.UnsafePointer()
+			pointer := currentValue.UnsafePointer()
 			if _, ok := seenPointers[pointer]; ok {
-				return fmt.Errorf("pointer at path '%s' is circular, data must not contain circular references", currentItem.path)
+				return fmt.Errorf("pointer at path '%s' is circular, data must not contain circular references", currentPath)
 			}
 			seenPointers[pointer] = struct{}{}
 
@@ -100,8 +104,8 @@ func (candidate Candidate) validateData() error {
 
 		case reflect.Interface:
 			itemsToValidate = append(itemsToValidate, valueWithPath{
-				value: currentItem.value.Elem(),
-				path:  currentItem.path,
+				value: currentValue.Elem(),
+				path:  currentPath,
 			})
 
 		// Containers i.e. types that contain other values, but are not just indirections.
@@ -109,13 +113,13 @@ func (candidate Candidate) validateData() error {
 			// Maps can be circular (this fact was discovered by looking through the
 			// JSON encoding code in the standard library, which this circularity check
 			// is a copy of), so we also record them in the seen pointers.
-			pointer := currentItem.value.UnsafePointer()
+			pointer := currentValue.UnsafePointer()
 			if _, ok := seenPointers[pointer]; ok {
-				return fmt.Errorf("map at path '%s' is circular, data must not contain circular references", currentItem.path)
+				return fmt.Errorf("map at path '%s' is circular, data must not contain circular references", currentPath)
 			}
 			seenPointers[pointer] = struct{}{}
 
-			mapKeys := currentItem.value.MapKeys()
+			mapKeys := currentValue.MapKeys()
 			keyKind := mapKeys[0].Kind()
 
 			// Only maps that use integers and strings as keys can be marshaled to JSON.
@@ -133,28 +137,28 @@ func (candidate Candidate) validateData() error {
 			case reflect.String:
 				// Note the absence of fallthrough statements.
 			default:
-				return fmt.Errorf("map at path '%s' has keys of type '%s', but only integers and strings are supported as map keys", currentItem.path, mapKeys[0].Type().String())
+				return fmt.Errorf("map at path '%s' has keys of type '%s', but only integers and strings are supported as map keys", currentPath, mapKeys[0].Type().String())
 			}
 
 			for _, key := range mapKeys {
 				itemsToValidate = append(itemsToValidate, valueWithPath{
-					path:  fmt.Sprintf("%s.%s", currentItem.path, key),
-					value: currentItem.value.MapIndex(key),
+					path:  fmt.Sprintf("%s.%s", currentPath, key),
+					value: currentValue.MapIndex(key),
 				})
 			}
 
 		case reflect.Struct:
 			// Only plain structs, i.e. structs that don't contain unexported fields are
 			// supported without implementing json.Marshaler.
-			for i := 0; i < currentItem.value.NumField(); i++ {
-				field := currentItem.value.Type().Field(i)
-				if !field.IsExported() && !implementsJSONMarshaler(currentItem.value) {
-					return fmt.Errorf("unexported field '%s' at path '%s' is not supported, data must only contain exported fields, or json.Marshaler must be implement on '%s'", field.Name, currentItem.path, currentItem.value.Type().String())
+			for i := 0; i < currentValue.NumField(); i++ {
+				field := currentType.Field(i)
+				if !field.IsExported() && !implementsJSONMarshaler(currentValue) {
+					return fmt.Errorf("unexported field '%s' at path '%s' is not supported, data must only contain exported fields, or json.Marshaler must be implement on '%s'", field.Name, currentPath, currentType.String())
 				}
 
 				itemsToValidate = append(itemsToValidate, valueWithPath{
-					path:  fmt.Sprintf("%s.%s", currentItem.path, field.Name),
-					value: currentItem.value.Field(i),
+					path:  fmt.Sprintf("%s.%s", currentPath, field.Name),
+					value: currentValue.Field(i),
 				})
 			}
 
@@ -162,9 +166,9 @@ func (candidate Candidate) validateData() error {
 			// Slice can be circular (this fact was discovered by looking through the
 			// JSON encoding code in the standard library, which this circularity check
 			// is a copy of), so we also record them in the seen pointers.
-			pointer := currentItem.value.UnsafePointer()
+			pointer := currentValue.UnsafePointer()
 			if _, ok := seenPointers[pointer]; ok {
-				return fmt.Errorf("slice at path '%s' is circular, data must not be circular", currentItem.path)
+				return fmt.Errorf("slice at path '%s' is circular, data must not be circular", currentPath)
 			}
 			seenPointers[pointer] = struct{}{}
 
@@ -173,10 +177,10 @@ func (candidate Candidate) validateData() error {
 			fallthrough
 
 		case reflect.Array:
-			for i := 0; i < currentItem.value.Len(); i++ {
+			for i := 0; i < currentValue.Len(); i++ {
 				itemsToValidate = append(itemsToValidate, valueWithPath{
-					path:  fmt.Sprintf("%s.%d", currentItem.path, i),
-					value: currentItem.value.Index(i),
+					path:  fmt.Sprintf("%s.%d", currentPath, i),
+					value: currentValue.Index(i),
 				})
 			}
 
@@ -200,7 +204,7 @@ func (candidate Candidate) validateData() error {
 			// Note the absence of fallthrough statements.
 		default:
 			// This should never happen, because the switch is exhaustive.
-			return customErrors.NewInternalError(fmt.Errorf("unexpected Kind '%s' encountered", currentItem.value.Kind().String()))
+			return customErrors.NewInternalError(fmt.Errorf("unexpected Kind '%s' encountered", currentKind.String()))
 		}
 	}
 
