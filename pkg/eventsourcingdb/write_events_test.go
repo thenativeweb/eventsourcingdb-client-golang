@@ -82,6 +82,21 @@ func TestWriteEvents(t *testing.T) {
 		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: event candidate failed to validate: malformed event source '://wurstsoße': source must be a valid URI")
 	})
 
+	t.Run("returns an error if a candidate's data contains unexported fields.", func(t *testing.T) {
+		client := database.WithoutAuthorization.GetClient()
+
+		_, err := client.WriteEvents(
+			[]event.Candidate{
+				event.NewCandidate("tag:foobar.invalid,2023:service", "/foobar", "com.foobar.barbaz", struct {
+					private string
+				}{}),
+			},
+		)
+
+		assert.True(t, errors.IsInvalidParameterError(err))
+		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: event candidate failed to validate: event data is unsupported: unexported field 'Data.private' is not supported, data must only contain exported fields, or json.Marshaler must be implement on 'struct { private string }'")
+	})
+
 	t.Run("supports authorization.", func(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
 		source := event.NewSource(events.TestSource)

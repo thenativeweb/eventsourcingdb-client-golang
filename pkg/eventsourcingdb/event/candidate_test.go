@@ -79,7 +79,7 @@ func TestNewCandidate(t *testing.T) {
 }
 
 func TestCandidate_Validate(t *testing.T) {
-	t.Run("Returns an error if the source is malformed.", func(t *testing.T) {
+	t.Run("returns an error if the source is malformed.", func(t *testing.T) {
 		err := event.Candidate{
 			CandidateContext: event.CandidateContext{
 				Source:  "$%&/(",
@@ -92,7 +92,7 @@ func TestCandidate_Validate(t *testing.T) {
 		assert.ErrorContains(t, err, "event candidate failed to validate: malformed event source '$%&/(': source must be a valid URI")
 	})
 
-	t.Run("Returns an error if the subject is malformed.", func(t *testing.T) {
+	t.Run("returns an error if the subject is malformed.", func(t *testing.T) {
 		err := event.Candidate{
 			CandidateContext: event.CandidateContext{
 				Source:  "tag:foobar.invalid,2023:service",
@@ -105,7 +105,7 @@ func TestCandidate_Validate(t *testing.T) {
 		assert.ErrorContains(t, err, "event candidate failed to validate: malformed event subject 'barbaz': subject must be an absolute, slash-separated path")
 	})
 
-	t.Run("Returns an error if the type is malformed.", func(t *testing.T) {
+	t.Run("returns an error if the type is malformed.", func(t *testing.T) {
 		err := event.Candidate{
 			CandidateContext: event.CandidateContext{
 				Source:  "tag:foobar.invalid,2023:service",
@@ -118,7 +118,7 @@ func TestCandidate_Validate(t *testing.T) {
 		assert.ErrorContains(t, err, "event candidate failed to validate: malformed event type 'invalid': type must be a reverse domain name")
 	})
 
-	t.Run("Returns an error if the data is not a struct.", func(t *testing.T) {
+	t.Run("returns an error if the data is not a struct.", func(t *testing.T) {
 		err := event.Candidate{
 			CandidateContext: event.CandidateContext{
 				Source:  "tag:foobar.invalid,2023:service",
@@ -160,7 +160,7 @@ func TestCandidate_Validate(t *testing.T) {
 		assert.ErrorContains(t, err, "event candidate failed to validate: event data is unsupported: data must be a struct or map, but received 'ptr'")
 	})
 
-	t.Run("Returns an error if the data contains private fields and does not implement json.Marshaler.", func(t *testing.T) {
+	t.Run("returns an error if the data contains private fields and does not implement json.Marshaler.", func(t *testing.T) {
 		err := event.Candidate{
 			CandidateContext: event.CandidateContext{
 				Source:  "tag:foobar.invalid,2023:service",
@@ -170,11 +170,11 @@ func TestCandidate_Validate(t *testing.T) {
 			Data: TestDataWithPrivateFields{private: "foo"},
 		}.Validate()
 
-		assert.ErrorContains(t, err, "event candidate failed to validate: event data is unsupported: unexported field 'private' at path 'Data' is not supported, data must only contain exported fields, or json.Marshaler must be implement on 'event_test.TestDataWithPrivateFields'")
+		assert.ErrorContains(t, err, "event candidate failed to validate: event data is unsupported: unexported field 'Data.private' is not supported, data must only contain exported fields, or json.Marshaler must be implement on 'event_test.TestDataWithPrivateFields'")
 
 	})
 
-	t.Run("Returns an error if the data contains private fields in a nested struct and the nested struct does not implement json.Marshaler.", func(t *testing.T) {
+	t.Run("returns an error if the data contains private fields in a nested struct and the nested struct does not implement json.Marshaler.", func(t *testing.T) {
 		err := event.Candidate{
 			CandidateContext: event.CandidateContext{
 				Source:  "tag:foobar.invalid,2023:service",
@@ -184,10 +184,10 @@ func TestCandidate_Validate(t *testing.T) {
 			Data: TestDataWithPublicFields{Public: NestedDataWithoutJSONMarshaler{private: "foo"}},
 		}.Validate()
 
-		assert.ErrorContains(t, err, "event candidate failed to validate: event data is unsupported: unexported field 'private' at path 'Data.Public' is not supported, data must only contain exported fields, or json.Marshaler must be implement on 'event_test.NestedDataWithoutJSONMarshaler'")
+		assert.ErrorContains(t, err, "event candidate failed to validate: event data is unsupported: unexported field 'Data.Public.private' is not supported, data must only contain exported fields, or json.Marshaler must be implement on 'event_test.NestedDataWithoutJSONMarshaler'")
 	})
 
-	t.Run("Does not return an error if the data contains private fields but implements json.Marshaler.", func(t *testing.T) {
+	t.Run("does not return an error if the data contains private fields but implements json.Marshaler.", func(t *testing.T) {
 		err := event.Candidate{
 			CandidateContext: event.CandidateContext{
 				Source:  "tag:foobar.invalid,2023:service",
@@ -201,7 +201,7 @@ func TestCandidate_Validate(t *testing.T) {
 
 	})
 
-	t.Run("Does not return an error if the data contains private fields in a nested struct but the nested struct implements json.Marshaler.", func(t *testing.T) {
+	t.Run("does not return an error if the data contains private fields in a nested struct but the nested struct implements json.Marshaler.", func(t *testing.T) {
 		err := event.Candidate{
 			CandidateContext: event.CandidateContext{
 				Source:  "tag:foobar.invalid,2023:service",
@@ -214,7 +214,7 @@ func TestCandidate_Validate(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("Returns an error if a field contains an unsupported value and the value's type does not implement json.Marshaler.", func(t *testing.T) {
+	t.Run("returns an error if a field contains an unsupported value and the value's type does not implement json.Marshaler.", func(t *testing.T) {
 		err := event.Candidate{
 			CandidateContext: event.CandidateContext{
 				Source:  "tag:foobar.invalid,2023:service",
@@ -300,7 +300,7 @@ func TestCandidate_Validate(t *testing.T) {
 		assert.ErrorContains(t, err, "event candidate failed to validate: event data is unsupported: value of type 'uintptr' at path 'Data.Public' is not supported, either implement json.Marshaler on this type, or remove it from the struct")
 	})
 
-	t.Run("Does not return an error if a field contains an unsupported value but the value's type implements json.Marshaler.", func(t *testing.T) {
+	t.Run("does not return an error if a field contains an unsupported value but the value's type implements json.Marshaler.", func(t *testing.T) {
 		err := event.Candidate{
 			CandidateContext: event.CandidateContext{
 				Source:  "tag:foobar.invalid,2023:service",
@@ -316,7 +316,7 @@ func TestCandidate_Validate(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("Resolves pointers.", func(t *testing.T) {
+	t.Run("resolves pointers.", func(t *testing.T) {
 		err := event.Candidate{
 			CandidateContext: event.CandidateContext{
 				Source:  "tag:foobar.invalid,2023:service",
@@ -336,7 +336,7 @@ func TestCandidate_Validate(t *testing.T) {
 		assert.ErrorContains(t, err, "event candidate failed to validate: event data is unsupported: value of type 'complex128' at path 'Data.Public.Invalid' is not supported, either implement json.Marshaler on this type, or remove it from the struct")
 	})
 
-	t.Run("Resolves interfaces.", func(t *testing.T) {
+	t.Run("resolves interfaces.", func(t *testing.T) {
 		err := event.Candidate{
 			CandidateContext: event.CandidateContext{
 				Source:  "tag:foobar.invalid,2023:service",
@@ -352,7 +352,7 @@ func TestCandidate_Validate(t *testing.T) {
 		assert.ErrorContains(t, err, "event candidate failed to validate: event data is unsupported: value of type 'event_test.MyInterfaceImplementation' at path 'Data.Public' is not supported, either implement json.Marshaler on this type, or remove it from the struct")
 	})
 
-	t.Run("Works with type aliases.", func(t *testing.T) {
+	t.Run("works with type aliases.", func(t *testing.T) {
 		err := event.Candidate{
 			CandidateContext: event.CandidateContext{
 				Source:  "tag:foobar.invalid,2023:service",
@@ -368,7 +368,7 @@ func TestCandidate_Validate(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("Works with slices.", func(t *testing.T) {
+	t.Run("works with slices.", func(t *testing.T) {
 		err := event.Candidate{
 			CandidateContext: event.CandidateContext{
 				Source:  "tag:foobar.invalid,2023:service",
@@ -384,7 +384,7 @@ func TestCandidate_Validate(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("Works with maps.", func(t *testing.T) {
+	t.Run("works with maps.", func(t *testing.T) {
 		err := event.Candidate{
 			CandidateContext: event.CandidateContext{
 				Source:  "tag:foobar.invalid,2023:service",
@@ -400,7 +400,7 @@ func TestCandidate_Validate(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("Does not return an error if all fields in the data are supported by json.Marshal.", func(t *testing.T) {
+	t.Run("does not return an error if all fields in the data are supported by json.Marshal.", func(t *testing.T) {
 		err := event.Candidate{
 			CandidateContext: event.CandidateContext{
 				Source:  "tag:foobar.invalid,2023:service",
@@ -426,7 +426,7 @@ func TestCandidate_Validate(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("Returns an error if data contains a map with keys that are not strings or integers.", func(t *testing.T) {
+	t.Run("returns an error if data contains a map with keys that are not strings or integers.", func(t *testing.T) {
 		err := event.Candidate{
 			CandidateContext: event.CandidateContext{
 				Source:  "tag:foobar.invalid,2023:service",
@@ -476,7 +476,7 @@ func TestCandidate_Validate(t *testing.T) {
 		assert.ErrorContains(t, err, "event candidate failed to validate: event data is unsupported: map at path 'Data.Public' has keys of type 'struct {}', but only integers and strings are supported as map keys")
 	})
 
-	t.Run("Does not return an error if data contains a map with keys that are aliases of string or integer.", func(t *testing.T) {
+	t.Run("does not return an error if data contains a map with keys that are aliases of string or integer.", func(t *testing.T) {
 		err := event.Candidate{
 			CandidateContext: event.CandidateContext{
 				Source:  "tag:foobar.invalid,2023:service",
@@ -510,7 +510,7 @@ func TestCandidate_Validate(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("Returns an error if the data contains a circular pointer.", func(t *testing.T) {
+	t.Run("returns an error if the data contains a circular pointer.", func(t *testing.T) {
 		type CyclicStruct struct {
 			Cycle any
 		}
@@ -529,7 +529,7 @@ func TestCandidate_Validate(t *testing.T) {
 		assert.ErrorContains(t, err, "event candidate failed to validate: event data is unsupported: pointer at path 'Data.Cycle.Cycle' is circular, data must not contain circular references")
 	})
 
-	t.Run("Returns an error if the data contains a circular map.", func(t *testing.T) {
+	t.Run("returns an error if the data contains a circular map.", func(t *testing.T) {
 		circularMap := map[string]any{}
 		circularMap["x"] = circularMap
 
@@ -544,7 +544,7 @@ func TestCandidate_Validate(t *testing.T) {
 		assert.ErrorContains(t, err, "event candidate failed to validate: event data is unsupported: map at path 'Data.x' is circular, data must not contain circular references")
 	})
 
-	t.Run("Returns an error if the data contains a circular slice.", func(t *testing.T) {
+	t.Run("returns an error if the data contains a circular slice.", func(t *testing.T) {
 		circularSlice := make([]any, 1)
 		circularSlice[0] = circularSlice
 

@@ -157,7 +157,7 @@ func (candidate Candidate) validateData() error {
 			for i := 0; i < currentValue.NumField(); i++ {
 				field := currentType.Field(i)
 				if !field.IsExported() && !implementsJSONMarshaler(currentValue) {
-					return fmt.Errorf("unexported field '%s' at path '%s' is not supported, data must only contain exported fields, or json.Marshaler must be implement on '%s'", field.Name, currentPath, currentType.String())
+					return fmt.Errorf("unexported field '%s.%s' is not supported, data must only contain exported fields, or json.Marshaler must be implement on '%s'", currentPath, field.Name, currentType.String())
 				}
 
 				itemsToValidate = append(itemsToValidate, valueWithPath{
