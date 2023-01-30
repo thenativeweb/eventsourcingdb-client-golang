@@ -172,7 +172,7 @@ func (candidate Candidate) validateData() error {
 			// is a copy of), so we also record them in the seen pointers.
 			pointer := currentValue.UnsafePointer()
 			if _, ok := seenPointers[pointer]; ok {
-				return fmt.Errorf("slice at path '%s' is circular, data must not be circular", currentPath)
+				return fmt.Errorf("slice at path '%s' is circular, data must not contain circular references", currentPath)
 			}
 			seenPointers[pointer] = struct{}{}
 

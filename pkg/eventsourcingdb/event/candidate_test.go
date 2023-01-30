@@ -510,7 +510,54 @@ func TestCandidate_Validate(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("Returns an error if the data contains a cycle.", func(t *testing.T) {
+	t.Run("Returns an error if the data contains a circular pointer.", func(t *testing.T) {
+		type CyclicStruct struct {
+			Cycle any
+		}
 
+		circularStruct := CyclicStruct{}
+		circularStruct.Cycle = &circularStruct
+
+		err := event.Candidate{
+			CandidateContext: event.CandidateContext{
+				Source:  "tag:foobar.invalid,2023:service",
+				Subject: "/foo/bar",
+				Type:    "invalid.foobar.event",
+			},
+			Data: circularStruct,
+		}.Validate()
+		assert.ErrorContains(t, err, "event candidate failed to validate: event data is unsupported: pointer at path 'Data.Cycle.Cycle' is circular, data must not contain circular references")
+	})
+
+	t.Run("Returns an error if the data contains a circular map.", func(t *testing.T) {
+		circularMap := map[string]any{}
+		circularMap["x"] = circularMap
+
+		err := event.Candidate{
+			CandidateContext: event.CandidateContext{
+				Source:  "tag:foobar.invalid,2023:service",
+				Subject: "/foo/bar",
+				Type:    "invalid.foobar.event",
+			},
+			Data: circularMap,
+		}.Validate()
+		assert.ErrorContains(t, err, "event candidate failed to validate: event data is unsupported: map at path 'Data.x' is circular, data must not contain circular references")
+	})
+
+	t.Run("Returns an error if the data contains a circular slice.", func(t *testing.T) {
+		circularSlice := make([]any, 1)
+		circularSlice[0] = circularSlice
+
+		err := event.Candidate{
+			CandidateContext: event.CandidateContext{
+				Source:  "tag:foobar.invalid,2023:service",
+				Subject: "/foo/bar",
+				Type:    "invalid.foobar.event",
+			},
+			Data: map[string]any{
+				"foo": circularSlice,
+			},
+		}.Validate()
+		assert.ErrorContains(t, err, "event candidate failed to validate: event data is unsupported: slice at path 'Data.foo.0' is circular, data must not contain circular references")
 	})
 }
