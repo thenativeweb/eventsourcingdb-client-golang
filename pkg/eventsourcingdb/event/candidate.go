@@ -1,6 +1,7 @@
 package event
 
 import (
+	"encoding/json"
 	"fmt"
 	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
 	"reflect"
@@ -38,14 +39,24 @@ type valueWithPath struct {
 	value reflect.Value
 }
 
+func implementsJSONMarshaler(value reflect.Value) bool {
+	if !value.CanInterface() {
+		return false
+	}
+
+	_, ok := value.Interface().(json.Marshaler)
+
+	return ok
+}
+
 func (candidate Candidate) validateData() error {
 	dataValue := reflect.ValueOf(candidate.Data)
-	if dataValue.Kind() != reflect.Struct {
-		return fmt.Errorf("data must be a struct, but received '%s'", dataValue.Kind().String())
+	if dataValue.Kind() != reflect.Struct && dataValue.Kind() != reflect.Map {
+		return fmt.Errorf("data must be a struct or map, but received '%s'", dataValue.Kind().String())
 	}
 
 	itemsToValidate := []valueWithPath{
-		{path: "[root element]", value: reflect.ValueOf(candidate.Data)},
+		{path: "Data", value: reflect.ValueOf(candidate.Data)},
 	}
 	seenPointers := map[any]struct{}{}
 	var currentItem valueWithPath
@@ -53,12 +64,12 @@ func (candidate Candidate) validateData() error {
 	for len(itemsToValidate) > 0 {
 		currentItem, itemsToValidate = itemsToValidate[0], itemsToValidate[1:]
 
-		currentItem.value.CanAddr()
-
 		switch currentItem.value.Kind() {
-		// error cases
-		case reflect.Invalid:
-			fallthrough
+		// Unsupported data types, i.e. types that can't be json.Marshal'ed without
+		// custom types and a custom json.Marshaler implementation.
+		// Since we switch over value.Kind() and not value.Type(), a custom type
+		// with matching json.Marshaler implementation may exist for the value.
+		// Hence, we check if the value can be cast to json.Marshaler before erroring out.
 		case reflect.Uintptr:
 			fallthrough
 		case reflect.UnsafePointer:
@@ -70,26 +81,35 @@ func (candidate Candidate) validateData() error {
 		case reflect.Complex64:
 			fallthrough
 		case reflect.Func:
-			return fmt.Errorf("function at path '%s' is not supported, data must not contain functions", currentItem.path)
+			if !implementsJSONMarshaler(currentItem.value) {
+				return fmt.Errorf("value of type '%s' at path '%s' is not supported, either implement json.Marshaler on this type, or remove it from the struct", currentItem.value.Type().String(), currentItem.path)
+			}
 
-		// indirections
-		case reflect.Interface:
-			fallthrough
+		// Indirections i.e. values that point to other values.
 		case reflect.Pointer:
-			pointer := currentItem.value.UnsafeAddr()
+			// Pointers can cause circular references, so we memorize pointers we have seen.
+			pointer := currentItem.value.UnsafePointer()
 			if _, ok := seenPointers[pointer]; ok {
 				return fmt.Errorf("pointer at path '%s' is circular, data must not contain circular references", currentItem.path)
 			}
 			seenPointers[pointer] = struct{}{}
 
+			// Deal with pointers and interfaces in the same way by unpacking
+			// the underlying value using value.Elem().
+			fallthrough
+
+		case reflect.Interface:
 			itemsToValidate = append(itemsToValidate, valueWithPath{
 				value: currentItem.value.Elem(),
 				path:  currentItem.path,
 			})
 
-		// containers
+		// Containers i.e. types that contain other values, but are not just indirections.
 		case reflect.Map:
-			pointer := currentItem.value.UnsafeAddr()
+			// Maps can be circular (this fact was discovered by looking through the
+			// JSON encoding code in the standard library, which this circularity check
+			// is a copy of), so we also record them in the seen pointers.
+			pointer := currentItem.value.UnsafePointer()
 			if _, ok := seenPointers[pointer]; ok {
 				return fmt.Errorf("map at path '%s' is circular, data must not contain circular references", currentItem.path)
 			}
@@ -98,6 +118,7 @@ func (candidate Candidate) validateData() error {
 			mapKeys := currentItem.value.MapKeys()
 			keyKind := mapKeys[0].Kind()
 
+			// Only maps that use integers and strings as keys can be marshaled to JSON.
 			switch keyKind {
 			case reflect.Int:
 			case reflect.Int8:
@@ -110,8 +131,9 @@ func (candidate Candidate) validateData() error {
 			case reflect.Uint32:
 			case reflect.Uint64:
 			case reflect.String:
+				// Note the absence of fallthrough statements.
 			default:
-				return fmt.Errorf("map at path '%s' has keys of kind '%s', but only integers and strings are supported as map keys", currentItem.path, keyKind.String())
+				return fmt.Errorf("map at path '%s' has keys of type '%s', but only integers and strings are supported as map keys", currentItem.path, mapKeys[0].Type().String())
 			}
 
 			for _, key := range mapKeys {
@@ -122,10 +144,12 @@ func (candidate Candidate) validateData() error {
 			}
 
 		case reflect.Struct:
+			// Only plain structs, i.e. structs that don't contain unexported fields are
+			// supported without implementing json.Marshaler.
 			for i := 0; i < currentItem.value.NumField(); i++ {
 				field := currentItem.value.Type().Field(i)
-				if !field.IsExported() {
-					return fmt.Errorf("unexported field '%s' at path '%s' is not supported, data must only contain exported fields", field.Name, currentItem.path)
+				if !field.IsExported() && !implementsJSONMarshaler(currentItem.value) {
+					return fmt.Errorf("unexported field '%s' at path '%s' is not supported, data must only contain exported fields, or json.Marshaler must be implement on '%s'", field.Name, currentItem.path, currentItem.value.Type().String())
 				}
 
 				itemsToValidate = append(itemsToValidate, valueWithPath{
@@ -135,11 +159,17 @@ func (candidate Candidate) validateData() error {
 			}
 
 		case reflect.Slice:
-			pointer := currentItem.value.UnsafeAddr()
+			// Slice can be circular (this fact was discovered by looking through the
+			// JSON encoding code in the standard library, which this circularity check
+			// is a copy of), so we also record them in the seen pointers.
+			pointer := currentItem.value.UnsafePointer()
 			if _, ok := seenPointers[pointer]; ok {
 				return fmt.Errorf("slice at path '%s' is circular, data must not be circular", currentItem.path)
 			}
 			seenPointers[pointer] = struct{}{}
+
+			// Since arrays can't be circular, we skip the circularity check for them.
+			// Otherwise, we treat slices and arrays the same.
 			fallthrough
 
 		case reflect.Array:
@@ -150,7 +180,9 @@ func (candidate Candidate) validateData() error {
 				})
 			}
 
-		// primitives
+		// Primitives i.e. data types that are natively supported in json.Marshal.
+		case reflect.Invalid:
+			// i.e. nil
 		case reflect.Bool:
 		case reflect.Int:
 		case reflect.Int8:
@@ -165,8 +197,9 @@ func (candidate Candidate) validateData() error {
 		case reflect.Float32:
 		case reflect.Float64:
 		case reflect.String:
+			// Note the absence of fallthrough statements.
 		default:
-			// Should never happen, because the switch is exhaustive.
+			// This should never happen, because the switch is exhaustive.
 			return customErrors.NewInternalError(fmt.Errorf("unexpected Kind '%s' encountered", currentItem.value.Kind().String()))
 		}
 	}
