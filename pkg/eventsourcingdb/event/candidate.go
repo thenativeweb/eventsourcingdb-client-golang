@@ -39,6 +39,11 @@ type valueWithPath struct {
 }
 
 func (candidate Candidate) validateData() error {
+	dataValue := reflect.ValueOf(candidate.Data)
+	if dataValue.Kind() != reflect.Struct {
+		return fmt.Errorf("data must be a struct, but received '%s'", dataValue.Kind().String())
+	}
+
 	itemsToValidate := []valueWithPath{
 		{path: "[root element]", value: reflect.ValueOf(candidate.Data)},
 	}
@@ -65,7 +70,7 @@ func (candidate Candidate) validateData() error {
 		case reflect.Complex64:
 			fallthrough
 		case reflect.Func:
-			return fmt.Errorf("path '%s': unsupported kind: %s", currentItem.path, currentItem.value.Kind().String())
+			return fmt.Errorf("function at path '%s' is not supported, data must not contain functions", currentItem.path)
 
 		// indirections
 		case reflect.Interface:
@@ -73,7 +78,7 @@ func (candidate Candidate) validateData() error {
 		case reflect.Pointer:
 			pointer := currentItem.value.UnsafeAddr()
 			if _, ok := seenPointers[pointer]; ok {
-				return fmt.Errorf("path '%s': cycle detected", currentItem.path)
+				return fmt.Errorf("pointer at path '%s' is circular, data must not contain circular references", currentItem.path)
 			}
 			seenPointers[pointer] = struct{}{}
 
@@ -86,7 +91,7 @@ func (candidate Candidate) validateData() error {
 		case reflect.Map:
 			pointer := currentItem.value.UnsafeAddr()
 			if _, ok := seenPointers[pointer]; ok {
-				return fmt.Errorf("path '%s': cycle detected", currentItem.path)
+				return fmt.Errorf("map at path '%s' is circular, data must not contain circular references", currentItem.path)
 			}
 			seenPointers[pointer] = struct{}{}
 
@@ -106,7 +111,7 @@ func (candidate Candidate) validateData() error {
 			case reflect.Uint64:
 			case reflect.String:
 			default:
-				return fmt.Errorf("path '%s': unsupported map key kind: %s", currentItem.path, keyKind.String())
+				return fmt.Errorf("map at path '%s' has keys of kind '%s', but only integers and strings are supported as map keys", currentItem.path, keyKind.String())
 			}
 
 			for _, key := range mapKeys {
@@ -120,7 +125,7 @@ func (candidate Candidate) validateData() error {
 			for i := 0; i < currentItem.value.NumField(); i++ {
 				field := currentItem.value.Type().Field(i)
 				if !field.IsExported() {
-					return fmt.Errorf("path '%s': unsupported unexported field: %s", currentItem.path, field.Name)
+					return fmt.Errorf("unexported field '%s' at path '%s' is not supported, data must only contain exported fields", field.Name, currentItem.path)
 				}
 
 				itemsToValidate = append(itemsToValidate, valueWithPath{
@@ -132,7 +137,7 @@ func (candidate Candidate) validateData() error {
 		case reflect.Slice:
 			pointer := currentItem.value.UnsafeAddr()
 			if _, ok := seenPointers[pointer]; ok {
-				return fmt.Errorf("path '%s': cycle detected", currentItem.path)
+				return fmt.Errorf("slice at path '%s' is circular, data must not be circular", currentItem.path)
 			}
 			seenPointers[pointer] = struct{}{}
 			fallthrough

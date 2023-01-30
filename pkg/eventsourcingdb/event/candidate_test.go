@@ -40,7 +40,7 @@ func TestCandidate_Validate(t *testing.T) {
 				Subject: "/foo/bar",
 				Type:    "invalid.foobar.event",
 			},
-			Data: nil,
+			Data: struct{}{},
 		}.Validate()
 
 		assert.ErrorContains(t, err, "event candidate failed to validate: malformed event source '$%&/(': source must be a valid URI")
@@ -53,7 +53,7 @@ func TestCandidate_Validate(t *testing.T) {
 				Subject: "barbaz",
 				Type:    "invalid.foobar.event",
 			},
-			Data: nil,
+			Data: struct{}{},
 		}.Validate()
 
 		assert.ErrorContains(t, err, "event candidate failed to validate: malformed event subject 'barbaz': subject must be an absolute, slash-separated path")
@@ -66,9 +66,68 @@ func TestCandidate_Validate(t *testing.T) {
 				Subject: "/foo/bar",
 				Type:    "invalid",
 			},
-			Data: nil,
+			Data: struct{}{},
 		}.Validate()
 
 		assert.ErrorContains(t, err, "event candidate failed to validate: malformed event type 'invalid': type must be a reverse domain name")
+	})
+
+	t.Run("Returns an error if the data is not a struct.", func(t *testing.T) {
+		err := event.Candidate{
+			CandidateContext: event.CandidateContext{
+				Source:  "tag:foobar.invalid,2023:service",
+				Subject: "/foo/bar",
+				Type:    "invalid.foobar.event",
+			},
+			Data: nil,
+		}.Validate()
+		assert.ErrorContains(t, err, "event candidate failed to validate: event data is unsupported: data must be a struct, but received 'invalid'")
+
+		err = event.Candidate{
+			CandidateContext: event.CandidateContext{
+				Source:  "tag:foobar.invalid,2023:service",
+				Subject: "/foo/bar",
+				Type:    "invalid.foobar.event",
+			},
+			Data: []string{"foo", "bar"},
+		}.Validate()
+		assert.ErrorContains(t, err, "event candidate failed to validate: event data is unsupported: data must be a struct, but received 'slice'")
+
+		err = event.Candidate{
+			CandidateContext: event.CandidateContext{
+				Source:  "tag:foobar.invalid,2023:service",
+				Subject: "/foo/bar",
+				Type:    "invalid.foobar.event",
+			},
+			Data: "foobar",
+		}.Validate()
+		assert.ErrorContains(t, err, "event candidate failed to validate: event data is unsupported: data must be a struct, but received 'string'")
+
+		err = event.Candidate{
+			CandidateContext: event.CandidateContext{
+				Source:  "tag:foobar.invalid,2023:service",
+				Subject: "/foo/bar",
+				Type:    "invalid.foobar.event",
+			},
+			Data: &struct{}{},
+		}.Validate()
+		assert.ErrorContains(t, err, "event candidate failed to validate: event data is unsupported: data must be a struct, but received 'ptr'")
+	})
+
+	t.Run("Returns an error if the data contains private fields.", func(t *testing.T) {
+		type TestData struct {
+			private string
+		}
+		err := event.Candidate{
+			CandidateContext: event.CandidateContext{
+				Source:  "tag:foobar.invalid,2023:service",
+				Subject: "/foo/bar",
+				Type:    "invalid.foobar.event",
+			},
+			Data: TestData{private: "foo"},
+		}.Validate()
+
+		assert.ErrorContains(t, err, "event candidate failed to validate: event data is unsupported: unexported field 'private' at path '[root element]' is not supported, data must only contain exported fields")
+
 	})
 }
