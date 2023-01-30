@@ -130,4 +130,23 @@ func TestCandidate_Validate(t *testing.T) {
 		assert.ErrorContains(t, err, "event candidate failed to validate: event data is unsupported: unexported field 'private' at path '[root element]' is not supported, data must only contain exported fields")
 
 	})
+
+	t.Run("Returns an error if the data contains private fields in a nested struct.", func(t *testing.T) {
+		type NestedData struct {
+			private string
+		}
+		type TestData struct {
+			Public NestedData
+		}
+		err := event.Candidate{
+			CandidateContext: event.CandidateContext{
+				Source:  "tag:foobar.invalid,2023:service",
+				Subject: "/foo/bar",
+				Type:    "invalid.foobar.event",
+			},
+			Data: TestData{Public: NestedData{private: "foo"}},
+		}.Validate()
+
+		assert.ErrorContains(t, err, "event candidate failed to validate: event data is unsupported: unexported field 'private' at path '[root element].Public' is not supported, data must only contain exported fields")
+	})
 }
