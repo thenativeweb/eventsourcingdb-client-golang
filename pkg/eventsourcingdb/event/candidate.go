@@ -63,10 +63,14 @@ func (candidate Candidate) validateData() error {
 
 	for len(itemsToValidate) > 0 {
 		currentItem, itemsToValidate = itemsToValidate[0], itemsToValidate[1:]
+
 		currentPath := currentItem.path
 		currentValue := currentItem.value
 		currentKind := currentValue.Kind()
-		currentType := currentValue.Type()
+		var currentType reflect.Type
+		if currentKind != reflect.Invalid {
+			currentType = currentValue.Type()
+		}
 
 		switch currentKind {
 		// Unsupported data types, i.e. types that can't be json.Marshal'ed without
