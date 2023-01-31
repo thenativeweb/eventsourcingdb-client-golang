@@ -501,4 +501,14 @@ func TestObserveEvents(t *testing.T) {
 		assert.ErrorContains(t, err, "server error: unsupported stream item encountered:")
 		assert.ErrorContains(t, err, "(trying to unmarshal")
 	})
+
+	t.Run("returns an error if the subject is invalid.", func(t *testing.T) {
+		client := database.WithoutAuthorization.GetClient()
+
+		results := client.ObserveEvents(context.Background(), "uargh", eventsourcingdb.ObserveRecursively())
+		_, err := (<-results).GetData()
+
+		assert.True(t, errors.IsInvalidParameterError(err))
+		assert.ErrorContains(t, err, "parameter 'subject' is invalid: malformed event subject 'uargh': subject must be an absolute, slash-separated path")
+	})
 }
