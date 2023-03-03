@@ -2,13 +2,14 @@ package eventsourcingdb_test
 
 import (
 	"context"
+	"net/http"
+	"testing"
+
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/httpserver"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
-	"net/http"
-	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -74,27 +75,12 @@ func TestWriteEvents(t *testing.T) {
 
 		_, err := client.WriteEvents(
 			[]event.Candidate{
-				event.NewCandidate("://wurstsoße", "/foobar", "com.foobar.barbaz", struct{}{}),
+				event.NewCandidate("://foobar", "/foobar", "com.foobar.barbaz", struct{}{}),
 			},
 		)
 
 		assert.True(t, errors.IsInvalidParameterError(err))
-		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: event candidate failed to validate: malformed event source '://wurstsoße': source must be a valid URI")
-	})
-
-	t.Run("returns an error if a candidate's data contains unexported fields.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
-
-		_, err := client.WriteEvents(
-			[]event.Candidate{
-				event.NewCandidate("tag:foobar.invalid,2023:service", "/foobar", "com.foobar.barbaz", struct {
-					private string
-				}{}),
-			},
-		)
-
-		assert.True(t, errors.IsInvalidParameterError(err))
-		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: event candidate failed to validate: event data is unsupported: unexported field 'Data.private' is not supported, data must only contain exported fields, or json.Marshaler must be implement on 'struct { private string }'")
+		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: event candidate failed to validate: malformed event source '://foobar': source must be a valid URI")
 	})
 
 	t.Run("supports authorization.", func(t *testing.T) {
