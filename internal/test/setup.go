@@ -21,7 +21,7 @@ func Setup(dockerfilePath string) (Database, error) {
 	accessToken := uuid.New().String()
 	withAuthorization, err := NewContainerizedTestingDatabase(
 		image,
-		[]string{"server", "--dev", "--ui", "--access-token", accessToken},
+		[]string{"run", "--dev", "--ui", "--access-token", accessToken},
 		eventsourcingdb.AccessToken(accessToken),
 	)
 	if err != nil {
@@ -30,7 +30,7 @@ func Setup(dockerfilePath string) (Database, error) {
 
 	withoutAuthorization, err := NewContainerizedTestingDatabase(
 		image,
-		[]string{"server", "--dev", "--ui"},
+		[]string{"run", "--dev", "--ui"},
 	)
 	if err != nil {
 		return Database{}, err
