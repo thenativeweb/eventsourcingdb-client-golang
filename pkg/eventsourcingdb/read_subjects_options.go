@@ -2,13 +2,13 @@ package eventsourcingdb
 
 import "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
 
-type ReadSubjectOption struct {
+type ReadSubjectsOption struct {
 	apply func(options *readSubjectsRequestBody) error
 	name  string
 }
 
-func BaseSubject(baseSubject string) ReadSubjectOption {
-	return ReadSubjectOption{
+func BaseSubject(baseSubject string) ReadSubjectsOption {
+	return ReadSubjectsOption{
 		apply: func(options *readSubjectsRequestBody) error {
 			if err := event.ValidateSubject(baseSubject); err != nil {
 				return err
