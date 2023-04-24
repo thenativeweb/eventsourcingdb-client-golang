@@ -58,7 +58,7 @@ func ReadChronologically() ReadEventsOption {
 	}
 }
 
-func ReadReversedChronologically() ReadEventsOption {
+func ReadAntichronologically() ReadEventsOption {
 	return ReadEventsOption{
 		apply: func(options *readEventsOptions) error {
 			value := false
@@ -66,7 +66,7 @@ func ReadReversedChronologically() ReadEventsOption {
 
 			return nil
 		},
-		name: "ReadReversedChronologically",
+		name: "ReadAntichronologically",
 	}
 }
 
