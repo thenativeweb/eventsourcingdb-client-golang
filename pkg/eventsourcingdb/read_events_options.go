@@ -35,7 +35,7 @@ type readFromLatestEvent struct {
 
 type readEventsOptions struct {
 	Recursive       bool                 `json:"recursive"`
-	Chronological   *bool                `json:"chronological,omitempty"`
+	Order           *string              `json:"order,omitempty"`
 	LowerBoundID    *string              `json:"lowerBoundId,omitempty"`
 	UpperBoundID    *string              `json:"upperBoundId,omitempty"`
 	FromLatestEvent *readFromLatestEvent `json:"fromLatestEvent,omitempty"`
@@ -49,8 +49,8 @@ type ReadEventsOption struct {
 func ReadChronologically() ReadEventsOption {
 	return ReadEventsOption{
 		apply: func(options *readEventsOptions) error {
-			value := true
-			options.Chronological = &value
+			value := "chronological"
+			options.Order = &value
 
 			return nil
 		},
@@ -61,8 +61,8 @@ func ReadChronologically() ReadEventsOption {
 func ReadAntichronologically() ReadEventsOption {
 	return ReadEventsOption{
 		apply: func(options *readEventsOptions) error {
-			value := false
-			options.Chronological = &value
+			value := "antichronological"
+			options.Order = &value
 
 			return nil
 		},
