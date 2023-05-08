@@ -9,6 +9,7 @@ import (
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/ifeventismissingduringobserve"
 	"net/http"
 	"testing"
 
@@ -159,7 +160,7 @@ func TestObserveEvents(t *testing.T) {
 			eventsourcingdb.ObserveFromLatestEvent(
 				"/users/loggedIn",
 				events.PrefixEventType("loggedin"),
-				eventsourcingdb.ReadEverything,
+				ifeventismissingduringobserve.ReadEverything,
 			),
 		)
 
@@ -231,7 +232,7 @@ func TestObserveEvents(t *testing.T) {
 			"/",
 			eventsourcingdb.ObserveRecursively(),
 			eventsourcingdb.ObserveFromLowerBoundID("0"),
-			eventsourcingdb.ObserveFromLatestEvent("/", "com.foo.bar", eventsourcingdb.WaitForEvent),
+			eventsourcingdb.ObserveFromLatestEvent("/", "com.foo.bar", ifeventismissingduringobserve.WaitForEvent),
 		)
 
 		result := <-results
@@ -281,7 +282,7 @@ func TestObserveEvents(t *testing.T) {
 			context.Background(),
 			"/",
 			eventsourcingdb.ObserveRecursively(),
-			eventsourcingdb.ObserveFromLatestEvent("", "com.foo.bar", eventsourcingdb.WaitForEvent),
+			eventsourcingdb.ObserveFromLatestEvent("", "com.foo.bar", ifeventismissingduringobserve.WaitForEvent),
 		)
 
 		result := <-results
@@ -298,7 +299,7 @@ func TestObserveEvents(t *testing.T) {
 			context.Background(),
 			"/",
 			eventsourcingdb.ObserveRecursively(),
-			eventsourcingdb.ObserveFromLatestEvent("/", ".bar", eventsourcingdb.WaitForEvent),
+			eventsourcingdb.ObserveFromLatestEvent("/", ".bar", ifeventismissingduringobserve.WaitForEvent),
 		)
 
 		result := <-results
