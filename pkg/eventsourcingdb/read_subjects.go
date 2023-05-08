@@ -71,9 +71,7 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectsO
 		}
 
 		routeURL := client.configuration.baseURL.JoinPath("api", "read-subjects")
-		httpClient := &http.Client{
-			Timeout: client.configuration.timeout,
-		}
+		httpClient := &http.Client{}
 		request, err := http.NewRequest("POST", routeURL.String(), bytes.NewReader(requestBodyAsJSON))
 		if err != nil {
 			results <- newReadSubjectsError(

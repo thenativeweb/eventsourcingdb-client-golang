@@ -74,9 +74,7 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 		}
 
 		routeURL := client.configuration.baseURL.JoinPath("api", "observe-events")
-		httpClient := &http.Client{
-			Timeout: client.configuration.timeout,
-		}
+		httpClient := &http.Client{}
 		request, err := http.NewRequest(http.MethodPost, routeURL.String(), bytes.NewReader(requestBodyAsJSON))
 		if err != nil {
 			results <- newObserveEventsError(

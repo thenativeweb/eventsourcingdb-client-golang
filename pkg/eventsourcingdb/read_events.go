@@ -74,9 +74,7 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 		}
 
 		routeURL := client.configuration.baseURL.JoinPath("api", "read-events")
-		httpClient := &http.Client{
-			Timeout: client.configuration.timeout,
-		}
+		httpClient := &http.Client{}
 		request, err := http.NewRequest("POST", routeURL.String(), bytes.NewReader(requestBodyAsJSON))
 		if err != nil {
 			results <- newReadEventsError(

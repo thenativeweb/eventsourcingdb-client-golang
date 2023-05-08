@@ -2,7 +2,6 @@ package eventsourcingdb
 
 import (
 	"errors"
-	"time"
 )
 
 type ClientOption struct {
@@ -22,17 +21,6 @@ func MaxTries(maxTries int) ClientOption {
 			return nil
 		},
 		name: "MaxTries",
-	}
-}
-
-func Timeout(timeout time.Duration) ClientOption {
-	return ClientOption{
-		apply: func(configuration *clientConfiguration) error {
-			configuration.timeout = timeout
-
-			return nil
-		},
-		name: "Timeout",
 	}
 }
 

@@ -1,17 +1,14 @@
 package eventsourcingdb
 
 import (
+	"github.com/Masterminds/semver"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
 	"net/url"
 	"strconv"
-	"time"
-
-	"github.com/Masterminds/semver"
 )
 
 type clientConfiguration struct {
 	baseURL         *url.URL
-	timeout         time.Duration
 	accessToken     string
 	protocolVersion semver.Version
 	maxTries        int
@@ -20,7 +17,6 @@ type clientConfiguration struct {
 func getDefaultConfiguration(baseURL *url.URL) clientConfiguration {
 	return clientConfiguration{
 		baseURL:         baseURL,
-		timeout:         10 * time.Second,
 		accessToken:     "",
 		protocolVersion: *semver.MustParse("1.0.0"),
 		maxTries:        10,
