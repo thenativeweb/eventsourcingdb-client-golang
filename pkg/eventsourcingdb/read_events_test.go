@@ -10,6 +10,7 @@ import (
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/ifeventismissingduringread"
 	"net/http"
 	"testing"
 )
@@ -151,7 +152,7 @@ func TestReadEvents(t *testing.T) {
 			eventsourcingdb.ReadFromLatestEvent(
 				"/users/loggedIn",
 				events.PrefixEventType("loggedIn"),
-				eventsourcingdb.ReadEverything,
+				ifeventismissingduringread.ReadEverything,
 			),
 		)
 
@@ -250,7 +251,7 @@ func TestReadEvents(t *testing.T) {
 			"/",
 			eventsourcingdb.ReadRecursively(),
 			eventsourcingdb.ReadFromLowerBoundID("0"),
-			eventsourcingdb.ReadFromLatestEvent("/", "com.foo.bar", eventsourcingdb.ReadEverything),
+			eventsourcingdb.ReadFromLatestEvent("/", "com.foo.bar", ifeventismissingduringread.ReadEverything),
 		)
 
 		result := <-results
@@ -334,7 +335,7 @@ func TestReadEvents(t *testing.T) {
 			context.Background(),
 			"/",
 			eventsourcingdb.ReadRecursively(),
-			eventsourcingdb.ReadFromLatestEvent("", "com.foo.bar", eventsourcingdb.ReadNothing),
+			eventsourcingdb.ReadFromLatestEvent("", "com.foo.bar", ifeventismissingduringread.ReadNothing),
 		)
 
 		result := <-results
@@ -351,7 +352,7 @@ func TestReadEvents(t *testing.T) {
 			context.Background(),
 			"/",
 			eventsourcingdb.ReadRecursively(),
-			eventsourcingdb.ReadFromLatestEvent("/", ".bar", eventsourcingdb.ReadNothing),
+			eventsourcingdb.ReadFromLatestEvent("/", ".bar", ifeventismissingduringread.ReadNothing),
 		)
 
 		result := <-results
