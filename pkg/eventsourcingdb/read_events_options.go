@@ -2,15 +2,9 @@ package eventsourcingdb
 
 import (
 	"errors"
+	"fmt"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
 	"strconv"
-)
-
-type IfEventIsMissingDuringRead string
-
-const (
-	ReadNothing    IfEventIsMissingDuringRead = "read-nothing"
-	ReadEverything IfEventIsMissingDuringRead = "read-everything"
 )
 
 type ReadRecursivelyOption func() bool
@@ -28,9 +22,9 @@ func ReadNonRecursively() ReadRecursivelyOption {
 }
 
 type readFromLatestEvent struct {
-	Subject          string                     `json:"subject"`
-	Type             string                     `json:"type"`
-	IfEventIsMissing IfEventIsMissingDuringRead `json:"ifEventIsMissing"`
+	Subject          string           `json:"subject"`
+	Type             string           `json:"type"`
+	IfEventIsMissing IfEventIsMissing `json:"ifEventIsMissing"`
 }
 
 type readEventsOptions struct {
@@ -44,6 +38,17 @@ type readEventsOptions struct {
 type ReadEventsOption struct {
 	apply func(options *readEventsOptions) error
 	name  string
+}
+
+func validateIfEventIsMissingForReadEvents(value IfEventIsMissing) error {
+	switch value {
+	case ReadEverything:
+		fallthrough
+	case ReadNothing:
+		return nil
+	default:
+		return fmt.Errorf("%q is not a valid value for ifEventIsMissing, it must be either %q or %q", value, ReadEverything, ReadNothing)
+	}
 }
 
 func ReadChronologically() ReadEventsOption {
@@ -112,7 +117,7 @@ func ReadUntilUpperBoundID(upperBoundID string) ReadEventsOption {
 	}
 }
 
-func ReadFromLatestEvent(subject, eventType string, ifEventIsMissing IfEventIsMissingDuringRead) ReadEventsOption {
+func ReadFromLatestEvent(subject, eventType string, ifEventIsMissing IfEventIsMissing) ReadEventsOption {
 	return ReadEventsOption{
 		apply: func(options *readEventsOptions) error {
 			if options.LowerBoundID != nil {
@@ -122,6 +127,9 @@ func ReadFromLatestEvent(subject, eventType string, ifEventIsMissing IfEventIsMi
 				return err
 			}
 			if err := event.ValidateType(eventType); err != nil {
+				return err
+			}
+			if err := validateIfEventIsMissingForReadEvents(ifEventIsMissing); err != nil {
 				return err
 			}
 
