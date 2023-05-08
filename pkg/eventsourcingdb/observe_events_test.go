@@ -12,6 +12,7 @@ import (
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/ifeventismissingduringobserve"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -511,5 +512,36 @@ func TestObserveEvents(t *testing.T) {
 
 		assert.True(t, errors.IsInvalidParameterError(err))
 		assert.ErrorContains(t, err, "parameter 'subject' is invalid: malformed event subject 'uargh': subject must be an absolute, slash-separated path")
+	})
+
+	t.Run("observes for longer than ten seconds.", func(t *testing.T) {
+		client, _ := eventsourcingdb.NewClient("http://localhost:3000")
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		results := client.ObserveEvents(ctx, "/", eventsourcingdb.ObserveRecursively())
+		for {
+			select {
+			case _, ok := <-results:
+				assert.True(t, ok)
+				if !ok {
+					return
+				}
+			case <-time.After(11 * time.Second):
+				apfelFredCandidate := event.NewCandidate(
+					events.TestSource,
+					"/users/registered",
+					events.Events.Registered.ApfelFred.Type,
+					events.Events.Registered.ApfelFred.Data,
+				)
+				_, _ = client.WriteEvents([]event.Candidate{
+					apfelFredCandidate,
+				})
+				_, ok := <-results
+				assert.True(t, ok)
+				return
+			}
+		}
 	})
 }
