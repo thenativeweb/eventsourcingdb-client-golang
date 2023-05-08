@@ -40,9 +40,7 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 	results := make(chan ObserveEventsResult, 1)
 
 	go func() {
-		defer func() {
-			close(results)
-		}()
+		defer close(results)
 
 		if err := event.ValidateSubject(subject); err != nil {
 			results <- newObserveEventsError(
