@@ -2,15 +2,9 @@ package eventsourcingdb
 
 import (
 	"errors"
+	"fmt"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
 	"strconv"
-)
-
-type IfEventIsMissingDuringObserve string
-
-const (
-	ObserveNothing IfEventIsMissingDuringObserve = "read-nothing"
-	WaitForEvent   IfEventIsMissingDuringObserve = "wait-for-event"
 )
 
 type ObserveRecursivelyOption func() bool
@@ -28,9 +22,9 @@ func ObserveNonRecursively() ObserveRecursivelyOption {
 }
 
 type observeFromLatestEvent struct {
-	Subject          string                        `json:"subject"`
-	Type             string                        `json:"type"`
-	IfEventIsMissing IfEventIsMissingDuringObserve `json:"ifEventIsMissing"`
+	Subject          string           `json:"subject"`
+	Type             string           `json:"type"`
+	IfEventIsMissing IfEventIsMissing `json:"ifEventIsMissing"`
 }
 
 type observeEventsOptions struct {
@@ -42,6 +36,17 @@ type observeEventsOptions struct {
 type ObserveEventsOption struct {
 	apply func(options *observeEventsOptions) error
 	name  string
+}
+
+func validateIfEventIsMissingForObserveEvents(value IfEventIsMissing) error {
+	switch value {
+	case ReadEverything:
+		fallthrough
+	case WaitForEvent:
+		return nil
+	default:
+		return fmt.Errorf("%q is not a valid value for ifEventIsMissing, it must be either %q or %q", value, ReadEverything, WaitForEvent)
+	}
 }
 
 func ObserveFromLowerBoundID(lowerBoundID string) ObserveEventsOption {
@@ -67,7 +72,7 @@ func ObserveFromLowerBoundID(lowerBoundID string) ObserveEventsOption {
 	}
 }
 
-func ObserveFromLatestEvent(subject, eventType string, ifEventIsMissing IfEventIsMissingDuringObserve) ObserveEventsOption {
+func ObserveFromLatestEvent(subject, eventType string, ifEventIsMissing IfEventIsMissing) ObserveEventsOption {
 	return ObserveEventsOption{
 		apply: func(options *observeEventsOptions) error {
 			if options.LowerBoundID != nil {
@@ -77,6 +82,9 @@ func ObserveFromLatestEvent(subject, eventType string, ifEventIsMissing IfEventI
 				return err
 			}
 			if err := event.ValidateType(eventType); err != nil {
+				return err
+			}
+			if err := validateIfEventIsMissingForObserveEvents(ifEventIsMissing); err != nil {
 				return err
 			}
 

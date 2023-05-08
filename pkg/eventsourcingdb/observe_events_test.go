@@ -159,7 +159,7 @@ func TestObserveEvents(t *testing.T) {
 			eventsourcingdb.ObserveFromLatestEvent(
 				"/users/loggedIn",
 				events.PrefixEventType("loggedin"),
-				eventsourcingdb.ObserveNothing,
+				eventsourcingdb.ReadEverything,
 			),
 		)
 
