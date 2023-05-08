@@ -45,9 +45,7 @@ func (client *Client) WriteEvents(eventCandidates []event.Candidate, preconditio
 	}
 
 	routeURL := client.configuration.baseURL.JoinPath("api", "write-events")
-	httpClient := &http.Client{
-		Timeout: client.configuration.timeout,
-	}
+	httpClient := &http.Client{}
 	request, err := http.NewRequest("POST", routeURL.String(), bytes.NewReader(requestBodyAsJSON))
 	if err != nil {
 		return nil, errors.NewInternalError(err)

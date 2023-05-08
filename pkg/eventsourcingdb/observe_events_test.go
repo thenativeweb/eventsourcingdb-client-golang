@@ -3,7 +3,6 @@ package eventsourcingdb_test
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/httpserver"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
@@ -87,14 +86,17 @@ func TestObserveEvents(t *testing.T) {
 
 	t.Run("supports authorization.", func(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
 		resultChan := client.ObserveEvents(ctx, "/", eventsourcingdb.ObserveNonRecursively())
 
 		data, ok := <-resultChan
+		_, err := data.GetData()
 
-		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
+		assert.True(t, ok)
+		var expectedError *errors.ContextCanceledError
+		assert.ErrorAs(t, err, &expectedError, err)
 	})
 
 	t.Run("observes events from a single subject.", func(t *testing.T) {
@@ -515,7 +517,7 @@ func TestObserveEvents(t *testing.T) {
 	})
 
 	t.Run("observes for longer than ten seconds.", func(t *testing.T) {
-		client, _ := eventsourcingdb.NewClient("http://localhost:3000")
+		client := database.WithoutAuthorization.GetClient()
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()

@@ -4,7 +4,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/docker"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb"
-	"time"
 )
 
 func Setup(dockerfilePath string) (Database, error) {
@@ -39,7 +38,6 @@ func Setup(dockerfilePath string) (Database, error) {
 	client, err := eventsourcingdb.NewClient(
 		"http://localhost.invalid",
 		eventsourcingdb.MaxTries(3),
-		eventsourcingdb.Timeout(1*time.Second),
 	)
 	if err != nil {
 		return Database{}, err

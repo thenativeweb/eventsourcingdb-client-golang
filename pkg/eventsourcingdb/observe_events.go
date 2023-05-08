@@ -40,7 +40,9 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 	results := make(chan ObserveEventsResult, 1)
 
 	go func() {
-		defer close(results)
+		defer func() {
+			close(results)
+		}()
 
 		if err := event.ValidateSubject(subject); err != nil {
 			results <- newObserveEventsError(
@@ -74,9 +76,7 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 		}
 
 		routeURL := client.configuration.baseURL.JoinPath("api", "observe-events")
-		httpClient := &http.Client{
-			Timeout: client.configuration.timeout,
-		}
+		httpClient := &http.Client{}
 		request, err := http.NewRequest(http.MethodPost, routeURL.String(), bytes.NewReader(requestBodyAsJSON))
 		if err != nil {
 			results <- newObserveEventsError(

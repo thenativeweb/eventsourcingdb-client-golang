@@ -8,9 +8,7 @@ import (
 )
 
 func (client *Client) Ping() error {
-	httpClient := &http.Client{
-		Timeout: client.configuration.timeout,
-	}
+	httpClient := &http.Client{}
 	url := client.configuration.baseURL.JoinPath("ping")
 
 	response, err := httpClient.Get(url.String())
