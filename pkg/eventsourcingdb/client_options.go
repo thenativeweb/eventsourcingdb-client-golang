@@ -23,18 +23,3 @@ func MaxTries(maxTries int) ClientOption {
 		name: "MaxTries",
 	}
 }
-
-func AccessToken(accessToken string) ClientOption {
-	return ClientOption{
-		apply: func(configuration *clientConfiguration) error {
-			if accessToken == "" {
-				return errors.New("the access token must not be empty")
-			}
-
-			configuration.accessToken = accessToken
-
-			return nil
-		},
-		name: "AccessToken",
-	}
-}

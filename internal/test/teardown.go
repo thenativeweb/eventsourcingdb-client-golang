@@ -12,11 +12,6 @@ func Teardown(database Database) error {
 		errorMessage = errorMessage + ": " + err.Error()
 	}
 
-	err = database.WithoutAuthorization.Stop()
-	if err != nil {
-		errorMessage = errorMessage + ": " + err.Error()
-	}
-
 	if errorMessage != "" {
 		return errors.New(errorMessage)
 	}

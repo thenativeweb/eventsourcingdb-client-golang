@@ -34,7 +34,7 @@ func TestWriteEvents(t *testing.T) {
 	})
 
 	t.Run("returns an error if no candidates are passed.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		_, err := client.WriteEvents(
 			[]event.Candidate{},
@@ -45,7 +45,7 @@ func TestWriteEvents(t *testing.T) {
 	})
 
 	t.Run("returns an error if a candidate subject is malformed", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		_, err := client.WriteEvents(
 			[]event.Candidate{
@@ -58,7 +58,7 @@ func TestWriteEvents(t *testing.T) {
 	})
 
 	t.Run("returns an error if a candidate type is malformed", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		_, err := client.WriteEvents(
 			[]event.Candidate{
@@ -71,7 +71,7 @@ func TestWriteEvents(t *testing.T) {
 	})
 
 	t.Run("returns an error if a candidate source is malformed", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		_, err := client.WriteEvents(
 			[]event.Candidate{
@@ -100,7 +100,7 @@ func TestWriteEvents(t *testing.T) {
 	})
 
 	t.Run("writes a single event.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 		source := event.NewSource(events.TestSource)
 
 		subject := "/" + uuid.New().String()
@@ -116,7 +116,7 @@ func TestWriteEvents(t *testing.T) {
 	})
 
 	t.Run("returns the written event metadata.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 		source := event.NewSource(events.TestSource)
 
 		janeRegistered := events.Events.Registered.JaneDoe
@@ -151,7 +151,7 @@ func TestWriteEvents(t *testing.T) {
 	})
 
 	t.Run("writes multiple events.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 		source := event.NewSource(events.TestSource)
 
 		subject := "/" + uuid.New().String()
@@ -175,7 +175,7 @@ func TestWriteEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, eventsourcingdb.MaxTries(2))
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token", eventsourcingdb.MaxTries(2))
 		assert.NoError(t, err)
 
 		source := event.NewSource(events.TestSource)
@@ -204,7 +204,7 @@ func TestWriteEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		source := event.NewSource(events.TestSource)
@@ -231,7 +231,7 @@ func TestWriteEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		source := event.NewSource(events.TestSource)
@@ -258,7 +258,7 @@ func TestWriteEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		source := event.NewSource(events.TestSource)
@@ -286,7 +286,7 @@ func TestWriteEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		source := event.NewSource(events.TestSource)
@@ -316,7 +316,7 @@ func TestWriteEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		source := event.NewSource(events.TestSource)
@@ -339,7 +339,7 @@ func TestWriteEvents(t *testing.T) {
 func TestWriteEventsWithPreconditions(t *testing.T) {
 	t.Run("when using the 'is subject pristine' precondition", func(t *testing.T) {
 		t.Run("returns an error if the IsSubjectPristine precondition uses an invalid subject.", func(t *testing.T) {
-			client := database.WithoutAuthorization.GetClient()
+			client := database.WithAuthorization.GetClient()
 
 			_, err := client.WriteEvents(
 				[]event.Candidate{
@@ -353,7 +353,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 		})
 
 		t.Run("writes events if the subject is pristine.", func(t *testing.T) {
-			client := database.WithoutAuthorization.GetClient()
+			client := database.WithAuthorization.GetClient()
 			source := event.NewSource(events.TestSource)
 
 			subject := "/" + uuid.New().String()
@@ -370,7 +370,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 		})
 
 		t.Run("returns an error if the subject is not pristine.", func(t *testing.T) {
-			client := database.WithoutAuthorization.GetClient()
+			client := database.WithAuthorization.GetClient()
 			source := event.NewSource(events.TestSource)
 
 			subject := "/" + uuid.New().String()
@@ -396,7 +396,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 	t.Run("when using the 'is subject on event ID' precondition", func(t *testing.T) {
 		t.Run("returns an error if the IsSubjectOnEventID precondition uses an invalid subject.", func(t *testing.T) {
-			client := database.WithoutAuthorization.GetClient()
+			client := database.WithAuthorization.GetClient()
 
 			_, err := client.WriteEvents(
 				[]event.Candidate{
@@ -410,7 +410,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 		})
 
 		t.Run("returns an error if the IsSubjectOnEventID precondition uses an eventID that does not contain an integer.", func(t *testing.T) {
-			client := database.WithoutAuthorization.GetClient()
+			client := database.WithAuthorization.GetClient()
 
 			_, err := client.WriteEvents(
 				[]event.Candidate{
@@ -424,7 +424,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 		})
 
 		t.Run("returns an error if the IsSubjectOnEventID precondition uses an eventID that contains a negative integer", func(t *testing.T) {
-			client := database.WithoutAuthorization.GetClient()
+			client := database.WithAuthorization.GetClient()
 
 			_, err := client.WriteEvents(
 				[]event.Candidate{
@@ -438,7 +438,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 		})
 
 		t.Run("writes events if the last event of the subject has the given event ID.", func(t *testing.T) {
-			client := database.WithoutAuthorization.GetClient()
+			client := database.WithAuthorization.GetClient()
 			source := event.NewSource(events.TestSource)
 
 			janeRegistered := events.Events.Registered.JaneDoe
@@ -475,7 +475,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 		})
 
 		t.Run("returns an error if the last event of the subject does not have the given event ID.", func(t *testing.T) {
-			client := database.WithoutAuthorization.GetClient()
+			client := database.WithAuthorization.GetClient()
 			source := event.NewSource(events.TestSource)
 
 			janeRegistered := events.Events.Registered.JaneDoe

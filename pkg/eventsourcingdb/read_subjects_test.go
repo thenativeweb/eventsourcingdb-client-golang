@@ -26,34 +26,17 @@ func TestReadSubjects(t *testing.T) {
 		assert.ErrorContains(t, err, "server error: retries exceeded")
 	})
 
-	t.Run("supports authorization.", func(t *testing.T) {
+	t.Run("closes the channel when no more subjects exist.", func(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
 
 		readSubjectResults := client.ReadSubjects(context.Background())
-
-		for result := range readSubjectResults {
-			_, err := result.GetData()
-			assert.NoError(t, err)
-		}
-	})
-
-	t.Run("closes the channel when no more subjects exist.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
-
-		readSubjectResults := client.ReadSubjects(context.Background())
-
-		rootSubjectResult := <-readSubjectResults
-		rootSubject, err := rootSubjectResult.GetData()
-
-		assert.NoError(t, err)
-		assert.Equal(t, "/", rootSubject)
 
 		_, ok := <-readSubjectResults
 		assert.False(t, ok)
 	})
 
 	t.Run("reads all subjects starting from /.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		subject := "/" + uuid.New().String()
 		janeRegistered := events.Events.Registered.JaneDoe
@@ -78,7 +61,7 @@ func TestReadSubjects(t *testing.T) {
 	})
 
 	t.Run("reads subjects starting from the given base subject.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		subject := "/foobar/" + uuid.New().String()
 		janeRegistered := events.Events.Registered.JaneDoe
@@ -103,7 +86,7 @@ func TestReadSubjects(t *testing.T) {
 	})
 
 	t.Run("returns an error if the context is cancelled before the request is sent.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
@@ -131,7 +114,7 @@ func TestReadSubjects(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, _ := eventsourcingdb.NewClient(serverAddress)
+		client, _ := eventsourcingdb.NewClient(serverAddress, "access-token")
 		resultChan := client.ReadSubjects(ctx)
 
 		_, err := (<-resultChan).GetData()
@@ -140,7 +123,7 @@ func TestReadSubjects(t *testing.T) {
 	})
 
 	t.Run("returns an error when the base subject is malformed.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		results := client.ReadSubjects(context.Background(), eventsourcingdb.BaseSubject("schkibididopdop"))
 		result := <-results
@@ -158,7 +141,7 @@ func TestReadSubjects(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, eventsourcingdb.MaxTries(2))
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token", eventsourcingdb.MaxTries(2))
 		assert.NoError(t, err)
 
 		results := client.ReadSubjects(context.Background())
@@ -180,7 +163,7 @@ func TestReadSubjects(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ReadSubjects(context.Background())
@@ -200,7 +183,7 @@ func TestReadSubjects(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ReadSubjects(context.Background())
@@ -220,7 +203,7 @@ func TestReadSubjects(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ReadSubjects(context.Background())
@@ -242,7 +225,7 @@ func TestReadSubjects(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ReadSubjects(context.Background())
@@ -264,7 +247,7 @@ func TestReadSubjects(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ReadSubjects(context.Background())
@@ -287,7 +270,7 @@ func TestReadSubjects(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ReadSubjects(context.Background())
@@ -309,7 +292,7 @@ func TestReadSubjects(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ReadSubjects(context.Background())
@@ -331,7 +314,7 @@ func TestReadSubjects(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ReadSubjects(context.Background())

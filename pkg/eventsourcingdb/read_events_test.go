@@ -16,7 +16,7 @@ import (
 )
 
 func TestReadEvents(t *testing.T) {
-	client := database.WithoutAuthorization.GetClient()
+	client := database.WithAuthorization.GetClient()
 
 	janeRegistered := event.NewCandidate(events.TestSource, "/users/registered", events.Events.Registered.JaneDoe.Type, events.Events.Registered.JaneDoe.Data)
 	johnRegistered := event.NewCandidate(events.TestSource, "/users/registered", events.Events.Registered.JohnDoe.Type, events.Events.Registered.JohnDoe.Data)
@@ -77,17 +77,8 @@ func TestReadEvents(t *testing.T) {
 		assert.ErrorContains(t, err, "server error: retries exceeded")
 	})
 
-	t.Run("supports authorization.", func(t *testing.T) {
-		client := database.WithAuthorization.GetClient()
-
-		resultChan := client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadNonRecursively())
-
-		data, ok := <-resultChan
-
-		assert.False(t, ok, fmt.Sprintf("unexpected data on result channel: %+v", data))
-	})
-
 	t.Run("reads events from a single subject.", func(t *testing.T) {
+		fmt.Printf("Client: %v\n", client)
 		resultChan := client.ReadEvents(context.Background(), "/users/registered", eventsourcingdb.ReadNonRecursively())
 
 		firstEvent := getNextEvent(t, resultChan)
@@ -231,7 +222,7 @@ func TestReadEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, _ := eventsourcingdb.NewClient(serverAddress)
+		client, _ := eventsourcingdb.NewClient(serverAddress, "access-token")
 		resultChan := client.ReadEvents(
 			ctx,
 			"/",
@@ -244,7 +235,7 @@ func TestReadEvents(t *testing.T) {
 	})
 
 	t.Run("returns an error if mutually exclusive options are used.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		results := client.ReadEvents(
 			context.Background(),
@@ -261,7 +252,7 @@ func TestReadEvents(t *testing.T) {
 	})
 
 	t.Run("returns an error if the given lowerBoundID does not contain an integer.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		results := client.ReadEvents(
 			context.Background(),
@@ -278,7 +269,7 @@ func TestReadEvents(t *testing.T) {
 	})
 
 	t.Run("returns an error if the given lowerBoundID contains an integer that is negative.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		results := client.ReadEvents(
 			context.Background(),
@@ -295,7 +286,7 @@ func TestReadEvents(t *testing.T) {
 	})
 
 	t.Run("returns an error if the given upperBoundID does not contain an integer.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		results := client.ReadEvents(
 			context.Background(),
@@ -312,7 +303,7 @@ func TestReadEvents(t *testing.T) {
 	})
 
 	t.Run("returns an error if the given upperBoundID contains an integer that is negative.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		results := client.ReadEvents(
 			context.Background(),
@@ -329,7 +320,7 @@ func TestReadEvents(t *testing.T) {
 	})
 
 	t.Run("returns an error if an incorrect subject is used in ReadFromLatestEvent.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		results := client.ReadEvents(
 			context.Background(),
@@ -346,7 +337,7 @@ func TestReadEvents(t *testing.T) {
 	})
 
 	t.Run("returns an error if an incorrect type is used in ReadFromLatestEvent.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		results := client.ReadEvents(
 			context.Background(),
@@ -370,7 +361,7 @@ func TestReadEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, eventsourcingdb.MaxTries(2))
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token", eventsourcingdb.MaxTries(2))
 		assert.NoError(t, err)
 
 		results := client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadRecursively())
@@ -392,7 +383,7 @@ func TestReadEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadRecursively())
@@ -412,7 +403,7 @@ func TestReadEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadRecursively())
@@ -432,7 +423,7 @@ func TestReadEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadRecursively())
@@ -454,7 +445,7 @@ func TestReadEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadRecursively())
@@ -476,7 +467,7 @@ func TestReadEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadRecursively())
@@ -499,7 +490,7 @@ func TestReadEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadRecursively())
@@ -521,7 +512,7 @@ func TestReadEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadRecursively())
@@ -543,7 +534,7 @@ func TestReadEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadRecursively())
@@ -557,7 +548,7 @@ func TestReadEvents(t *testing.T) {
 	})
 
 	t.Run("returns an error if the subject is invalid.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		results := client.ReadEvents(context.Background(), "uargh", eventsourcingdb.ReadRecursively())
 		_, err := (<-results).GetData()

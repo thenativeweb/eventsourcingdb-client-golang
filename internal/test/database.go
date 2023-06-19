@@ -1,7 +1,6 @@
 package test
 
 type Database struct {
-	WithAuthorization    ContainerizedTestingDatabase
-	WithoutAuthorization ContainerizedTestingDatabase
-	WithInvalidURL       TestingDatabase
+	WithAuthorization ContainerizedTestingDatabase
+	WithInvalidURL    TestingDatabase
 }
