@@ -1,47 +1,49 @@
-package eventsourcingdb
+package eventsourcingdb_test
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
-	"testing"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb"
 )
 
 func TestNewClient(t *testing.T) {
 	t.Run("returns an error if the baseURL is malformed.", func(t *testing.T) {
-		_, err := NewClient("$%&/()")
+		_, err := eventsourcingdb.NewClient("$%&/()", "access-token")
 
 		assert.True(t, errors.IsInvalidParameterError(err))
 		assert.ErrorContains(t, err, "parameter 'baseURL' is invalid:")
 	})
 
 	t.Run("returns an error if the baseURL uses neither the HTTP scheme nor HTTPS scheme.", func(t *testing.T) {
-		_, err := NewClient("telnet://foobar.invalid")
+		_, err := eventsourcingdb.NewClient("telnet://foobar.invalid", "access-token")
 
 		assert.True(t, errors.IsInvalidParameterError(err))
 		assert.ErrorContains(t, err, "parameter 'baseURL' is invalid: must use HTTP or HTTPS")
 	})
 
 	t.Run("returns no error if the baseURL uses the HTTP scheme.", func(t *testing.T) {
-		_, err := NewClient("http://foobar.invalid")
+		_, err := eventsourcingdb.NewClient("http://foobar.invalid", "access-token")
 
 		assert.NoError(t, err)
 	})
 
 	t.Run("returns no error if the baseURL uses the HTTPS scheme.", func(t *testing.T) {
-		_, err := NewClient("https://foobar.invalid")
+		_, err := eventsourcingdb.NewClient("https://foobar.invalid", "access-token")
 
 		assert.NoError(t, err)
 	})
 
 	t.Run("returns an error if maxTries is less than 1.", func(t *testing.T) {
-		_, err := NewClient("http://foobar.invalid", MaxTries(0))
+		_, err := eventsourcingdb.NewClient("http://foobar.invalid", "access-token", eventsourcingdb.MaxTries(0))
 
 		assert.True(t, errors.IsInvalidParameterError(err))
 		assert.ErrorContains(t, err, "parameter 'MaxTries' is invalid: maxTries must be 1 or greater")
 	})
 
 	t.Run("returns an error if the accessToken is empty.", func(t *testing.T) {
-		_, err := NewClient("http://foobar.invalid", AccessToken(""))
+		_, err := eventsourcingdb.NewClient("http://foobar.invalid", "")
 
 		assert.True(t, errors.IsInvalidParameterError(err))
 		assert.ErrorContains(t, err, "parameter 'AccessToken' is invalid: the access token must not be empty")

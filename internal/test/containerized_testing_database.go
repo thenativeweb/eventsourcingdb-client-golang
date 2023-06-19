@@ -11,21 +11,23 @@ import (
 type ContainerizedTestingDatabase struct {
 	TestingDatabase
 
-	image   docker.Image
-	options []eventsourcingdb.ClientOption
-	command []string
+	image       docker.Image
+	options     []eventsourcingdb.ClientOption
+	command     []string
+	accessToken string
 
 	container docker.Container
 
 	isFirstRun bool
 }
 
-func NewContainerizedTestingDatabase(image docker.Image, command []string, clientOptions ...eventsourcingdb.ClientOption) (ContainerizedTestingDatabase, error) {
+func NewContainerizedTestingDatabase(image docker.Image, command []string, accessToken string, clientOptions ...eventsourcingdb.ClientOption) (ContainerizedTestingDatabase, error) {
 	database := ContainerizedTestingDatabase{
 		TestingDatabase: TestingDatabase{},
 		image:           image,
 		options:         clientOptions,
 		command:         command,
+		accessToken:     accessToken,
 		container:       docker.Container{},
 		isFirstRun:      true,
 	}
@@ -77,7 +79,7 @@ func (database *ContainerizedTestingDatabase) start() (startResult, error) {
 	}
 
 	baseURL := "http://localhost:" + strconv.Itoa(port)
-	client, err := eventsourcingdb.NewClient(baseURL, database.options...)
+	client, err := eventsourcingdb.NewClient(baseURL, database.accessToken, database.options...)
 	if err != nil {
 		return startResult{}, err
 	}

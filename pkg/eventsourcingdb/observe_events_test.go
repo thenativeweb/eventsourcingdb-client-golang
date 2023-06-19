@@ -23,7 +23,7 @@ func TestObserveEvents(t *testing.T) {
 	johnLoggedIn := event.NewCandidate(events.TestSource, "/users/loggedIn", events.Events.LoggedIn.JohnDoe.Type, events.Events.LoggedIn.JohnDoe.Data)
 
 	prepareClientWithEvents := func(t *testing.T) eventsourcingdb.Client {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		_, err := client.WriteEvents([]event.Candidate{
 			janeRegistered,
@@ -82,21 +82,6 @@ func TestObserveEvents(t *testing.T) {
 		_, err := firstResult.GetData()
 		assert.True(t, errors.IsServerError(err))
 		assert.ErrorContains(t, err, "server error: retries exceeded")
-	})
-
-	t.Run("supports authorization.", func(t *testing.T) {
-		client := database.WithAuthorization.GetClient()
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-		defer cancel()
-
-		resultChan := client.ObserveEvents(ctx, "/", eventsourcingdb.ObserveNonRecursively())
-
-		data, ok := <-resultChan
-		_, err := data.GetData()
-
-		assert.True(t, ok)
-		var expectedError *errors.ContextCanceledError
-		assert.ErrorAs(t, err, &expectedError, err)
 	})
 
 	t.Run("observes events from a single subject.", func(t *testing.T) {
@@ -228,7 +213,7 @@ func TestObserveEvents(t *testing.T) {
 	})
 
 	t.Run("returns an error if mutually exclusive options are used", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		results := client.ObserveEvents(
 			context.Background(),
@@ -245,7 +230,7 @@ func TestObserveEvents(t *testing.T) {
 	})
 
 	t.Run("returns an error if the given lowerBoundID does not contain an integer.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		results := client.ObserveEvents(
 			context.Background(),
@@ -262,7 +247,7 @@ func TestObserveEvents(t *testing.T) {
 	})
 
 	t.Run("returns an error if the given lowerBoundID contains an integer that is negative.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		results := client.ObserveEvents(
 			context.Background(),
@@ -279,7 +264,7 @@ func TestObserveEvents(t *testing.T) {
 	})
 
 	t.Run("returns an error if an incorrect subject is used in ObserveFromLatestEvent.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		results := client.ObserveEvents(
 			context.Background(),
@@ -296,7 +281,7 @@ func TestObserveEvents(t *testing.T) {
 	})
 
 	t.Run("returns an error if an incorrect type is used in ObserveFromLatestEvent.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		results := client.ObserveEvents(
 			context.Background(),
@@ -320,7 +305,7 @@ func TestObserveEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, eventsourcingdb.MaxTries(2))
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token", eventsourcingdb.MaxTries(2))
 		assert.NoError(t, err)
 
 		results := client.ObserveEvents(context.Background(), "/", eventsourcingdb.ObserveRecursively())
@@ -342,7 +327,7 @@ func TestObserveEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ObserveEvents(context.Background(), "/", eventsourcingdb.ObserveRecursively())
@@ -362,7 +347,7 @@ func TestObserveEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ObserveEvents(context.Background(), "/", eventsourcingdb.ObserveRecursively())
@@ -382,7 +367,7 @@ func TestObserveEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ObserveEvents(context.Background(), "/", eventsourcingdb.ObserveRecursively())
@@ -404,7 +389,7 @@ func TestObserveEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ObserveEvents(context.Background(), "/", eventsourcingdb.ObserveRecursively())
@@ -426,7 +411,7 @@ func TestObserveEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ObserveEvents(context.Background(), "/", eventsourcingdb.ObserveRecursively())
@@ -449,7 +434,7 @@ func TestObserveEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ObserveEvents(context.Background(), "/", eventsourcingdb.ObserveRecursively())
@@ -471,7 +456,7 @@ func TestObserveEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ObserveEvents(context.Background(), "/", eventsourcingdb.ObserveRecursively())
@@ -493,7 +478,7 @@ func TestObserveEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ObserveEvents(context.Background(), "/", eventsourcingdb.ObserveRecursively())
@@ -507,7 +492,7 @@ func TestObserveEvents(t *testing.T) {
 	})
 
 	t.Run("returns an error if the subject is invalid.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		results := client.ObserveEvents(context.Background(), "uargh", eventsourcingdb.ObserveRecursively())
 		_, err := (<-results).GetData()
@@ -517,7 +502,7 @@ func TestObserveEvents(t *testing.T) {
 	})
 
 	t.Run("observes for longer than ten seconds.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()

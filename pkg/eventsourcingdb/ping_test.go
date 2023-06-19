@@ -27,7 +27,7 @@ func TestPing(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		err = client.Ping()
@@ -45,7 +45,7 @@ func TestPing(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		err = client.Ping()
@@ -64,7 +64,7 @@ func TestPing(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress)
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		err = client.Ping()
@@ -73,15 +73,8 @@ func TestPing(t *testing.T) {
 		assert.ErrorContains(t, err, "server responded with an unexpected response body: :-)")
 	})
 
-	t.Run("supports authorization.", func(t *testing.T) {
-		client := database.WithAuthorization.GetClient()
-		err := client.Ping()
-
-		assert.NoError(t, err)
-	})
-
 	t.Run("does not return an error if EventSourcingDB is reachable.", func(t *testing.T) {
-		client := database.WithoutAuthorization.GetClient()
+		client := database.WithAuthorization.GetClient()
 		err := client.Ping()
 
 		assert.NoError(t, err)
