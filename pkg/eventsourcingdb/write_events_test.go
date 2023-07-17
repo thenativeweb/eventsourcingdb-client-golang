@@ -25,7 +25,7 @@ func TestWriteEvents(t *testing.T) {
 
 		_, err := client.WriteEvents(
 			[]event.Candidate{
-				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data),
+				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data, nil),
 			},
 		)
 
@@ -49,7 +49,7 @@ func TestWriteEvents(t *testing.T) {
 
 		_, err := client.WriteEvents(
 			[]event.Candidate{
-				event.NewCandidate("tag:foobar.com,2023:barbaz", "foobar", "com.foobar.barbaz", struct{}{}),
+				event.NewCandidate("tag:foobar.com,2023:barbaz", "foobar", "com.foobar.barbaz", struct{}{}, nil),
 			},
 		)
 
@@ -62,7 +62,7 @@ func TestWriteEvents(t *testing.T) {
 
 		_, err := client.WriteEvents(
 			[]event.Candidate{
-				event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "barbaz", struct{}{}),
+				event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "barbaz", struct{}{}, nil),
 			},
 		)
 
@@ -75,7 +75,7 @@ func TestWriteEvents(t *testing.T) {
 
 		_, err := client.WriteEvents(
 			[]event.Candidate{
-				event.NewCandidate("://foobar", "/foobar", "com.foobar.barbaz", struct{}{}),
+				event.NewCandidate("://foobar", "/foobar", "com.foobar.barbaz", struct{}{}, nil),
 			},
 		)
 
@@ -92,7 +92,7 @@ func TestWriteEvents(t *testing.T) {
 
 		_, err := client.WriteEvents(
 			[]event.Candidate{
-				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data),
+				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data, nil),
 			},
 		)
 
@@ -108,7 +108,7 @@ func TestWriteEvents(t *testing.T) {
 
 		_, err := client.WriteEvents(
 			[]event.Candidate{
-				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data),
+				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data, nil),
 			},
 		)
 
@@ -125,15 +125,15 @@ func TestWriteEvents(t *testing.T) {
 
 		_, err := client.WriteEvents(
 			[]event.Candidate{
-				source.NewEvent("/users/registered", janeRegistered.Type, janeRegistered.Data),
+				source.NewEvent("/users/registered", janeRegistered.Type, janeRegistered.Data, nil),
 			},
 		)
 		assert.NoError(t, err)
 
 		writtenEventsMetadata, err := client.WriteEvents(
 			[]event.Candidate{
-				source.NewEvent("/users/registered", johnRegistered.Type, johnRegistered.Data),
-				source.NewEvent("/users/loggedIn", johnLoggedIn.Type, johnLoggedIn.Data),
+				source.NewEvent("/users/registered", johnRegistered.Type, johnRegistered.Data, nil),
+				source.NewEvent("/users/loggedIn", johnLoggedIn.Type, johnLoggedIn.Data, nil),
 			},
 		)
 
@@ -160,8 +160,8 @@ func TestWriteEvents(t *testing.T) {
 
 		_, err := client.WriteEvents(
 			[]event.Candidate{
-				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data),
-				source.NewEvent(subject, johnRegistered.Type, johnRegistered.Data),
+				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data, nil),
+				source.NewEvent(subject, johnRegistered.Type, johnRegistered.Data, nil),
 			},
 		)
 		assert.NoError(t, err)
@@ -185,7 +185,7 @@ func TestWriteEvents(t *testing.T) {
 
 		_, err = client.WriteEvents(
 			[]event.Candidate{
-				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data),
+				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data, nil),
 			},
 		)
 
@@ -214,7 +214,7 @@ func TestWriteEvents(t *testing.T) {
 
 		_, err = client.WriteEvents(
 			[]event.Candidate{
-				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data),
+				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data, nil),
 			},
 		)
 
@@ -241,7 +241,7 @@ func TestWriteEvents(t *testing.T) {
 
 		_, err = client.WriteEvents(
 			[]event.Candidate{
-				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data),
+				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data, nil),
 			},
 		)
 
@@ -268,7 +268,7 @@ func TestWriteEvents(t *testing.T) {
 
 		_, err = client.WriteEvents(
 			[]event.Candidate{
-				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data),
+				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data, nil),
 			},
 		)
 
@@ -296,7 +296,7 @@ func TestWriteEvents(t *testing.T) {
 
 		_, err = client.WriteEvents(
 			[]event.Candidate{
-				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data),
+				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data, nil),
 			},
 		)
 
@@ -326,7 +326,7 @@ func TestWriteEvents(t *testing.T) {
 
 		_, err = client.WriteEvents(
 			[]event.Candidate{
-				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data),
+				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data, nil),
 			},
 		)
 
@@ -343,7 +343,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 			_, err := client.WriteEvents(
 				[]event.Candidate{
-					event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}),
+					event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}, nil),
 				},
 				eventsourcingdb.IsSubjectPristine("invalid"),
 			)
@@ -361,7 +361,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 			_, err := client.WriteEvents(
 				[]event.Candidate{
-					source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data),
+					source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data, nil),
 				},
 				eventsourcingdb.IsSubjectPristine(subject),
 			)
@@ -378,14 +378,14 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 			johnRegistered := events.Events.Registered.JohnDoe
 
 			_, err := client.WriteEvents([]event.Candidate{
-				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data),
+				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data, nil),
 			})
 
 			assert.NoError(t, err)
 
 			_, err = client.WriteEvents(
 				[]event.Candidate{
-					source.NewEvent(subject, johnRegistered.Type, johnRegistered.Data),
+					source.NewEvent(subject, johnRegistered.Type, johnRegistered.Data, nil),
 				},
 				eventsourcingdb.IsSubjectPristine(subject),
 			)
@@ -400,7 +400,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 			_, err := client.WriteEvents(
 				[]event.Candidate{
-					event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}),
+					event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}, nil),
 				},
 				eventsourcingdb.IsSubjectOnEventID("invalid", "123"),
 			)
@@ -414,7 +414,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 			_, err := client.WriteEvents(
 				[]event.Candidate{
-					event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}),
+					event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}, nil),
 				},
 				eventsourcingdb.IsSubjectOnEventID("/", "borzel"),
 			)
@@ -428,7 +428,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 			_, err := client.WriteEvents(
 				[]event.Candidate{
-					event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}),
+					event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}, nil),
 				},
 				eventsourcingdb.IsSubjectOnEventID("/", "-1"),
 			)
@@ -447,8 +447,8 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 			_, err := client.WriteEvents(
 				[]event.Candidate{
-					source.NewEvent("/users", janeRegistered.Type, janeRegistered.Data),
-					source.NewEvent("/users", johnRegistered.Type, johnRegistered.Data),
+					source.NewEvent("/users", janeRegistered.Type, janeRegistered.Data, nil),
+					source.NewEvent("/users", johnRegistered.Type, johnRegistered.Data, nil),
 				},
 			)
 
@@ -466,7 +466,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 			_, err = client.WriteEvents(
 				[]event.Candidate{
-					source.NewEvent("/users", fredRegistered.Type, fredRegistered.Data),
+					source.NewEvent("/users", fredRegistered.Type, fredRegistered.Data, nil),
 				},
 				eventsourcingdb.IsSubjectOnEventID("/users", lastEventID),
 			)
@@ -484,8 +484,8 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 			_, err := client.WriteEvents(
 				[]event.Candidate{
-					source.NewEvent("/users", janeRegistered.Type, janeRegistered.Data),
-					source.NewEvent("/users", johnRegistered.Type, johnRegistered.Data),
+					source.NewEvent("/users", janeRegistered.Type, janeRegistered.Data, nil),
+					source.NewEvent("/users", johnRegistered.Type, johnRegistered.Data, nil),
 				},
 			)
 
@@ -495,7 +495,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 			_, err = client.WriteEvents(
 				[]event.Candidate{
-					source.NewEvent("/users", fredRegistered.Type, fredRegistered.Data),
+					source.NewEvent("/users", fredRegistered.Type, fredRegistered.Data, nil),
 				},
 				eventsourcingdb.IsSubjectOnEventID("/users", lastEventID),
 			)

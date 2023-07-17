@@ -42,7 +42,7 @@ func TestReadSubjects(t *testing.T) {
 		janeRegistered := events.Events.Registered.JaneDoe
 
 		_, err := client.WriteEvents([]event.Candidate{
-			event.NewCandidate(events.TestSource, subject, janeRegistered.Type, janeRegistered.Data),
+			event.NewCandidate(events.TestSource, subject, janeRegistered.Type, janeRegistered.Data, nil),
 		})
 
 		assert.NoError(t, err)
@@ -67,7 +67,7 @@ func TestReadSubjects(t *testing.T) {
 		janeRegistered := events.Events.Registered.JaneDoe
 
 		_, err := client.WriteEvents([]event.Candidate{
-			event.NewCandidate(events.TestSource, subject, janeRegistered.Type, janeRegistered.Data),
+			event.NewCandidate(events.TestSource, subject, janeRegistered.Type, janeRegistered.Data, nil),
 		})
 
 		assert.NoError(t, err)
