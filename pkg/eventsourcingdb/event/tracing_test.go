@@ -3,7 +3,6 @@ package event_test
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,31 +13,22 @@ import (
 
 func TestTracing(t *testing.T) {
 	t.Run("unmarshals a full tracing context correctly.", func(t *testing.T) {
-		_, span := trace.NewTracerProvider().Tracer("test").Start(context.Background(), "test")
-
-		tracingContext := event.TracingContext{
-			TraceID:    span.SpanContext().TraceID(),
-			SpanID:     span.SpanContext().SpanID(),
-			TraceFlags: span.SpanContext().TraceFlags(),
-			TraceState: span.SpanContext().TraceState(),
-		}
-
-		bytes, err := json.Marshal(tracingContext)
-		assert.NoError(t, err)
-
-		fmt.Printf("marshalled tracing context: %s\n", string(bytes))
+		rawTracingContext := []byte("{\"traceId\":\"eb0e08452e7ee4b0d3b8b30987c37951\",\"spanId\":\"c31bc0a7013beab8\",\"traceFlag\":\"01\",\"traceState\":\"foo=bar\"}")
 
 		var unmarshalledTracingContext event.TracingContext
-		err = json.Unmarshal(bytes, &unmarshalledTracingContext)
+		err := json.Unmarshal(rawTracingContext, &unmarshalledTracingContext)
 		assert.NoError(t, err)
 
-		assert.Equal(t, tracingContext, unmarshalledTracingContext)
+		assert.Equal(t, "eb0e08452e7ee4b0d3b8b30987c37951", unmarshalledTracingContext.TraceID.String())
+		assert.Equal(t, "c31bc0a7013beab8", unmarshalledTracingContext.SpanID.String())
+		assert.Equal(t, "01", unmarshalledTracingContext.TraceFlags.String())
+		assert.Equal(t, "foo=bar", unmarshalledTracingContext.TraceState.String())
 	})
 
 	t.Run("fails on a partial tracing context.", func(t *testing.T) {
 		rawTracingContexts := []string{
-			"{\"spanId\":\"c31bc0a7013beab8\",\"traceFlag\":\"01\",\"traceState\":\"\"}",
-			"{\"traceId\":\"eb0e08452e7ee4b0d3b8b30987c37951\",\"traceFlag\":\"01\",\"traceState\":\"\"}",
+			"{\"spanId\":\"c31bc0a7013beab8\",\"traceFlag\":\"01\",\"traceState\":\"foo=bar\"}",
+			"{\"traceId\":\"eb0e08452e7ee4b0d3b8b30987c37951\",\"traceFlag\":\"01\",\"traceState\":\"heck=meck,foo=bar\"}",
 			"{\"traceId\":\"eb0e08452e7ee4b0d3b8b30987c37951\",\"spanId\":\"c31bc0a7013beab8\",\"traceState\":\"\"}",
 		}
 
