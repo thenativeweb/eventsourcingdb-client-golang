@@ -37,9 +37,9 @@ func TestTracing(t *testing.T) {
 
 	t.Run("fails on a partial tracing context.", func(t *testing.T) {
 		rawTracingContexts := []string{
-			"{\"SpanId\":\"c31bc0a7013beab8\",\"TraceFlag\":\"01\",\"Tracestate\":\"\"}",
-			"{\"TraceId\":\"eb0e08452e7ee4b0d3b8b30987c37951\",\"TraceFlag\":\"01\",\"Tracestate\":\"\"}",
-			"{\"TraceId\":\"eb0e08452e7ee4b0d3b8b30987c37951\",\"SpanId\":\"c31bc0a7013beab8\",\"Tracestate\":\"\"}",
+			"{\"spanId\":\"c31bc0a7013beab8\",\"traceFlag\":\"01\",\"traceState\":\"\"}",
+			"{\"traceId\":\"eb0e08452e7ee4b0d3b8b30987c37951\",\"traceFlag\":\"01\",\"traceState\":\"\"}",
+			"{\"traceId\":\"eb0e08452e7ee4b0d3b8b30987c37951\",\"spanId\":\"c31bc0a7013beab8\",\"traceState\":\"\"}",
 		}
 
 		for _, rawTracingContext := range rawTracingContexts {
