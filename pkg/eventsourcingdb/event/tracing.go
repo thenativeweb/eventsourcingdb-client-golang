@@ -8,17 +8,17 @@ import (
 )
 
 type TracingContext struct {
-	TraceID    trace.TraceID    `json:"TraceId"`
-	SpanID     trace.SpanID     `json:"SpanId"`
-	TraceFlags trace.TraceFlags `json:"TraceFlag"`
-	TraceState trace.TraceState `json:"Tracestate"`
+	TraceID    trace.TraceID    `json:"traceId"`
+	SpanID     trace.SpanID     `json:"spanId"`
+	TraceFlags trace.TraceFlags `json:"traceFlag"`
+	TraceState trace.TraceState `json:"traceState"`
 }
 
 type rawTracingContext struct {
-	TraceID    string `json:"TraceId"`
-	SpanID     string `json:"SpanId"`
-	TraceFlags string `json:"TraceFlag"`
-	TraceState string `json:"Tracestate"`
+	TraceID    string `json:"traceId"`
+	SpanID     string `json:"spanId"`
+	TraceFlags string `json:"traceFlag"`
+	TraceState string `json:"traceState"`
 }
 
 func (tracingContext *TracingContext) UnmarshalJSON(bytes []byte) error {
