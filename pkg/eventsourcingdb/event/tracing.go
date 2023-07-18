@@ -10,14 +10,14 @@ import (
 type TracingContext struct {
 	TraceID    trace.TraceID    `json:"traceId"`
 	SpanID     trace.SpanID     `json:"spanId"`
-	TraceFlags trace.TraceFlags `json:"traceFlag"`
+	TraceFlags trace.TraceFlags `json:"traceFlags"`
 	TraceState trace.TraceState `json:"traceState"`
 }
 
 type rawTracingContext struct {
 	TraceID    string `json:"traceId"`
 	SpanID     string `json:"spanId"`
-	TraceFlags string `json:"traceFlag"`
+	TraceFlags string `json:"traceFlags"`
 	TraceState string `json:"traceState"`
 }
 

@@ -13,7 +13,7 @@ import (
 
 func TestTracing(t *testing.T) {
 	t.Run("unmarshals a full tracing context correctly.", func(t *testing.T) {
-		rawTracingContext := []byte("{\"traceId\":\"eb0e08452e7ee4b0d3b8b30987c37951\",\"spanId\":\"c31bc0a7013beab8\",\"traceFlag\":\"01\",\"traceState\":\"foo=bar\"}")
+		rawTracingContext := []byte("{\"traceId\":\"eb0e08452e7ee4b0d3b8b30987c37951\",\"spanId\":\"c31bc0a7013beab8\",\"traceFlags\":\"01\",\"traceState\":\"foo=bar\"}")
 
 		var unmarshalledTracingContext event.TracingContext
 		err := json.Unmarshal(rawTracingContext, &unmarshalledTracingContext)
@@ -27,8 +27,8 @@ func TestTracing(t *testing.T) {
 
 	t.Run("fails on a partial tracing context.", func(t *testing.T) {
 		rawTracingContexts := []string{
-			"{\"spanId\":\"c31bc0a7013beab8\",\"traceFlag\":\"01\",\"traceState\":\"foo=bar\"}",
-			"{\"traceId\":\"eb0e08452e7ee4b0d3b8b30987c37951\",\"traceFlag\":\"01\",\"traceState\":\"heck=meck,foo=bar\"}",
+			"{\"spanId\":\"c31bc0a7013beab8\",\"traceFlags\":\"01\",\"traceState\":\"foo=bar\"}",
+			"{\"traceId\":\"eb0e08452e7ee4b0d3b8b30987c37951\",\"traceFlags\":\"01\",\"traceState\":\"heck=meck,foo=bar\"}",
 			"{\"traceId\":\"eb0e08452e7ee4b0d3b8b30987c37951\",\"spanId\":\"c31bc0a7013beab8\",\"traceState\":\"\"}",
 		}
 
