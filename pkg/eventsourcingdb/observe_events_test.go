@@ -17,10 +17,10 @@ import (
 )
 
 func TestObserveEvents(t *testing.T) {
-	janeRegistered := event.NewCandidate(events.TestSource, "/users/registered", events.Events.Registered.JaneDoe.Type, events.Events.Registered.JaneDoe.Data, nil)
-	johnRegistered := event.NewCandidate(events.TestSource, "/users/registered", events.Events.Registered.JohnDoe.Type, events.Events.Registered.JohnDoe.Data, nil)
-	janeLoggedIn := event.NewCandidate(events.TestSource, "/users/loggedIn", events.Events.LoggedIn.JaneDoe.Type, events.Events.LoggedIn.JaneDoe.Data, nil)
-	johnLoggedIn := event.NewCandidate(events.TestSource, "/users/loggedIn", events.Events.LoggedIn.JohnDoe.Type, events.Events.LoggedIn.JohnDoe.Data, nil)
+	janeRegistered := event.NewCandidate(events.TestSource, "/users/registered", events.Events.Registered.JaneDoe.Type, events.Events.Registered.JaneDoe.Data, events.Events.Registered.JaneDoe.TracingContext)
+	johnRegistered := event.NewCandidate(events.TestSource, "/users/registered", events.Events.Registered.JohnDoe.Type, events.Events.Registered.JohnDoe.Data, events.Events.Registered.JohnDoe.TracingContext)
+	janeLoggedIn := event.NewCandidate(events.TestSource, "/users/loggedIn", events.Events.LoggedIn.JaneDoe.Type, events.Events.LoggedIn.JaneDoe.Data, events.Events.LoggedIn.JaneDoe.TracingContext)
+	johnLoggedIn := event.NewCandidate(events.TestSource, "/users/loggedIn", events.Events.LoggedIn.JohnDoe.Type, events.Events.LoggedIn.JohnDoe.Data, events.Events.LoggedIn.JohnDoe.TracingContext)
 
 	prepareClientWithEvents := func(t *testing.T) eventsourcingdb.Client {
 		client := database.WithAuthorization.GetClient()
@@ -49,6 +49,7 @@ func TestObserveEvents(t *testing.T) {
 	matchRegisteredEvent := func(t *testing.T, event event.Event, expected events.RegisteredEvent) {
 		assert.Equal(t, "/users/registered", event.Subject)
 		assert.Equal(t, expected.Type, event.Type)
+		assert.Equal(t, expected.TracingContext, event.TracingContext)
 
 		var eventData events.RegisteredEventData
 		err := json.Unmarshal(event.Data, &eventData)
@@ -61,6 +62,7 @@ func TestObserveEvents(t *testing.T) {
 	matchLoggedInEvent := func(t *testing.T, event event.Event, expected events.LoggedInEvent) {
 		assert.Equal(t, "/users/loggedIn", event.Subject)
 		assert.Equal(t, expected.Type, event.Type)
+		assert.Equal(t, expected.TracingContext, event.TracingContext)
 
 		var eventData events.LoggedInEventData
 		err := json.Unmarshal(event.Data, &eventData)

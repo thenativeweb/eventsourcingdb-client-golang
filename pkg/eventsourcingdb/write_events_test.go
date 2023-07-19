@@ -25,7 +25,7 @@ func TestWriteEvents(t *testing.T) {
 
 		_, err := client.WriteEvents(
 			[]event.Candidate{
-				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data, nil),
+				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data, janeRegistered.TracingContext),
 			},
 		)
 
@@ -92,7 +92,7 @@ func TestWriteEvents(t *testing.T) {
 
 		_, err := client.WriteEvents(
 			[]event.Candidate{
-				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data, nil),
+				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data, janeRegistered.TracingContext),
 			},
 		)
 
@@ -108,7 +108,7 @@ func TestWriteEvents(t *testing.T) {
 
 		_, err := client.WriteEvents(
 			[]event.Candidate{
-				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data, nil),
+				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data, janeRegistered.TracingContext),
 			},
 		)
 
@@ -125,15 +125,15 @@ func TestWriteEvents(t *testing.T) {
 
 		_, err := client.WriteEvents(
 			[]event.Candidate{
-				source.NewEvent("/users/registered", janeRegistered.Type, janeRegistered.Data, nil),
+				source.NewEvent("/users/registered", janeRegistered.Type, janeRegistered.Data, janeRegistered.TracingContext),
 			},
 		)
 		assert.NoError(t, err)
 
 		writtenEventsMetadata, err := client.WriteEvents(
 			[]event.Candidate{
-				source.NewEvent("/users/registered", johnRegistered.Type, johnRegistered.Data, nil),
-				source.NewEvent("/users/loggedIn", johnLoggedIn.Type, johnLoggedIn.Data, nil),
+				source.NewEvent("/users/registered", johnRegistered.Type, johnRegistered.Data, johnRegistered.TracingContext),
+				source.NewEvent("/users/loggedIn", johnLoggedIn.Type, johnLoggedIn.Data, johnLoggedIn.TracingContext),
 			},
 		)
 
@@ -142,10 +142,12 @@ func TestWriteEvents(t *testing.T) {
 		assert.Equal(t, events.PrefixEventType("registered"), writtenEventsMetadata[0].Type)
 		assert.Equal(t, "/users/registered", writtenEventsMetadata[0].Subject)
 		assert.Equal(t, "1", writtenEventsMetadata[0].ID)
+		assert.Equal(t, johnRegistered.TracingContext, writtenEventsMetadata[0].TracingContext)
 		assert.Equal(t, events.TestSource, writtenEventsMetadata[1].Source)
 		assert.Equal(t, events.PrefixEventType("loggedIn"), writtenEventsMetadata[1].Type)
 		assert.Equal(t, "/users/loggedIn", writtenEventsMetadata[1].Subject)
 		assert.Equal(t, "2", writtenEventsMetadata[1].ID)
+		assert.Equal(t, johnLoggedIn.TracingContext, writtenEventsMetadata[1].TracingContext)
 
 		assert.NoError(t, err)
 	})
@@ -160,8 +162,8 @@ func TestWriteEvents(t *testing.T) {
 
 		_, err := client.WriteEvents(
 			[]event.Candidate{
-				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data, nil),
-				source.NewEvent(subject, johnRegistered.Type, johnRegistered.Data, nil),
+				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data, janeRegistered.TracingContext),
+				source.NewEvent(subject, johnRegistered.Type, johnRegistered.Data, johnRegistered.TracingContext),
 			},
 		)
 		assert.NoError(t, err)
