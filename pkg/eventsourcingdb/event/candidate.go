@@ -5,9 +5,10 @@ import (
 )
 
 type CandidateContext struct {
-	Source  string `json:"source"`
-	Subject string `json:"subject"`
-	Type    string `json:"type"`
+	Source         string          `json:"source"`
+	Subject        string          `json:"subject"`
+	Type           string          `json:"type"`
+	TracingContext *TracingContext `json:"tracingContext"`
 }
 
 type Candidate struct {
@@ -20,12 +21,14 @@ func NewCandidate(
 	subject string,
 	eventType string,
 	data Data,
+	tracingContext *TracingContext,
 ) Candidate {
 	return Candidate{
 		CandidateContext{
-			Source:  source,
-			Subject: subject,
-			Type:    eventType,
+			Source:         source,
+			Subject:        subject,
+			Type:           eventType,
+			TracingContext: tracingContext,
 		},
 		data,
 	}
