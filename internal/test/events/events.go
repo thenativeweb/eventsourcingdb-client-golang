@@ -71,7 +71,7 @@ var Events = events{
 			TraceFlags: 0,
 			TraceState: trace.TraceState{},
 		}},
-		JohnDoe: LoggedInEvent{PrefixEventType("loggedIn"), LoggedInEventData{"Jane Doe"}, &event.TracingContext{
+		JohnDoe: LoggedInEvent{PrefixEventType("loggedIn"), LoggedInEventData{"John Doe"}, &event.TracingContext{
 			TraceID:    ignoreError(trace.TraceIDFromHex("50000000000000000000000000000000")),
 			SpanID:     ignoreError(trace.SpanIDFromHex("5000000000000000")),
 			TraceFlags: 0,

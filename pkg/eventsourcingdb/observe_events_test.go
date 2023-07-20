@@ -99,7 +99,7 @@ func TestObserveEvents(t *testing.T) {
 		secondEvent := getNextEvent(t, resultChan)
 		matchRegisteredEvent(t, secondEvent, events.Events.Registered.JohnDoe)
 
-		apfelFredCandidate := event.NewCandidate(events.TestSource, "/users/registered", events.Events.Registered.ApfelFred.Type, events.Events.Registered.ApfelFred.Data, nil)
+		apfelFredCandidate := event.NewCandidate(events.TestSource, "/users/registered", events.Events.Registered.ApfelFred.Type, events.Events.Registered.ApfelFred.Data, events.Events.Registered.ApfelFred.TracingContext)
 		_, err := client.WriteEvents([]event.Candidate{
 			apfelFredCandidate,
 		})
@@ -144,7 +144,7 @@ func TestObserveEvents(t *testing.T) {
 			eventsourcingdb.ObserveRecursively(),
 			eventsourcingdb.ObserveFromLatestEvent(
 				"/users/loggedIn",
-				events.PrefixEventType("loggedin"),
+				events.PrefixEventType("loggedIn"),
 				ifeventismissingduringobserve.ReadEverything,
 			),
 		)
