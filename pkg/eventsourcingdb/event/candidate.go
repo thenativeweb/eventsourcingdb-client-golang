@@ -16,22 +16,36 @@ type Candidate struct {
 	Data Data `json:"data"`
 }
 
+type CandidateOption func(candidate Candidate)
+
+func WithTracingContext(tracingContext *TracingContext) CandidateOption {
+	return func(candidate Candidate) {
+		candidate.TracingContext = tracingContext
+	}
+}
+
 func NewCandidate(
 	source string,
 	subject string,
 	eventType string,
 	data Data,
-	tracingContext *TracingContext,
+	options ...CandidateOption,
 ) Candidate {
-	return Candidate{
+	candidate := Candidate{
 		CandidateContext{
 			Source:         source,
 			Subject:        subject,
 			Type:           eventType,
-			TracingContext: tracingContext,
+			TracingContext: nil,
 		},
 		data,
 	}
+
+	for _, option := range options {
+		option(candidate)
+	}
+
+	return candidate
 }
 
 func (candidate Candidate) Validate() error {
