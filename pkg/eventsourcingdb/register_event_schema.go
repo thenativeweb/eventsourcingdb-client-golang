@@ -8,6 +8,7 @@ import (
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/authorization"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/retry"
+	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
 	"io"
 	"net/http"
@@ -20,7 +21,7 @@ type registerEventSchemaRequestBody struct {
 
 func (client *Client) RegisterEventSchema(eventType string, JSONSchema string) error {
 	if err := event.ValidateType(eventType); err != nil {
-		return err
+		return customErrors.NewClientError(err.Error())
 	}
 
 	requestBody := registerEventSchemaRequestBody{
@@ -28,12 +29,15 @@ func (client *Client) RegisterEventSchema(eventType string, JSONSchema string) e
 		Schema:    JSONSchema,
 	}
 	requestBodyAsJSON, err := json.Marshal(requestBody)
+	if err != nil {
+		return customErrors.NewInternalError(err)
+	}
 
 	routeURL := client.configuration.baseURL.JoinPath("api", "register-event-schema")
 	httpClient := &http.Client{}
 	request, err := http.NewRequest("POST", routeURL.String(), bytes.NewReader(requestBodyAsJSON))
 	if err != nil {
-		return err
+		return customErrors.NewInternalError(err)
 	}
 
 	authorization.AddAccessToken(request, client.configuration.accessToken)
@@ -65,10 +69,10 @@ func (client *Client) RegisterEventSchema(eventType string, JSONSchema string) e
 		return err
 	})
 	if err != nil {
-		return err
+		return customErrors.NewServerError(err.Error())
 	}
 	if clientError != nil {
-		return clientError
+		return customErrors.NewClientError(clientError.Error())
 	}
 
 	return nil
