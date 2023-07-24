@@ -53,14 +53,14 @@ func (client *Client) RegisterEventSchema(eventType string, JSONSchema string) e
 		if httputil.IsClientError(response) {
 			var message string
 			body, readBodyErr := io.ReadAll(response.Body)
-			if readBodyErr != nil {
+			if readBodyErr == nil {
 				message = string(body)
 			}
 			if message == "" {
 				message = "unknown error"
 			}
 
-			clientError = fmt.Errorf("client error: %s: %s", response.Status, message)
+			clientError = fmt.Errorf(message)
 
 			// We return nil because we don't want to retry on client error.
 			return nil
