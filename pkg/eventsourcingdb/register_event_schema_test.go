@@ -41,6 +41,6 @@ func TestClient_RegisterEventSchema(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
 
 		err := client.RegisterEventSchema("com.ekht.ekht", `{"type": `)
-		assert.ErrorContains(t, err, "Bad Request: schema conflicts with existing event (ID=0)")
+		assert.ErrorContains(t, err, "Bad Request: jsonschema: invalid json")
 	})
 }
