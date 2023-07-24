@@ -15,10 +15,10 @@ func TestClient_ReadEventTypes(t *testing.T) {
 		source := event.NewSource(events.TestSource)
 
 		_, err := client.WriteEvents([]event.Candidate{
-			source.NewEvent("/account", "com.foo.bar", map[string]string{}, nil),
-			source.NewEvent("/account/user", "com.bar.baz", map[string]string{}, nil),
-			source.NewEvent("/account/user", "com.baz.leml", map[string]string{}, nil),
-			source.NewEvent("/", "com.quux.knax", map[string]string{}, nil),
+			source.NewEvent("/account", "com.foo.bar", map[string]string{}),
+			source.NewEvent("/account/user", "com.bar.baz", map[string]string{}),
+			source.NewEvent("/account/user", "com.baz.leml", map[string]string{}),
+			source.NewEvent("/", "com.quux.knax", map[string]string{}),
 		})
 		assert.NoError(t, err)
 

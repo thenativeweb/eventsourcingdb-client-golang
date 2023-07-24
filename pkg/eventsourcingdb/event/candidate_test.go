@@ -25,7 +25,7 @@ func TestNewCandidate(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		createdEvent := event.NewCandidate(events.TestSource, test.subject, test.eventType, test.data, nil)
+		createdEvent := event.NewCandidate(events.TestSource, test.subject, test.eventType, test.data)
 
 		assert.Equal(t, test.subject, createdEvent.Subject)
 		assert.Equal(t, test.eventType, createdEvent.Type)

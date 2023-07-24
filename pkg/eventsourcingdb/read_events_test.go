@@ -18,10 +18,10 @@ import (
 func TestReadEvents(t *testing.T) {
 	client := database.WithAuthorization.GetClient()
 
-	janeRegistered := event.NewCandidate(events.TestSource, "/users/registered", events.Events.Registered.JaneDoe.Type, events.Events.Registered.JaneDoe.Data, events.Events.Registered.JaneDoe.TracingContext)
-	johnRegistered := event.NewCandidate(events.TestSource, "/users/registered", events.Events.Registered.JohnDoe.Type, events.Events.Registered.JohnDoe.Data, events.Events.Registered.JohnDoe.TracingContext)
-	janeLoggedIn := event.NewCandidate(events.TestSource, "/users/loggedIn", events.Events.LoggedIn.JaneDoe.Type, events.Events.LoggedIn.JaneDoe.Data, events.Events.LoggedIn.JaneDoe.TracingContext)
-	johnLoggedIn := event.NewCandidate(events.TestSource, "/users/loggedIn", events.Events.LoggedIn.JohnDoe.Type, events.Events.LoggedIn.JohnDoe.Data, events.Events.LoggedIn.JohnDoe.TracingContext)
+	janeRegistered := event.NewCandidate(events.TestSource, "/users/registered", events.Events.Registered.JaneDoe.Type, events.Events.Registered.JaneDoe.Data, event.WithTracingContext(events.Events.Registered.JaneDoe.TracingContext))
+	johnRegistered := event.NewCandidate(events.TestSource, "/users/registered", events.Events.Registered.JohnDoe.Type, events.Events.Registered.JohnDoe.Data, event.WithTracingContext(events.Events.Registered.JohnDoe.TracingContext))
+	janeLoggedIn := event.NewCandidate(events.TestSource, "/users/loggedIn", events.Events.LoggedIn.JaneDoe.Type, events.Events.LoggedIn.JaneDoe.Data, event.WithTracingContext(events.Events.LoggedIn.JaneDoe.TracingContext))
+	johnLoggedIn := event.NewCandidate(events.TestSource, "/users/loggedIn", events.Events.LoggedIn.JohnDoe.Type, events.Events.LoggedIn.JohnDoe.Data, event.WithTracingContext(events.Events.LoggedIn.JohnDoe.TracingContext))
 
 	_, err := client.WriteEvents([]event.Candidate{
 		janeRegistered,

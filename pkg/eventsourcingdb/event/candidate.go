@@ -16,22 +16,36 @@ type Candidate struct {
 	Data Data `json:"data"`
 }
 
+type CandidateTransformer func(candidate *Candidate)
+
+func WithTracingContext(tracingContext *TracingContext) CandidateTransformer {
+	return func(candidate *Candidate) {
+		candidate.TracingContext = tracingContext
+	}
+}
+
 func NewCandidate(
 	source string,
 	subject string,
 	eventType string,
 	data Data,
-	tracingContext *TracingContext,
+	transformers ...CandidateTransformer,
 ) Candidate {
-	return Candidate{
+	candidate := Candidate{
 		CandidateContext{
 			Source:         source,
 			Subject:        subject,
 			Type:           eventType,
-			TracingContext: tracingContext,
+			TracingContext: nil,
 		},
 		data,
 	}
+
+	for _, transformer := range transformers {
+		transformer(&candidate)
+	}
+
+	return candidate
 }
 
 func (candidate Candidate) Validate() error {
