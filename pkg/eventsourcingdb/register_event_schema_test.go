@@ -19,7 +19,7 @@ func TestClient_RegisterEventSchema(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
 
 		_, err := client.WriteEvents([]event.Candidate{
-			event.NewCandidate(events.TestSource, "/", "com.gornisht.ekht", map[string]string{"oy": "gevalt"}, nil),
+			event.NewCandidate(events.TestSource, "/", "com.gornisht.ekht", map[string]string{"oy": "gevalt"}),
 		})
 		assert.NoError(t, err)
 

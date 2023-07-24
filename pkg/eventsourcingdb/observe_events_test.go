@@ -17,10 +17,10 @@ import (
 )
 
 func TestObserveEvents(t *testing.T) {
-	janeRegistered := event.NewCandidate(events.TestSource, "/users/registered", events.Events.Registered.JaneDoe.Type, events.Events.Registered.JaneDoe.Data, events.Events.Registered.JaneDoe.TracingContext)
-	johnRegistered := event.NewCandidate(events.TestSource, "/users/registered", events.Events.Registered.JohnDoe.Type, events.Events.Registered.JohnDoe.Data, events.Events.Registered.JohnDoe.TracingContext)
-	janeLoggedIn := event.NewCandidate(events.TestSource, "/users/loggedIn", events.Events.LoggedIn.JaneDoe.Type, events.Events.LoggedIn.JaneDoe.Data, events.Events.LoggedIn.JaneDoe.TracingContext)
-	johnLoggedIn := event.NewCandidate(events.TestSource, "/users/loggedIn", events.Events.LoggedIn.JohnDoe.Type, events.Events.LoggedIn.JohnDoe.Data, events.Events.LoggedIn.JohnDoe.TracingContext)
+	janeRegistered := event.NewCandidate(events.TestSource, "/users/registered", events.Events.Registered.JaneDoe.Type, events.Events.Registered.JaneDoe.Data, event.WithTracingContext(events.Events.Registered.JaneDoe.TracingContext))
+	johnRegistered := event.NewCandidate(events.TestSource, "/users/registered", events.Events.Registered.JohnDoe.Type, events.Events.Registered.JohnDoe.Data, event.WithTracingContext(events.Events.Registered.JohnDoe.TracingContext))
+	janeLoggedIn := event.NewCandidate(events.TestSource, "/users/loggedIn", events.Events.LoggedIn.JaneDoe.Type, events.Events.LoggedIn.JaneDoe.Data, event.WithTracingContext(events.Events.LoggedIn.JaneDoe.TracingContext))
+	johnLoggedIn := event.NewCandidate(events.TestSource, "/users/loggedIn", events.Events.LoggedIn.JohnDoe.Type, events.Events.LoggedIn.JohnDoe.Data, event.WithTracingContext(events.Events.LoggedIn.JohnDoe.TracingContext))
 
 	prepareClientWithEvents := func(t *testing.T) eventsourcingdb.Client {
 		client := database.WithAuthorization.GetClient()
@@ -99,7 +99,7 @@ func TestObserveEvents(t *testing.T) {
 		secondEvent := getNextEvent(t, resultChan)
 		matchRegisteredEvent(t, secondEvent, events.Events.Registered.JohnDoe)
 
-		apfelFredCandidate := event.NewCandidate(events.TestSource, "/users/registered", events.Events.Registered.ApfelFred.Type, events.Events.Registered.ApfelFred.Data, events.Events.Registered.ApfelFred.TracingContext)
+		apfelFredCandidate := event.NewCandidate(events.TestSource, "/users/registered", events.Events.Registered.ApfelFred.Type, events.Events.Registered.ApfelFred.Data, event.WithTracingContext(events.Events.Registered.ApfelFred.TracingContext))
 		_, err := client.WriteEvents([]event.Candidate{
 			apfelFredCandidate,
 		})
@@ -513,7 +513,7 @@ func TestObserveEvents(t *testing.T) {
 					return
 				}
 			case <-time.After(11 * time.Second):
-				apfelFredCandidate := event.NewCandidate(events.TestSource, "/users/registered", events.Events.Registered.ApfelFred.Type, events.Events.Registered.ApfelFred.Data, nil)
+				apfelFredCandidate := event.NewCandidate(events.TestSource, "/users/registered", events.Events.Registered.ApfelFred.Type, events.Events.Registered.ApfelFred.Data)
 				_, _ = client.WriteEvents([]event.Candidate{
 					apfelFredCandidate,
 				})

@@ -16,9 +16,9 @@ type Candidate struct {
 	Data Data `json:"data"`
 }
 
-type CandidateOption func(candidate Candidate)
+type CandidateTransformer func(candidate Candidate)
 
-func WithTracingContext(tracingContext *TracingContext) CandidateOption {
+func WithTracingContext(tracingContext *TracingContext) CandidateTransformer {
 	return func(candidate Candidate) {
 		candidate.TracingContext = tracingContext
 	}
@@ -29,7 +29,7 @@ func NewCandidate(
 	subject string,
 	eventType string,
 	data Data,
-	options ...CandidateOption,
+	transformers ...CandidateTransformer,
 ) Candidate {
 	candidate := Candidate{
 		CandidateContext{
@@ -41,8 +41,8 @@ func NewCandidate(
 		data,
 	}
 
-	for _, option := range options {
-		option(candidate)
+	for _, transformer := range transformers {
+		transformer(candidate)
 	}
 
 	return candidate

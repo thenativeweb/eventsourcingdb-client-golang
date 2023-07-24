@@ -4,8 +4,8 @@ type Source struct {
 	source string
 }
 
-func (eventSource Source) NewEvent(subject, eventType string, data any, tracingContext *TracingContext) Candidate {
-	return NewCandidate(eventSource.source, subject, eventType, data, tracingContext)
+func (eventSource Source) NewEvent(subject, eventType string, data any, options ...CandidateTransformer) Candidate {
+	return NewCandidate(eventSource.source, subject, eventType, data, options...)
 }
 
 func NewSource(source string) Source {
