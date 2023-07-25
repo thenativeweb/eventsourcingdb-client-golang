@@ -505,4 +505,17 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 			assert.Error(t, err)
 		})
 	})
+
+	t.Run("Returns an error when any of the given events does not validate against the schema.", func(t *testing.T) {
+		client := database.WithAuthorization.GetClient()
+		source := event.NewSource(events.TestSource)
+
+		err := client.RegisterEventSchema("com.sauer.kraut", `{"type":"object","additionalProperties":false}`)
+		assert.NoError(t, err)
+
+		_, err = client.WriteEvents([]event.Candidate{
+			source.NewEvent("/knabberzeug", "com.sauer.kraut", map[string]string{"foo": "bar"}),
+		})
+		assert.ErrorContains(t, err, "409 Conflict")
+	})
 }
