@@ -5,13 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+
+	"github.com/thenativeweb/goutils/coreutils/result"
+
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/authorization"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/ndjson"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/result"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/retry"
 	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
-	"net/http"
 )
 
 type readEventTypesResponseItem struct {

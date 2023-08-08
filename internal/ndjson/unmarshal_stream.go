@@ -7,7 +7,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/result"
+	"github.com/thenativeweb/goutils/coreutils/result"
+
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
 )
 

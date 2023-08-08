@@ -5,13 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/authorization"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/retry"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
-	"io"
-	"net/http"
 )
 
 type writeEventsRequestBody struct {
