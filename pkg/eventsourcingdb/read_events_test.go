@@ -4,15 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/httpserver"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
+	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/ifeventismissingduringread"
-	"net/http"
-	"testing"
 )
 
 func TestReadEvents(t *testing.T) {
@@ -75,7 +76,7 @@ func TestReadEvents(t *testing.T) {
 		firstResult := <-resultChan
 
 		_, err := firstResult.GetData()
-		assert.True(t, errors.IsServerError(err))
+		assert.True(t, customErrors.IsServerError(err))
 		assert.ErrorContains(t, err, "server error: retries exceeded")
 	})
 
@@ -207,8 +208,7 @@ func TestReadEvents(t *testing.T) {
 		)
 
 		_, err := (<-resultChan).GetData()
-		assert.Error(t, err)
-		assert.True(t, errors.IsContextCanceledError(err))
+		assert.ErrorIs(t, err, context.Canceled)
 	})
 
 	t.Run("returns a ContextCanceledError when the context is canceled while reading the ndjson stream.", func(t *testing.T) {
@@ -232,8 +232,7 @@ func TestReadEvents(t *testing.T) {
 		)
 
 		_, err := (<-resultChan).GetData()
-		assert.Error(t, err)
-		assert.True(t, errors.IsContextCanceledError(err))
+		assert.ErrorIs(t, err, context.Canceled)
 	})
 
 	t.Run("returns an error if mutually exclusive options are used.", func(t *testing.T) {
@@ -266,7 +265,7 @@ func TestReadEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.IsInvalidParameterError(err))
+		assert.True(t, customErrors.IsInvalidParameterError(err))
 		assert.ErrorContains(t, err, "parameter 'ReadFromLowerBoundID' is invalid: lowerBoundID must contain an integer")
 	})
 
@@ -283,7 +282,7 @@ func TestReadEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.IsInvalidParameterError(err))
+		assert.True(t, customErrors.IsInvalidParameterError(err))
 		assert.ErrorContains(t, err, "parameter 'ReadFromLowerBoundID' is invalid: lowerBoundID must be 0 or greater")
 	})
 
@@ -300,7 +299,7 @@ func TestReadEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.IsInvalidParameterError(err))
+		assert.True(t, customErrors.IsInvalidParameterError(err))
 		assert.ErrorContains(t, err, "parameter 'ReadUntilUpperBoundID' is invalid: upperBoundID must contain an integer")
 	})
 
@@ -317,7 +316,7 @@ func TestReadEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.IsInvalidParameterError(err))
+		assert.True(t, customErrors.IsInvalidParameterError(err))
 		assert.ErrorContains(t, err, "parameter 'ReadUntilUpperBoundID' is invalid: upperBoundID must be 0 or greater")
 	})
 
@@ -334,7 +333,7 @@ func TestReadEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.IsInvalidParameterError(err))
+		assert.True(t, customErrors.IsInvalidParameterError(err))
 		assert.ErrorContains(t, err, "parameter 'ReadFromLatestEvent' is invalid: malformed event subject")
 	})
 
@@ -351,7 +350,7 @@ func TestReadEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.IsInvalidParameterError(err))
+		assert.True(t, customErrors.IsInvalidParameterError(err))
 		assert.ErrorContains(t, err, "parameter 'ReadFromLatestEvent' is invalid: malformed event type")
 	})
 
@@ -371,7 +370,7 @@ func TestReadEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.IsServerError(err))
+		assert.True(t, customErrors.IsServerError(err))
 		assert.ErrorContains(t, err, "retries exceeded")
 		assert.ErrorContains(t, err, "Bad Gateway")
 	})
@@ -393,7 +392,7 @@ func TestReadEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.IsClientError(err))
+		assert.True(t, customErrors.IsClientError(err))
 		assert.ErrorContains(t, err, "client error: protocol version mismatch, server '0.0.0', client '1.0.0'")
 	})
 
@@ -413,7 +412,7 @@ func TestReadEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.IsClientError(err))
+		assert.True(t, customErrors.IsClientError(err))
 		assert.ErrorContains(t, err, "Bad Request")
 	})
 
@@ -433,7 +432,7 @@ func TestReadEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.IsServerError(err))
+		assert.True(t, customErrors.IsServerError(err))
 		assert.ErrorContains(t, err, "unexpected response status: 202 Accepted")
 	})
 
@@ -455,7 +454,7 @@ func TestReadEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.IsServerError(err))
+		assert.True(t, customErrors.IsServerError(err))
 		assert.ErrorContains(t, err, "server error: unsupported stream item encountered: cannot unmarshal")
 	})
 
@@ -477,7 +476,7 @@ func TestReadEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.IsServerError(err))
+		assert.True(t, customErrors.IsServerError(err))
 		assert.ErrorContains(t, err, "server error: unsupported stream item encountered:")
 		assert.ErrorContains(t, err, "does not have a recognized type")
 	})
@@ -500,7 +499,7 @@ func TestReadEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.IsServerError(err))
+		assert.True(t, customErrors.IsServerError(err))
 		assert.ErrorContains(t, err, "server error: aliens have abducted the server")
 	})
 
@@ -522,7 +521,7 @@ func TestReadEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.IsServerError(err))
+		assert.True(t, customErrors.IsServerError(err))
 		assert.ErrorContains(t, err, "server error: unsupported stream error encountered:")
 	})
 
@@ -544,7 +543,7 @@ func TestReadEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.IsServerError(err))
+		assert.True(t, customErrors.IsServerError(err))
 		assert.ErrorContains(t, err, "server error: unsupported stream item encountered:")
 		assert.ErrorContains(t, err, "(trying to unmarshal")
 	})
@@ -555,7 +554,7 @@ func TestReadEvents(t *testing.T) {
 		results := client.ReadEvents(context.Background(), "uargh", eventsourcingdb.ReadRecursively())
 		_, err := (<-results).GetData()
 
-		assert.True(t, errors.IsInvalidParameterError(err))
+		assert.True(t, customErrors.IsInvalidParameterError(err))
 		assert.ErrorContains(t, err, "parameter 'subject' is invalid: malformed event subject 'uargh': subject must be an absolute, slash-separated path")
 	})
 }

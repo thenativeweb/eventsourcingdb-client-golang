@@ -3,13 +3,13 @@ package eventsourcingdb_test
 import (
 	"context"
 	"fmt"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/httpserver"
 	"net/http"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/httpserver"
 	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
@@ -94,8 +94,7 @@ func TestReadSubjects(t *testing.T) {
 
 		canceledResult := <-readSubjectResults
 		_, err := canceledResult.GetData()
-		assert.Error(t, err)
-		assert.True(t, customErrors.IsContextCanceledError(err))
+		assert.ErrorIs(t, err, context.Canceled)
 
 		superfluousResult, ok := <-readSubjectResults
 		assert.False(t, ok, fmt.Sprintf("channel did not close %+v", superfluousResult))
@@ -118,8 +117,7 @@ func TestReadSubjects(t *testing.T) {
 		resultChan := client.ReadSubjects(ctx)
 
 		_, err := (<-resultChan).GetData()
-		assert.Error(t, err)
-		assert.True(t, customErrors.IsContextCanceledError(err), err.Error())
+		assert.ErrorIs(t, err, context.Canceled)
 	})
 
 	t.Run("returns an error when the base subject is malformed.", func(t *testing.T) {

@@ -10,9 +10,9 @@ import (
 
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/authorization"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/retry"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
+	"github.com/thenativeweb/goutils/v2/coreutils/retry"
 )
 
 type writeEventsRequestBody struct {

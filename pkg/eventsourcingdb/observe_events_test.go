@@ -3,17 +3,18 @@ package eventsourcingdb_test
 import (
 	"context"
 	"encoding/json"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/httpserver"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/ifeventismissingduringobserve"
+	"errors"
 	"net/http"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/httpserver"
+	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/ifeventismissingduringobserve"
 )
 
 func TestObserveEvents(t *testing.T) {
@@ -82,7 +83,7 @@ func TestObserveEvents(t *testing.T) {
 		firstResult := <-resultChan
 
 		_, err := firstResult.GetData()
-		assert.True(t, errors.IsServerError(err))
+		assert.True(t, customErrors.IsServerError(err))
 		assert.ErrorContains(t, err, "server error: retries exceeded")
 	})
 
@@ -186,8 +187,7 @@ func TestObserveEvents(t *testing.T) {
 		)
 
 		_, err := (<-resultChan).GetData()
-		assert.Error(t, err)
-		assert.True(t, errors.IsContextCanceledError(err))
+		assert.ErrorIs(t, err, context.Canceled)
 	})
 
 	t.Run("returns a ContextCanceledError when the context is canceled while reading the ndjson stream.", func(t *testing.T) {
@@ -206,7 +206,7 @@ func TestObserveEvents(t *testing.T) {
 
 		_, err := (<-resultChan).GetData()
 		assert.Error(t, err)
-		assert.True(t, errors.IsContextCanceledError(err))
+		assert.True(t, errors.Is(err, context.Canceled))
 	})
 
 	t.Run("returns an error if mutually exclusive options are used", func(t *testing.T) {
@@ -239,7 +239,7 @@ func TestObserveEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.IsInvalidParameterError(err))
+		assert.True(t, customErrors.IsInvalidParameterError(err))
 		assert.ErrorContains(t, err, "parameter 'ObserveFromLowerBoundID' is invalid: lowerBoundID must contain an integer")
 	})
 
@@ -256,7 +256,7 @@ func TestObserveEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.IsInvalidParameterError(err))
+		assert.True(t, customErrors.IsInvalidParameterError(err))
 		assert.ErrorContains(t, err, "parameter 'ObserveFromLowerBoundID' is invalid: lowerBoundID must be 0 or greater")
 	})
 
@@ -273,7 +273,7 @@ func TestObserveEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.IsInvalidParameterError(err))
+		assert.True(t, customErrors.IsInvalidParameterError(err))
 		assert.ErrorContains(t, err, "parameter 'ObserveFromLatestEvent' is invalid: malformed event subject")
 	})
 
@@ -290,7 +290,7 @@ func TestObserveEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.IsInvalidParameterError(err))
+		assert.True(t, customErrors.IsInvalidParameterError(err))
 		assert.ErrorContains(t, err, "parameter 'ObserveFromLatestEvent' is invalid: malformed event type")
 	})
 
@@ -310,7 +310,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.IsServerError(err))
+		assert.True(t, customErrors.IsServerError(err))
 		assert.ErrorContains(t, err, "retries exceeded")
 		assert.ErrorContains(t, err, "Bad Gateway")
 	})
@@ -332,7 +332,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.IsClientError(err))
+		assert.True(t, customErrors.IsClientError(err))
 		assert.ErrorContains(t, err, "client error: protocol version mismatch, server '0.0.0', client '1.0.0'")
 	})
 
@@ -352,7 +352,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.IsClientError(err))
+		assert.True(t, customErrors.IsClientError(err))
 		assert.ErrorContains(t, err, "Bad Request")
 	})
 
@@ -372,7 +372,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.IsServerError(err))
+		assert.True(t, customErrors.IsServerError(err))
 		assert.ErrorContains(t, err, "unexpected response status: 202 Accepted")
 	})
 
@@ -394,7 +394,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.IsServerError(err))
+		assert.True(t, customErrors.IsServerError(err))
 		assert.ErrorContains(t, err, "server error: unsupported stream item encountered: cannot unmarshal")
 	})
 
@@ -416,7 +416,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.IsServerError(err))
+		assert.True(t, customErrors.IsServerError(err))
 		assert.ErrorContains(t, err, "server error: unsupported stream item encountered:")
 		assert.ErrorContains(t, err, "does not have a recognized type")
 	})
@@ -439,7 +439,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.IsServerError(err))
+		assert.True(t, customErrors.IsServerError(err))
 		assert.ErrorContains(t, err, "server error: aliens have abducted the server")
 	})
 
@@ -461,7 +461,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.IsServerError(err))
+		assert.True(t, customErrors.IsServerError(err))
 		assert.ErrorContains(t, err, "server error: unsupported stream error encountered:")
 	})
 
@@ -483,7 +483,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.IsServerError(err))
+		assert.True(t, customErrors.IsServerError(err))
 		assert.ErrorContains(t, err, "server error: unsupported stream item encountered:")
 		assert.ErrorContains(t, err, "(trying to unmarshal")
 	})
@@ -494,7 +494,7 @@ func TestObserveEvents(t *testing.T) {
 		results := client.ObserveEvents(context.Background(), "uargh", eventsourcingdb.ObserveRecursively())
 		_, err := (<-results).GetData()
 
-		assert.True(t, errors.IsInvalidParameterError(err))
+		assert.True(t, customErrors.IsInvalidParameterError(err))
 		assert.ErrorContains(t, err, "parameter 'subject' is invalid: malformed event subject 'uargh': subject must be an absolute, slash-separated path")
 	})
 
