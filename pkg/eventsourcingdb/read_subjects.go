@@ -8,12 +8,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/authorization"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/ndjson"
 	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
 	"github.com/thenativeweb/goutils/v2/coreutils/result"
-	"github.com/thenativeweb/goutils/v2/coreutils/retry"
 )
 
 type Subject struct {
@@ -71,60 +69,25 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectsO
 			return
 		}
 
-		routeURL := client.configuration.baseURL.JoinPath("api", "read-subjects")
-		httpClient := &http.Client{}
-		request, err := http.NewRequest("POST", routeURL.String(), bytes.NewReader(requestBodyAsJSON))
+		requestFactory := httputil.NewRequestFactory(client.configuration)
+		executeRequest, err := requestFactory.Create(
+			http.MethodPost,
+			"api/read-subjects",
+			bytes.NewReader(requestBodyAsJSON),
+		)
 		if err != nil {
 			results <- newReadSubjectsError(
 				customErrors.NewInternalError(err),
 			)
 			return
 		}
-		authorization.AddAccessToken(request, client.configuration.accessToken)
 
-		var response *http.Response
-		err = retry.WithBackoff(ctx, client.configuration.maxTries, func() error {
-			response, err = httpClient.Do(request)
-
-			if httputil.IsServerError(response) {
-				return fmt.Errorf("server error: %s", response.Status)
-			}
-
-			return err
-		})
+		response, err := executeRequest(ctx)
 		if err != nil {
-			if errors.Is(err, context.Canceled) {
-				results <- newReadSubjectsError(err)
-				return
-			}
-
-			results <- newReadSubjectsError(
-				customErrors.NewServerError(err.Error()),
-			)
+			results <- newReadSubjectsError(err)
 			return
 		}
 		defer response.Body.Close()
-
-		err = client.validateProtocolVersion(response)
-		if err != nil {
-			results <- newReadSubjectsError(
-				customErrors.NewClientError(err.Error()),
-			)
-			return
-		}
-
-		if httputil.IsClientError(response) {
-			results <- newReadSubjectsError(
-				customErrors.NewClientError(response.Status),
-			)
-			return
-		}
-		if response.StatusCode != http.StatusOK {
-			results <- newReadSubjectsError(
-				customErrors.NewServerError(fmt.Sprintf("unexpected response status: %s", response.Status)),
-			)
-			return
-		}
 
 		unmarshalContext, cancelUnmarshalling := context.WithCancel(ctx)
 		defer cancelUnmarshalling()

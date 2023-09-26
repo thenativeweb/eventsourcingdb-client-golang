@@ -8,13 +8,11 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/authorization"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/ndjson"
 	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
 	"github.com/thenativeweb/goutils/v2/coreutils/result"
-	"github.com/thenativeweb/goutils/v2/coreutils/retry"
 )
 
 type readEventsRequest struct {
@@ -75,9 +73,12 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 			return
 		}
 
-		routeURL := client.configuration.baseURL.JoinPath("api", "read-events")
-		httpClient := &http.Client{}
-		request, err := http.NewRequest("POST", routeURL.String(), bytes.NewReader(requestBodyAsJSON))
+		requestFactory := httputil.NewRequestFactory(client.configuration)
+		executeRequest, err := requestFactory.Create(
+			http.MethodPost,
+			"api/read-events",
+			bytes.NewReader(requestBodyAsJSON),
+		)
 		if err != nil {
 			results <- newReadEventsError(
 				customErrors.NewInternalError(err),
@@ -85,51 +86,12 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 			return
 		}
 
-		authorization.AddAccessToken(request, client.configuration.accessToken)
-
-		var response *http.Response
-		err = retry.WithBackoff(ctx, client.configuration.maxTries, func() error {
-			response, err = httpClient.Do(request)
-
-			if httputil.IsServerError(response) {
-				return fmt.Errorf("server error: %s", response.Status)
-			}
-
-			return err
-		})
+		response, err := executeRequest(ctx)
 		if err != nil {
-			if errors.Is(err, context.Canceled) {
-				results <- newReadEventsError(err)
-				return
-			}
-
-			results <- newReadEventsError(
-				customErrors.NewServerError(err.Error()),
-			)
+			results <- newReadEventsError(err)
 			return
 		}
 		defer response.Body.Close()
-
-		err = client.validateProtocolVersion(response)
-		if err != nil {
-			results <- newReadEventsError(
-				customErrors.NewClientError(err.Error()),
-			)
-			return
-		}
-
-		if httputil.IsClientError(response) {
-			results <- newReadEventsError(
-				customErrors.NewClientError(response.Status),
-			)
-			return
-		}
-		if response.StatusCode != http.StatusOK {
-			results <- newReadEventsError(
-				customErrors.NewServerError(fmt.Sprintf("unexpected response status: %s", response.Status)),
-			)
-			return
-		}
 
 		unmarshalContext, cancelUnmarshalling := context.WithCancel(ctx)
 		defer cancelUnmarshalling()
