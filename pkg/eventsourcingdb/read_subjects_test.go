@@ -2,6 +2,7 @@ package eventsourcingdb_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"testing"
@@ -22,8 +23,8 @@ func TestReadSubjects(t *testing.T) {
 		readSubjectResults := client.ReadSubjects(context.Background())
 
 		_, err := (<-readSubjectResults).GetData()
-		assert.True(t, customErrors.IsServerError(err))
-		assert.ErrorContains(t, err, "server error: retries exceeded")
+		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.ErrorContains(t, err, "server error\nretries exceeded")
 	})
 
 	t.Run("closes the channel when no more subjects exist.", func(t *testing.T) {
@@ -127,8 +128,8 @@ func TestReadSubjects(t *testing.T) {
 		result := <-results
 
 		_, err := result.GetData()
-		assert.True(t, customErrors.IsInvalidParameterError(err))
-		assert.ErrorContains(t, err, "parameter 'BaseSubject' is invalid: malformed event subject")
+		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+		assert.ErrorContains(t, err, "parameter 'BaseSubject' is invalid\nmalformed event subject")
 	})
 
 	t.Run("returns a sever error if the server responds with HTTP 5xx on every try", func(t *testing.T) {
@@ -147,7 +148,7 @@ func TestReadSubjects(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, customErrors.IsServerError(err))
+		assert.True(t, errors.Is(err, customErrors.ErrServerError))
 		assert.ErrorContains(t, err, "retries exceeded")
 		assert.ErrorContains(t, err, "Bad Gateway")
 	})
@@ -169,8 +170,8 @@ func TestReadSubjects(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, customErrors.IsClientError(err))
-		assert.ErrorContains(t, err, "client error: protocol version mismatch, server '0.0.0', client '1.0.0'")
+		assert.True(t, errors.Is(err, customErrors.ErrClientError))
+		assert.ErrorContains(t, err, "client error\nprotocol version mismatch, server '0.0.0', client '1.0.0'")
 	})
 
 	t.Run("returns a client error if the server returns a 4xx status code.", func(t *testing.T) {
@@ -189,7 +190,7 @@ func TestReadSubjects(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, customErrors.IsClientError(err))
+		assert.True(t, errors.Is(err, customErrors.ErrClientError))
 		assert.ErrorContains(t, err, "Bad Request")
 	})
 
@@ -209,7 +210,7 @@ func TestReadSubjects(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, customErrors.IsServerError(err))
+		assert.True(t, errors.Is(err, customErrors.ErrServerError))
 		assert.ErrorContains(t, err, "unexpected response status: 202 Accepted")
 	})
 
@@ -231,8 +232,8 @@ func TestReadSubjects(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, customErrors.IsServerError(err))
-		assert.ErrorContains(t, err, "server error: unsupported stream item encountered: cannot unmarshal")
+		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.ErrorContains(t, err, "server error\nunsupported stream item encountered: cannot unmarshal")
 	})
 
 	t.Run("returns a server error if the server sends a stream item that can't be unmarshalled.", func(t *testing.T) {
@@ -253,8 +254,8 @@ func TestReadSubjects(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, customErrors.IsServerError(err))
-		assert.ErrorContains(t, err, "server error: unsupported stream item encountered:")
+		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.ErrorContains(t, err, "server error\nunsupported stream item encountered:")
 		assert.ErrorContains(t, err, "does not have a recognized type")
 	})
 
@@ -276,8 +277,8 @@ func TestReadSubjects(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, customErrors.IsServerError(err))
-		assert.ErrorContains(t, err, "server error: aliens have abducted the server")
+		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.ErrorContains(t, err, "server error\naliens have abducted the server")
 	})
 
 	t.Run("returns a server error if the server sends a an error item through the ndjson stream, but the error can't be unmarshalled.", func(t *testing.T) {
@@ -298,8 +299,8 @@ func TestReadSubjects(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, customErrors.IsServerError(err))
-		assert.ErrorContains(t, err, "server error: unsupported stream error encountered:")
+		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.ErrorContains(t, err, "server error\nunsupported stream error encountered:")
 	})
 
 	t.Run("returns a server error if the server sends an item that can't be unmarshalled.", func(t *testing.T) {
@@ -320,8 +321,8 @@ func TestReadSubjects(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, customErrors.IsServerError(err))
-		assert.ErrorContains(t, err, "server error: unsupported stream item encountered:")
+		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.ErrorContains(t, err, "server error\nunsupported stream item encountered:")
 		assert.ErrorContains(t, err, "(trying to unmarshal")
 	})
 }

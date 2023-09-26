@@ -1,8 +1,9 @@
 package eventsourcingdb_test
 
 import (
+	"errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/httpserver"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
+	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb"
 	"net/http"
 	"testing"
@@ -15,7 +16,7 @@ func TestPing(t *testing.T) {
 		client := database.WithInvalidURL.GetClient()
 		err := client.Ping()
 
-		assert.True(t, errors.IsServerError(err))
+		assert.True(t, errors.Is(err, customErrors.ErrServerError))
 		assert.ErrorContains(t, err, "server did not respond")
 	})
 
@@ -32,7 +33,7 @@ func TestPing(t *testing.T) {
 
 		err = client.Ping()
 
-		assert.True(t, errors.IsServerError(err))
+		assert.True(t, errors.Is(err, customErrors.ErrServerError))
 		assert.ErrorContains(t, err, "server responded with an unexpected status: 502 Bad Gateway")
 	})
 
@@ -50,7 +51,7 @@ func TestPing(t *testing.T) {
 
 		err = client.Ping()
 
-		assert.True(t, errors.IsServerError(err))
+		assert.True(t, errors.Is(err, customErrors.ErrServerError))
 		assert.ErrorContains(t, err, "failed to read response body")
 	})
 
@@ -69,7 +70,7 @@ func TestPing(t *testing.T) {
 
 		err = client.Ping()
 
-		assert.True(t, errors.IsServerError(err))
+		assert.True(t, errors.Is(err, customErrors.ErrServerError))
 		assert.ErrorContains(t, err, "server responded with an unexpected response body: :-)")
 	})
 

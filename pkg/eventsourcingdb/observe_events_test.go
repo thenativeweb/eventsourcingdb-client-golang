@@ -83,8 +83,8 @@ func TestObserveEvents(t *testing.T) {
 		firstResult := <-resultChan
 
 		_, err := firstResult.GetData()
-		assert.True(t, customErrors.IsServerError(err))
-		assert.ErrorContains(t, err, "server error: retries exceeded")
+		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.ErrorContains(t, err, "server error\nretries exceeded")
 	})
 
 	t.Run("observes events from a single subject.", func(t *testing.T) {
@@ -223,7 +223,7 @@ func TestObserveEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.ErrorContains(t, err, "parameter 'ObserveFromLatestEvent' is invalid: ObserveFromLowerBoundID and ObserveFromLatestEvent are mutually exclusive")
+		assert.ErrorContains(t, err, "parameter 'ObserveFromLatestEvent' is invalid\nObserveFromLowerBoundID and ObserveFromLatestEvent are mutually exclusive")
 	})
 
 	t.Run("returns an error if the given lowerBoundID does not contain an integer.", func(t *testing.T) {
@@ -239,8 +239,8 @@ func TestObserveEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, customErrors.IsInvalidParameterError(err))
-		assert.ErrorContains(t, err, "parameter 'ObserveFromLowerBoundID' is invalid: lowerBoundID must contain an integer")
+		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+		assert.ErrorContains(t, err, "parameter 'ObserveFromLowerBoundID' is invalid\nlowerBoundID must contain an integer")
 	})
 
 	t.Run("returns an error if the given lowerBoundID contains an integer that is negative.", func(t *testing.T) {
@@ -256,8 +256,8 @@ func TestObserveEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, customErrors.IsInvalidParameterError(err))
-		assert.ErrorContains(t, err, "parameter 'ObserveFromLowerBoundID' is invalid: lowerBoundID must be 0 or greater")
+		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+		assert.ErrorContains(t, err, "parameter 'ObserveFromLowerBoundID' is invalid\nlowerBoundID must be 0 or greater")
 	})
 
 	t.Run("returns an error if an incorrect subject is used in ObserveFromLatestEvent.", func(t *testing.T) {
@@ -273,8 +273,8 @@ func TestObserveEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, customErrors.IsInvalidParameterError(err))
-		assert.ErrorContains(t, err, "parameter 'ObserveFromLatestEvent' is invalid: malformed event subject")
+		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+		assert.ErrorContains(t, err, "parameter 'ObserveFromLatestEvent' is invalid\nmalformed event subject")
 	})
 
 	t.Run("returns an error if an incorrect type is used in ObserveFromLatestEvent.", func(t *testing.T) {
@@ -290,8 +290,8 @@ func TestObserveEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, customErrors.IsInvalidParameterError(err))
-		assert.ErrorContains(t, err, "parameter 'ObserveFromLatestEvent' is invalid: malformed event type")
+		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+		assert.ErrorContains(t, err, "parameter 'ObserveFromLatestEvent' is invalid\nmalformed event type")
 	})
 
 	t.Run("returns a sever error if the server responds with HTTP 5xx on every try", func(t *testing.T) {
@@ -310,7 +310,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, customErrors.IsServerError(err))
+		assert.True(t, errors.Is(err, customErrors.ErrServerError))
 		assert.ErrorContains(t, err, "retries exceeded")
 		assert.ErrorContains(t, err, "Bad Gateway")
 	})
@@ -332,8 +332,8 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, customErrors.IsClientError(err))
-		assert.ErrorContains(t, err, "client error: protocol version mismatch, server '0.0.0', client '1.0.0'")
+		assert.True(t, errors.Is(err, customErrors.ErrClientError))
+		assert.ErrorContains(t, err, "client error\nprotocol version mismatch, server '0.0.0', client '1.0.0'")
 	})
 
 	t.Run("returns a client error if the server returns a 4xx status code.", func(t *testing.T) {
@@ -352,7 +352,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, customErrors.IsClientError(err))
+		assert.True(t, errors.Is(err, customErrors.ErrClientError))
 		assert.ErrorContains(t, err, "Bad Request")
 	})
 
@@ -372,7 +372,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, customErrors.IsServerError(err))
+		assert.True(t, errors.Is(err, customErrors.ErrServerError))
 		assert.ErrorContains(t, err, "unexpected response status: 202 Accepted")
 	})
 
@@ -394,8 +394,8 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, customErrors.IsServerError(err))
-		assert.ErrorContains(t, err, "server error: unsupported stream item encountered: cannot unmarshal")
+		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.ErrorContains(t, err, "server error\nunsupported stream item encountered: cannot unmarshal")
 	})
 
 	t.Run("returns a server error if the server sends a stream item that can't be unmarshalled.", func(t *testing.T) {
@@ -416,8 +416,8 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, customErrors.IsServerError(err))
-		assert.ErrorContains(t, err, "server error: unsupported stream item encountered:")
+		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.ErrorContains(t, err, "server error\nunsupported stream item encountered:")
 		assert.ErrorContains(t, err, "does not have a recognized type")
 	})
 
@@ -439,8 +439,8 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, customErrors.IsServerError(err))
-		assert.ErrorContains(t, err, "server error: aliens have abducted the server")
+		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.ErrorContains(t, err, "server error\naliens have abducted the server")
 	})
 
 	t.Run("returns a server error if the server sends a an error item through the ndjson stream, but the error can't be unmarshalled.", func(t *testing.T) {
@@ -461,8 +461,8 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, customErrors.IsServerError(err))
-		assert.ErrorContains(t, err, "server error: unsupported stream error encountered:")
+		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.ErrorContains(t, err, "server error\nunsupported stream error encountered:")
 	})
 
 	t.Run("returns a server error if the server sends an item that can't be unmarshalled.", func(t *testing.T) {
@@ -483,8 +483,8 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, customErrors.IsServerError(err))
-		assert.ErrorContains(t, err, "server error: unsupported stream item encountered:")
+		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.ErrorContains(t, err, "server error\nunsupported stream item encountered:")
 		assert.ErrorContains(t, err, "(trying to unmarshal")
 	})
 
@@ -494,8 +494,8 @@ func TestObserveEvents(t *testing.T) {
 		results := client.ObserveEvents(context.Background(), "uargh", eventsourcingdb.ObserveRecursively())
 		_, err := (<-results).GetData()
 
-		assert.True(t, customErrors.IsInvalidParameterError(err))
-		assert.ErrorContains(t, err, "parameter 'subject' is invalid: malformed event subject 'uargh': subject must be an absolute, slash-separated path")
+		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+		assert.ErrorContains(t, err, "parameter 'subject' is invalid\nmalformed event subject 'uargh': subject must be an absolute, slash-separated path")
 	})
 
 	t.Run("observes for longer than ten seconds.", func(t *testing.T) {
