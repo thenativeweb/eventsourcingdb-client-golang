@@ -1,30 +1,14 @@
 package eventsourcingdb
 
 import (
-	"github.com/Masterminds/semver"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/configuration"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
 	"net/url"
 	"strconv"
 )
 
-type clientConfiguration struct {
-	baseURL         *url.URL
-	accessToken     string
-	protocolVersion semver.Version
-	maxTries        int
-}
-
-func getDefaultConfiguration(baseURL *url.URL, accessToken string) clientConfiguration {
-	return clientConfiguration{
-		baseURL:         baseURL,
-		accessToken:     accessToken,
-		protocolVersion: *semver.MustParse("1.0.0"),
-		maxTries:        10,
-	}
-}
-
 type Client struct {
-	configuration clientConfiguration
+	configuration configuration.ClientConfiguration
 }
 
 func NewClient(baseURL string, accessToken string, options ...ClientOption) (Client, error) {
@@ -43,15 +27,15 @@ func NewClient(baseURL string, accessToken string, options ...ClientOption) (Cli
 		return Client{}, errors.NewInvalidParameterError("baseURL", "must use HTTP or HTTPS")
 	}
 
-	configuration := getDefaultConfiguration(parsedBaseURL, accessToken)
+	clientConfiguration := configuration.GetDefaultConfiguration(parsedBaseURL, accessToken)
 
 	for _, option := range options {
-		if err := option.apply(&configuration); err != nil {
+		if err := option.apply(&clientConfiguration); err != nil {
 			return Client{}, errors.NewInvalidParameterError(option.name, err.Error())
 		}
 	}
 
-	client := Client{configuration}
+	client := Client{clientConfiguration}
 
 	return client, nil
 }

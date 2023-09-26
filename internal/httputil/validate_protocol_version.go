@@ -1,12 +1,13 @@
-package eventsourcingdb
+package httputil
 
 import (
 	"errors"
 	"fmt"
+	"github.com/Masterminds/semver"
 	"net/http"
 )
 
-func (client *Client) validateProtocolVersion(response *http.Response) error {
+func validateProtocolVersion(response *http.Response, clientProtocolVersion semver.Version) error {
 	if response.StatusCode != http.StatusUnprocessableEntity {
 		return nil
 	}
@@ -19,7 +20,7 @@ func (client *Client) validateProtocolVersion(response *http.Response) error {
 	errorMessage := fmt.Sprintf(
 		"protocol version mismatch, server '%s', client '%s'",
 		serverProtocolVersion,
-		client.configuration.protocolVersion.String(),
+		clientProtocolVersion.String(),
 	)
 
 	return errors.New(errorMessage)

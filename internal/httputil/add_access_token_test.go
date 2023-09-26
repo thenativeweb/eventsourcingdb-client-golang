@@ -1,7 +1,7 @@
-package authorization_test
+package httputil_test
 
 import (
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/authorization"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
 	"net/http"
 	"testing"
 
@@ -13,7 +13,7 @@ func TestAddAccessToken(t *testing.T) {
 		request, err := http.NewRequest("GET", "http://localhost", nil)
 		assert.NoError(t, err)
 
-		authorization.AddAccessToken(request, "secret")
+		httputil.AddAccessToken(request, "secret")
 
 		assert.Equal(t, "Bearer secret", request.Header.Get("Authorization"))
 	})
@@ -22,7 +22,7 @@ func TestAddAccessToken(t *testing.T) {
 		request, err := http.NewRequest("GET", "http://localhost", nil)
 		assert.NoError(t, err)
 
-		authorization.AddAccessToken(request, "")
+		httputil.AddAccessToken(request, "")
 
 		assert.Equal(t, "", request.Header.Get("Authorization"))
 	})

@@ -9,7 +9,7 @@ import (
 
 func (client *Client) Ping() error {
 	httpClient := &http.Client{}
-	url := client.configuration.baseURL.JoinPath("ping")
+	url := client.configuration.BaseURL.JoinPath("ping")
 
 	response, err := httpClient.Get(url.String())
 	if err != nil {
