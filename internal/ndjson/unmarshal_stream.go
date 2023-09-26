@@ -7,9 +7,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/thenativeweb/goutils/coreutils/result"
-
-	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
+	"github.com/thenativeweb/goutils/v2/coreutils/result"
 )
 
 type UnmarshalStreamResult[TData any] struct {
@@ -53,7 +51,7 @@ func UnmarshalStream[TData any](ctx context.Context, reader io.Reader) <-chan Un
 		for {
 			select {
 			case <-ctx.Done():
-				resultChannel <- newError[TData](errors.NewContextCanceledError(ctx))
+				resultChannel <- newError[TData](ctx.Err())
 			case currentLine, ok := <-lineChannel:
 				if !ok {
 					break LineLoop

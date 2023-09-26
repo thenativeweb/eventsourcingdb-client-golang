@@ -2,10 +2,11 @@ package test
 
 import (
 	"context"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/retry"
+	"strconv"
+
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/docker"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb"
-	"strconv"
+	"github.com/thenativeweb/goutils/v2/coreutils/retry"
 )
 
 type ContainerizedTestingDatabase struct {

@@ -1,21 +1,20 @@
 package errors
 
-import "fmt"
+import (
+	"errors"
+)
 
-type ClientError struct {
-	message string
-}
-
-func (err *ClientError) Error() string {
-	return fmt.Sprintf("client error: %s", err.message)
-}
+// ErrClientError signals an error in the client code.
+// Client errors can generally be handled by the user.
+var ErrClientError = errors.New("client error")
 
 func NewClientError(message string) error {
-	return &ClientError{message}
+	return errors.Join(ErrClientError, errors.New(message))
 }
 
+// IsClientError returns true if the error is a client error.
+//
+// Deprecated: use errors.Is(err, errors.ErrClientError) instead.
 func IsClientError(err error) bool {
-	_, ok := err.(*ClientError)
-
-	return ok
+	return errors.Is(err, ErrClientError)
 }

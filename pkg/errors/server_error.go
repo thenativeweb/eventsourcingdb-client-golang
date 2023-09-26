@@ -1,21 +1,21 @@
 package errors
 
-import "fmt"
+import (
+	"errors"
+)
 
-type ServerError struct {
-	message string
-}
+// ErrServerError signals an error in the server.
+// Server errors can generally not be handled by the user.
+var ErrServerError = errors.New("server error")
 
-func (err *ServerError) Error() string {
-	return fmt.Sprintf("server error: %s", err.message)
-}
-
+// NewServerError returns a new server error with the given message.
 func NewServerError(message string) error {
-	return &ServerError{message}
+	return errors.Join(ErrServerError, errors.New(message))
 }
 
+// IsServerError returns true if the error is a server error.
+//
+// Deprecated: use errors.Is(err, errors.ErrServerError) instead.
 func IsServerError(err error) bool {
-	_, ok := err.(*ServerError)
-
-	return ok
+	return errors.Is(err, ErrServerError)
 }

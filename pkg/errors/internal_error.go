@@ -1,23 +1,21 @@
 package errors
 
-import "fmt"
+import (
+	"errors"
+)
 
-// InternalError signals an error in the internal logic of the database client.
+// ErrInternalError signals an error in the internal logic of the database client.
 // Internal errors can not be handled by the user and are mostly useful for debugging by the library authors.
-type InternalError struct {
-	cause error
-}
+var ErrInternalError = errors.New("internal error")
 
-func (err *InternalError) Error() string {
-	return fmt.Sprintf("internal error: %s", err.cause.Error())
-}
-
+// NewInternalError returns a new internal error that wraps the given cause.
 func NewInternalError(cause error) error {
-	return &InternalError{cause}
+	return errors.Join(ErrInternalError, cause)
 }
 
+// IsInternalError returns true if the error is an internal error.
+//
+// Deprecated: use errors.Is(err, errors.ErrInternalError) instead.
 func IsInternalError(err error) bool {
-	_, ok := err.(*InternalError)
-
-	return ok
+	return errors.Is(err, ErrInternalError)
 }

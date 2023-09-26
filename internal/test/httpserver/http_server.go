@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/retry"
 	"net"
 	"net/http"
+
+	"github.com/thenativeweb/goutils/v2/coreutils/retry"
 )
 
 type RegisterHandlers func(mux *http.ServeMux)

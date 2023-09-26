@@ -5,13 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/authorization"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/retry"
-	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
 	"io"
 	"net/http"
+
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/authorization"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
+	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
+	"github.com/thenativeweb/goutils/v2/coreutils/retry"
 )
 
 type registerEventSchemaRequestBody struct {

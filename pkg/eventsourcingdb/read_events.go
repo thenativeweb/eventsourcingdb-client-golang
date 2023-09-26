@@ -4,17 +4,17 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
-
-	"github.com/thenativeweb/goutils/coreutils/result"
 
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/authorization"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/ndjson"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/retry"
 	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
+	"github.com/thenativeweb/goutils/v2/coreutils/result"
+	"github.com/thenativeweb/goutils/v2/coreutils/retry"
 )
 
 type readEventsRequest struct {
@@ -98,7 +98,7 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 			return err
 		})
 		if err != nil {
-			if customErrors.IsContextCanceledError(err) {
+			if errors.Is(err, context.Canceled) {
 				results <- newReadEventsError(err)
 				return
 			}
@@ -138,7 +138,7 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 		for unmarshalResult := range unmarshalResults {
 			data, err := unmarshalResult.GetData()
 			if err != nil {
-				if customErrors.IsContextCanceledError(err) {
+				if errors.Is(err, context.Canceled) {
 					results <- newReadEventsError(err)
 					return
 				}
