@@ -88,8 +88,8 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 
 		response, err := executeRequest(ctx)
 		if err != nil {
-			results <- newObserveEventsError(err)
-			return
+				results <- newObserveEventsError(err)
+				return
 		}
 		defer response.Body.Close()
 
