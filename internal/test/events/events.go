@@ -1,10 +1,5 @@
 package events
 
-import (
-	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb/event"
-	"go.opentelemetry.io/otel/trace"
-)
-
 const TestSource = "tag:thenativeweb.io,2023:eventsourcingdb:test"
 
 type RegisteredEventData struct {
@@ -12,9 +7,10 @@ type RegisteredEventData struct {
 }
 
 type RegisteredEvent struct {
-	Type           string
-	Data           RegisteredEventData
-	TracingContext *event.TracingContext
+	Type        string
+	Data        RegisteredEventData
+	TraceParent string
+	TraceState  string
 }
 
 type registeredEvents struct {
@@ -28,9 +24,10 @@ type LoggedInEventData struct {
 }
 
 type LoggedInEvent struct {
-	Type           string
-	Data           LoggedInEventData
-	TracingContext *event.TracingContext
+	Type        string
+	Data        LoggedInEventData
+	TraceParent string
+	TraceState  string
 }
 
 type loggedInEvents struct {
@@ -45,41 +42,32 @@ type events struct {
 
 var Events = events{
 	Registered: registeredEvents{
-		JaneDoe: RegisteredEvent{PrefixEventType("registered"), RegisteredEventData{"Jane Doe"}, &event.TracingContext{
-			TraceID:    ignoreError(trace.TraceIDFromHex("10000000000000000000000000000000")),
-			SpanID:     ignoreError(trace.SpanIDFromHex("1000000000000000")),
-			TraceFlags: 0,
-			TraceState: trace.TraceState{},
-		}},
-		JohnDoe: RegisteredEvent{PrefixEventType("registered"), RegisteredEventData{"John Doe"}, &event.TracingContext{
-			TraceID:    ignoreError(trace.TraceIDFromHex("20000000000000000000000000000000")),
-			SpanID:     ignoreError(trace.SpanIDFromHex("2000000000000000")),
-			TraceFlags: 0,
-			TraceState: trace.TraceState{},
-		}},
-		ApfelFred: RegisteredEvent{PrefixEventType("registered"), RegisteredEventData{"Apfel Fred"}, &event.TracingContext{
-			TraceID:    ignoreError(trace.TraceIDFromHex("30000000000000000000000000000000")),
-			SpanID:     ignoreError(trace.SpanIDFromHex("3000000000000000")),
-			TraceFlags: 0,
-			TraceState: trace.TraceState{},
-		}},
+		JaneDoe: RegisteredEvent{
+			Type:        PrefixEventType("registered"),
+			Data:        RegisteredEventData{"Jane Doe"},
+			TraceParent: "00-10000000000000000000000000000000-1000000000000000-00",
+		},
+		JohnDoe: RegisteredEvent{
+			Type:        PrefixEventType("registered"),
+			Data:        RegisteredEventData{"John Doe"},
+			TraceParent: "00-20000000000000000000000000000000-2000000000000000-00",
+		},
+		ApfelFred: RegisteredEvent{
+			Type:        PrefixEventType("registered"),
+			Data:        RegisteredEventData{"Apfel Fred"},
+			TraceParent: "00-30000000000000000000000000000000-3000000000000000-00",
+		},
 	},
 	LoggedIn: loggedInEvents{
-		JaneDoe: LoggedInEvent{PrefixEventType("loggedIn"), LoggedInEventData{"Jane Doe"}, &event.TracingContext{
-			TraceID:    ignoreError(trace.TraceIDFromHex("40000000000000000000000000000000")),
-			SpanID:     ignoreError(trace.SpanIDFromHex("4000000000000000")),
-			TraceFlags: 0,
-			TraceState: trace.TraceState{},
-		}},
-		JohnDoe: LoggedInEvent{PrefixEventType("loggedIn"), LoggedInEventData{"John Doe"}, &event.TracingContext{
-			TraceID:    ignoreError(trace.TraceIDFromHex("50000000000000000000000000000000")),
-			SpanID:     ignoreError(trace.SpanIDFromHex("5000000000000000")),
-			TraceFlags: 0,
-			TraceState: trace.TraceState{},
-		}},
+		JaneDoe: LoggedInEvent{
+			Type:        PrefixEventType("loggedIn"),
+			Data:        LoggedInEventData{"Jane Doe"},
+			TraceParent: "00-40000000000000000000000000000000-4000000000000000-00",
+		},
+		JohnDoe: LoggedInEvent{
+			Type:        PrefixEventType("loggedIn"),
+			Data:        LoggedInEventData{"John Doe"},
+			TraceParent: "00-50000000000000000000000000000000-5000000000000000-00",
+		},
 	},
-}
-
-func ignoreError[T any](value T, err error) T {
-	return value
 }

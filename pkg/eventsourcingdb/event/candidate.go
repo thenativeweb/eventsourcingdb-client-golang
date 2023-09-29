@@ -5,10 +5,11 @@ import (
 )
 
 type CandidateContext struct {
-	Source         string          `json:"source"`
-	Subject        string          `json:"subject"`
-	Type           string          `json:"type"`
-	TracingContext *TracingContext `json:"tracingContext"`
+	Source      string  `json:"source"`
+	Subject     string  `json:"subject"`
+	Type        string  `json:"type"`
+	TraceParent *string `json:"traceparent,omitempty"`
+	TraceState  *string `json:"tracestate,omitempty"`
 }
 
 type Candidate struct {
@@ -18,9 +19,15 @@ type Candidate struct {
 
 type CandidateTransformer func(candidate *Candidate)
 
-func WithTracingContext(tracingContext *TracingContext) CandidateTransformer {
+func WithTraceParent(traceParent string) CandidateTransformer {
 	return func(candidate *Candidate) {
-		candidate.TracingContext = tracingContext
+		candidate.TraceParent = &traceParent
+	}
+}
+
+func WithTraceState(traceState string) CandidateTransformer {
+	return func(candidate *Candidate) {
+		candidate.TraceParent = &traceState
 	}
 }
 
@@ -33,10 +40,9 @@ func NewCandidate(
 ) Candidate {
 	candidate := Candidate{
 		CandidateContext{
-			Source:         source,
-			Subject:        subject,
-			Type:           eventType,
-			TracingContext: nil,
+			Source:  source,
+			Subject: subject,
+			Type:    eventType,
 		},
 		data,
 	}
@@ -59,6 +65,10 @@ func (candidate Candidate) Validate() error {
 
 	if err := ValidateType(candidate.Type); err != nil {
 		return fmt.Errorf("event candidate failed to validate: %w", err)
+	}
+
+	if candidate.TraceState != nil && candidate.TraceParent == nil {
+		return fmt.Errorf("event candidate failed to validate: traceparent is required when tracestate is provided")
 	}
 
 	return nil
