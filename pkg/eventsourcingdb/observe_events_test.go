@@ -74,7 +74,7 @@ func TestObserveEvents(t *testing.T) {
 	matchRegisteredEvent := func(t *testing.T, event event.Event, expected events.RegisteredEvent) {
 		assert.Equal(t, "/users/registered", event.Subject)
 		assert.Equal(t, expected.Type, event.Type)
-		assert.Equal(t, expected.TraceParent, event.TraceParent)
+		assert.Equal(t, expected.TraceParent, *event.TraceParent)
 
 		var eventData events.RegisteredEventData
 		err := json.Unmarshal(event.Data, &eventData)
@@ -87,7 +87,7 @@ func TestObserveEvents(t *testing.T) {
 	matchLoggedInEvent := func(t *testing.T, event event.Event, expected events.LoggedInEvent) {
 		assert.Equal(t, "/users/loggedIn", event.Subject)
 		assert.Equal(t, expected.Type, event.Type)
-		assert.Equal(t, expected.TraceParent, event.TraceParent)
+		assert.Equal(t, expected.TraceParent, *event.TraceParent)
 
 		var eventData events.LoggedInEventData
 		err := json.Unmarshal(event.Data, &eventData)
