@@ -1,6 +1,7 @@
 package event_test
 
 import (
+	"github.com/thenativeweb/goutils/v2/coreutils"
 	"testing"
 	"time"
 
@@ -71,5 +72,19 @@ func TestCandidate_Validate(t *testing.T) {
 		}.Validate()
 
 		assert.ErrorContains(t, err, "event candidate failed to validate: malformed event type 'invalid': type must be a reverse domain name")
+	})
+
+	t.Run("returns an error if a tracestate is given but no traceparent.", func(t *testing.T) {
+		err := event.Candidate{
+			CandidateContext: event.CandidateContext{
+				Source:     "tag:foobar.invalid,2023:service",
+				Subject:    "/foo/bar",
+				Type:       "invalid.foobar.event",
+				TraceState: coreutils.PointerTo("foo=bar"),
+			},
+			Data: struct{}{},
+		}.Validate()
+
+		assert.ErrorContains(t, err, "event candidate failed to validate: traceparent is required when tracestate is provided")
 	})
 }
