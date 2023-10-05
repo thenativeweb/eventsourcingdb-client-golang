@@ -8,7 +8,7 @@ require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/google/uuid v1.3.0
 	github.com/stretchr/testify v1.8.4
-	github.com/thenativeweb/goutils/v2 v2.2.0
+	github.com/thenativeweb/goutils/v2 v2.5.0
 )
 
 require (

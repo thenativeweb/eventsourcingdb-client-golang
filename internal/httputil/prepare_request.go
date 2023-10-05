@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/configuration"
 	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
+	"github.com/thenativeweb/goutils/v2/coreutils/contextutils"
 	"github.com/thenativeweb/goutils/v2/coreutils/retry"
 	"io"
 	"net/http"
@@ -72,7 +73,7 @@ func (factory RequestFactory) Create(method string, path string, body io.Reader)
 
 			return customErrors.NewServerError(fmt.Sprintf("unexpected response status: %s", response.Status))
 		})
-		if errors.Is(retryErr, context.Canceled) {
+		if contextutils.IsContextTerminationError(retryErr) {
 			return response, retryErr
 		}
 		if retryErr != nil {

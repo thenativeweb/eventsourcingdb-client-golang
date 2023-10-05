@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/thenativeweb/goutils/v2/platformutils"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
@@ -581,5 +583,25 @@ func TestReadEvents(t *testing.T) {
 
 		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
 		assert.ErrorContains(t, err, "parameter 'subject' is invalid\nmalformed event subject 'uargh': subject must be an absolute, slash-separated path")
+	})
+
+	// Regression test for https://github.com/thenativeweb/eventsourcingdb-client-golang/pull/97
+	t.Run("Works with contexts that have a deadline.", func(t *testing.T) {
+		client := database.WithAuthorization.GetClient()
+
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(1*platformutils.Jiffy))
+		defer cancel()
+
+		time.Sleep(2 * platformutils.Jiffy)
+
+		results := client.ReadEvents(ctx, "/", eventsourcingdb.ReadNonRecursively())
+		result := <-results
+		_, err := result.GetData()
+
+		assert.ErrorIs(t, err, context.DeadlineExceeded)
+		assert.NotErrorIs(t, customErrors.ErrServerError, err)
+		assert.NotErrorIs(t, customErrors.ErrClientError, err)
+		assert.NotErrorIs(t, customErrors.ErrInternalError, err)
+		assert.NotContains(t, err.Error(), "unsupported stream item")
 	})
 }

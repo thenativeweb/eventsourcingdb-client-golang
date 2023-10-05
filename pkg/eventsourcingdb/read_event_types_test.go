@@ -2,7 +2,10 @@ package eventsourcingdb_test
 
 import (
 	"context"
+	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
+	"github.com/thenativeweb/goutils/v2/platformutils"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
@@ -77,5 +80,25 @@ func TestClient_ReadEventTypes(t *testing.T) {
 		for _, expectedEventType := range expectedResults {
 			assert.Contains(t, observedEventTypes, expectedEventType)
 		}
+	})
+
+	// Regression test for https://github.com/thenativeweb/eventsourcingdb-client-golang/pull/97
+	t.Run("Works with contexts that have a deadline.", func(t *testing.T) {
+		client := database.WithAuthorization.GetClient()
+
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(1*platformutils.Jiffy))
+		defer cancel()
+
+		time.Sleep(2 * platformutils.Jiffy)
+
+		results := client.ReadEventTypes(ctx)
+		result := <-results
+		_, err := result.GetData()
+
+		assert.ErrorIs(t, err, context.DeadlineExceeded)
+		assert.NotErrorIs(t, customErrors.ErrServerError, err)
+		assert.NotErrorIs(t, customErrors.ErrClientError, err)
+		assert.NotErrorIs(t, customErrors.ErrInternalError, err)
+		assert.NotContains(t, err.Error(), "unsupported stream item")
 	})
 }
