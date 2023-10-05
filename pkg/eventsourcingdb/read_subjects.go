@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"github.com/thenativeweb/goutils/v2/coreutils/contextutils"
 	"net/http"
 
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
@@ -96,7 +96,7 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectsO
 		for unmarshalResult := range unmarshalResults {
 			data, err := unmarshalResult.GetData()
 			if err != nil {
-				if errors.Is(err, context.Canceled) {
+				if contextutils.IsContextTerminationError(err) {
 					results <- newReadSubjectsError(err)
 					return
 				}

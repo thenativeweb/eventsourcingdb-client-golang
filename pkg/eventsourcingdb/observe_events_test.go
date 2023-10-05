@@ -236,7 +236,7 @@ func TestObserveEvents(t *testing.T) {
 
 		_, err := (<-resultChan).GetData()
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, context.Canceled))
+		assert.ErrorIs(t, err, context.Canceled)
 	})
 
 	t.Run("returns an error if mutually exclusive options are used", func(t *testing.T) {

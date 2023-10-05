@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"github.com/thenativeweb/goutils/v2/coreutils/contextutils"
 	"net/http"
 
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
@@ -88,8 +88,8 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 
 		response, err := executeRequest(ctx)
 		if err != nil {
-				results <- newObserveEventsError(err)
-				return
+			results <- newObserveEventsError(err)
+			return
 		}
 		defer response.Body.Close()
 
@@ -100,7 +100,7 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 		for unmarshalResult := range unmarshalResults {
 			data, err := unmarshalResult.GetData()
 			if err != nil {
-				if errors.Is(err, context.Canceled) {
+				if contextutils.IsContextTerminationError(err) {
 					results <- newObserveEventsError(err)
 					return
 				}
