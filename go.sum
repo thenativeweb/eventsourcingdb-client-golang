@@ -17,6 +17,8 @@ github.com/thenativeweb/goutils/v2 v2.2.0 h1:J3sFbgzJgt2vE7PSZI1k1xLUl67NHDOp1Iv
 github.com/thenativeweb/goutils/v2 v2.2.0/go.mod h1:9TcyFZFzQNoTrL8lNkewhNKodpZlfJTGNC8HI8LFCHY=
 github.com/thenativeweb/goutils/v2 v2.4.0 h1:oJgi5NZ+HOVh27H7otlm/fb/ECptIyYj94ew3okUmIA=
 github.com/thenativeweb/goutils/v2 v2.4.0/go.mod h1:/VHDjasi1pIqSB8M4x5nKS7sSNSCPqbXYeceJcfcUVU=
+github.com/thenativeweb/goutils/v2 v2.5.0 h1:heeZnWyv//WVcA9TqnEZu+f/z+Qgq3sSCo9sWFaIq8g=
+github.com/thenativeweb/goutils/v2 v2.5.0/go.mod h1:/VHDjasi1pIqSB8M4x5nKS7sSNSCPqbXYeceJcfcUVU=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 h1:qIbj1fsPNlZgppZ+VLlY7N33q108Sa+fhmuc+sWQYwY=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=

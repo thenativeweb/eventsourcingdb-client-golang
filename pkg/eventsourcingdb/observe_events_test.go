@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/thenativeweb/goutils/v2/platformutils"
 	"net/http"
 	"testing"
 	"time"
@@ -552,5 +553,25 @@ func TestObserveEvents(t *testing.T) {
 				return
 			}
 		}
+	})
+
+	// Regression test for https://github.com/thenativeweb/eventsourcingdb-client-golang/pull/97
+	t.Run("Works with contexts that have a deadline.", func(t *testing.T) {
+		client := database.WithAuthorization.GetClient()
+
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(1*platformutils.Jiffy))
+		defer cancel()
+
+		time.Sleep(2 * platformutils.Jiffy)
+
+		results := client.ObserveEvents(ctx, "/", eventsourcingdb.ObserveRecursively())
+		result := <-results
+		_, err := result.GetData()
+
+		assert.ErrorIs(t, err, context.DeadlineExceeded)
+		assert.NotErrorIs(t, customErrors.ErrServerError, err)
+		assert.NotErrorIs(t, customErrors.ErrClientError, err)
+		assert.NotErrorIs(t, customErrors.ErrInternalError, err)
+		assert.NotContains(t, err.Error(), "unsupported stream item")
 	})
 }

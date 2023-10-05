@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/thenativeweb/goutils/v2/platformutils"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -324,5 +326,25 @@ func TestReadSubjects(t *testing.T) {
 		assert.True(t, errors.Is(err, customErrors.ErrServerError))
 		assert.ErrorContains(t, err, "server error\nunsupported stream item encountered:")
 		assert.ErrorContains(t, err, "(trying to unmarshal")
+	})
+
+	// Regression test for https://github.com/thenativeweb/eventsourcingdb-client-golang/pull/97
+	t.Run("Works with contexts that have a deadline.", func(t *testing.T) {
+		client := database.WithAuthorization.GetClient()
+
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(1*platformutils.Jiffy))
+		defer cancel()
+
+		time.Sleep(2 * platformutils.Jiffy)
+
+		results := client.ReadSubjects(ctx)
+		result := <-results
+		_, err := result.GetData()
+
+		assert.ErrorIs(t, err, context.DeadlineExceeded)
+		assert.NotErrorIs(t, customErrors.ErrServerError, err)
+		assert.NotErrorIs(t, customErrors.ErrClientError, err)
+		assert.NotErrorIs(t, customErrors.ErrInternalError, err)
+		assert.NotContains(t, err.Error(), "unsupported stream item")
 	})
 }
