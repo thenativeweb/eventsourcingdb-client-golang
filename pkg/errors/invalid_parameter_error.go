@@ -13,7 +13,7 @@ var ErrInvalidParameter = errors.New("invalid parameter")
 
 // NewInvalidParameterError returns a new invalid parameter error that indicates that the given parameter is invalid.
 func NewInvalidParameterError(parameterName, reason string) error {
-	return errorutils.Join(ErrClientError, ErrInvalidParameter, fmt.Errorf("parameter '%s' is invalid\n%s", parameterName, reason))
+	return errorutils.Join(ErrClientError, ErrInvalidParameter, fmt.Errorf("parameter '%s' is invalid: %s", parameterName, reason))
 }
 
 // IsInvalidParameterError returns true if the error is an invalid parameter error.
