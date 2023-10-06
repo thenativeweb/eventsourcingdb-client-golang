@@ -58,7 +58,7 @@ func (factory RequestFactory) Create(method string, path string, body io.Reader)
 
 			errorMessage := response.Status
 			if responseBody, err := io.ReadAll(response.Body); err == nil {
-				errorMessage += "\n" + string(responseBody)
+				errorMessage += ": " + string(responseBody)
 			}
 
 			if IsClientError(response) {
