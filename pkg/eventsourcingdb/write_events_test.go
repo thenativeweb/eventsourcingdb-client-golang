@@ -36,7 +36,7 @@ func TestWriteEvents(t *testing.T) {
 		)
 
 		assert.True(t, errors.Is(err, customErrors.ErrServerError))
-		assert.ErrorContains(t, err, "server error\nretries exceeded")
+		assert.ErrorContains(t, err, "server error: retries exceeded")
 	})
 
 	t.Run("returns an error if no candidates are passed.", func(t *testing.T) {
@@ -263,7 +263,7 @@ func TestWriteEvents(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, customErrors.ErrClientError))
-		assert.ErrorContains(t, err, "client error\nprotocol version mismatch, server '0.0.0', client '1.0.0'")
+		assert.ErrorContains(t, err, "client error: protocol version mismatch, server '0.0.0', client '1.0.0'")
 	})
 
 	t.Run("returns a client error if the server returns a 4xx status code.", func(t *testing.T) {

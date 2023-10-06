@@ -109,7 +109,7 @@ func TestObserveEvents(t *testing.T) {
 
 		_, err := firstResult.GetData()
 		assert.True(t, errors.Is(err, customErrors.ErrServerError))
-		assert.ErrorContains(t, err, "server error\nretries exceeded")
+		assert.ErrorContains(t, err, "server error: retries exceeded")
 	})
 
 	t.Run("observes events from a single subject.", func(t *testing.T) {
@@ -364,7 +364,7 @@ func TestObserveEvents(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, customErrors.ErrClientError))
-		assert.ErrorContains(t, err, "client error\nprotocol version mismatch, server '0.0.0', client '1.0.0'")
+		assert.ErrorContains(t, err, "client error: protocol version mismatch, server '0.0.0', client '1.0.0'")
 	})
 
 	t.Run("returns a client error if the server returns a 4xx status code.", func(t *testing.T) {
@@ -426,7 +426,7 @@ func TestObserveEvents(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, customErrors.ErrServerError))
-		assert.ErrorContains(t, err, "server error\nunsupported stream item encountered: cannot unmarshal")
+		assert.ErrorContains(t, err, "server error: unsupported stream item encountered: cannot unmarshal")
 	})
 
 	t.Run("returns a server error if the server sends a stream item that can't be unmarshalled.", func(t *testing.T) {
@@ -448,7 +448,7 @@ func TestObserveEvents(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, customErrors.ErrServerError))
-		assert.ErrorContains(t, err, "server error\nunsupported stream item encountered:")
+		assert.ErrorContains(t, err, "server error: unsupported stream item encountered:")
 		assert.ErrorContains(t, err, "does not have a recognized type")
 	})
 
@@ -471,7 +471,7 @@ func TestObserveEvents(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, customErrors.ErrServerError))
-		assert.ErrorContains(t, err, "server error\naliens have abducted the server")
+		assert.ErrorContains(t, err, "server error: aliens have abducted the server")
 	})
 
 	t.Run("returns a server error if the server sends a an error item through the ndjson stream, but the error can't be unmarshalled.", func(t *testing.T) {
@@ -493,7 +493,7 @@ func TestObserveEvents(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, customErrors.ErrServerError))
-		assert.ErrorContains(t, err, "server error\nunsupported stream error encountered:")
+		assert.ErrorContains(t, err, "server error: unsupported stream error encountered:")
 	})
 
 	t.Run("returns a server error if the server sends an item that can't be unmarshalled.", func(t *testing.T) {
@@ -515,7 +515,7 @@ func TestObserveEvents(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, customErrors.ErrServerError))
-		assert.ErrorContains(t, err, "server error\nunsupported stream item encountered:")
+		assert.ErrorContains(t, err, "server error: unsupported stream item encountered:")
 		assert.ErrorContains(t, err, "(trying to unmarshal")
 	})
 

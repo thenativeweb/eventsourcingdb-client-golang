@@ -3,6 +3,7 @@ package errors
 import (
 	"errors"
 	"fmt"
+	"github.com/thenativeweb/goutils/v2/coreutils/errorutils"
 )
 
 // ErrInvalidParameter signal that a parameter passed to a function is invalid.
@@ -12,7 +13,7 @@ var ErrInvalidParameter = errors.New("invalid parameter")
 
 // NewInvalidParameterError returns a new invalid parameter error that indicates that the given parameter is invalid.
 func NewInvalidParameterError(parameterName, reason string) error {
-	return errors.Join(ErrClientError, ErrInvalidParameter, fmt.Errorf("parameter '%s' is invalid\n%s", parameterName, reason))
+	return errorutils.Join(ErrClientError, ErrInvalidParameter, fmt.Errorf("parameter '%s' is invalid\n%s", parameterName, reason))
 }
 
 // IsInvalidParameterError returns true if the error is an invalid parameter error.
