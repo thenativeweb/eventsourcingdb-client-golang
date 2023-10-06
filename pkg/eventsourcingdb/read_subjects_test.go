@@ -131,7 +131,7 @@ func TestReadSubjects(t *testing.T) {
 
 		_, err := result.GetData()
 		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
-		assert.ErrorContains(t, err, "parameter 'BaseSubject' is invalid\nmalformed event subject")
+		assert.ErrorContains(t, err, "parameter 'BaseSubject' is invalid: malformed event subject")
 	})
 
 	t.Run("returns a sever error if the server responds with HTTP 5xx on every try", func(t *testing.T) {

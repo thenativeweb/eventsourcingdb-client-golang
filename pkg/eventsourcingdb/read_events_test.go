@@ -276,7 +276,7 @@ func TestReadEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.ErrorContains(t, err, "parameter 'ReadFromLatestEvent' is invalid\nReadFromLowerBoundID and ReadFromLatestEvent are mutually exclusive")
+		assert.ErrorContains(t, err, "parameter 'ReadFromLatestEvent' is invalid: ReadFromLowerBoundID and ReadFromLatestEvent are mutually exclusive")
 	})
 
 	t.Run("returns an error if the given lowerBoundID does not contain an integer.", func(t *testing.T) {
@@ -293,7 +293,7 @@ func TestReadEvents(t *testing.T) {
 		_, err := result.GetData()
 
 		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
-		assert.ErrorContains(t, err, "parameter 'ReadFromLowerBoundID' is invalid\nlowerBoundID must contain an integer")
+		assert.ErrorContains(t, err, "parameter 'ReadFromLowerBoundID' is invalid: lowerBoundID must contain an integer")
 	})
 
 	t.Run("returns an error if the given lowerBoundID contains an integer that is negative.", func(t *testing.T) {
@@ -310,7 +310,7 @@ func TestReadEvents(t *testing.T) {
 		_, err := result.GetData()
 
 		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
-		assert.ErrorContains(t, err, "parameter 'ReadFromLowerBoundID' is invalid\nlowerBoundID must be 0 or greater")
+		assert.ErrorContains(t, err, "parameter 'ReadFromLowerBoundID' is invalid: lowerBoundID must be 0 or greater")
 	})
 
 	t.Run("returns an error if the given upperBoundID does not contain an integer.", func(t *testing.T) {
@@ -327,7 +327,7 @@ func TestReadEvents(t *testing.T) {
 		_, err := result.GetData()
 
 		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
-		assert.ErrorContains(t, err, "parameter 'ReadUntilUpperBoundID' is invalid\nupperBoundID must contain an integer")
+		assert.ErrorContains(t, err, "parameter 'ReadUntilUpperBoundID' is invalid: upperBoundID must contain an integer")
 	})
 
 	t.Run("returns an error if the given upperBoundID contains an integer that is negative.", func(t *testing.T) {
@@ -344,7 +344,7 @@ func TestReadEvents(t *testing.T) {
 		_, err := result.GetData()
 
 		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
-		assert.ErrorContains(t, err, "parameter 'ReadUntilUpperBoundID' is invalid\nupperBoundID must be 0 or greater")
+		assert.ErrorContains(t, err, "parameter 'ReadUntilUpperBoundID' is invalid: upperBoundID must be 0 or greater")
 	})
 
 	t.Run("returns an error if an incorrect subject is used in ReadFromLatestEvent.", func(t *testing.T) {
@@ -361,7 +361,7 @@ func TestReadEvents(t *testing.T) {
 		_, err := result.GetData()
 
 		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
-		assert.ErrorContains(t, err, "parameter 'ReadFromLatestEvent' is invalid\nmalformed event subject")
+		assert.ErrorContains(t, err, "parameter 'ReadFromLatestEvent' is invalid: malformed event subject")
 	})
 
 	t.Run("returns an error if an incorrect type is used in ReadFromLatestEvent.", func(t *testing.T) {
@@ -378,7 +378,7 @@ func TestReadEvents(t *testing.T) {
 		_, err := result.GetData()
 
 		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
-		assert.ErrorContains(t, err, "parameter 'ReadFromLatestEvent' is invalid\nmalformed event type")
+		assert.ErrorContains(t, err, "parameter 'ReadFromLatestEvent' is invalid: malformed event type")
 	})
 
 	t.Run("returns a sever error if the server responds with HTTP 5xx on every try", func(t *testing.T) {
@@ -582,7 +582,7 @@ func TestReadEvents(t *testing.T) {
 		_, err := (<-results).GetData()
 
 		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
-		assert.ErrorContains(t, err, "parameter 'subject' is invalid\nmalformed event subject 'uargh': subject must be an absolute, slash-separated path")
+		assert.ErrorContains(t, err, "parameter 'subject' is invalid: malformed event subject 'uargh': subject must be an absolute, slash-separated path")
 	})
 
 	// Regression test for https://github.com/thenativeweb/eventsourcingdb-client-golang/pull/97
