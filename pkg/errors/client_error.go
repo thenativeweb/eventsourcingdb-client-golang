@@ -2,6 +2,7 @@ package errors
 
 import (
 	"errors"
+	"github.com/thenativeweb/goutils/v2/coreutils/errorutils"
 )
 
 // ErrClientError signals an error in the client code.
@@ -9,7 +10,7 @@ import (
 var ErrClientError = errors.New("client error")
 
 func NewClientError(message string) error {
-	return errors.Join(ErrClientError, errors.New(message))
+	return errorutils.Join(ErrClientError, errors.New(message))
 }
 
 // IsClientError returns true if the error is a client error.

@@ -24,7 +24,7 @@ func TestClient_RegisterEventSchema(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = client.RegisterEventSchema("com.gornisht.ekht", `{"type": "object", "additionalProperties": false}`)
-		assert.ErrorContains(t, err, "Conflict: schema conflict: schema conflicts with existing event (ID=0)")
+		assert.ErrorContains(t, err, "schema conflict: schema conflicts with existing event (ID=0)")
 	})
 
 	t.Run("Rejects the request if the schema already exists.", func(t *testing.T) {
@@ -34,13 +34,13 @@ func TestClient_RegisterEventSchema(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = client.RegisterEventSchema("com.ekht.ekht", `{"type": "object"}`)
-		assert.ErrorContains(t, err, "Conflict: schema conflict: schema already exists")
+		assert.ErrorContains(t, err, "schema conflict: schema already exists")
 	})
 
 	t.Run("Rejects the request if the given schema is invalid.", func(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
 
 		err := client.RegisterEventSchema("com.ekht.ekht", `{"type": `)
-		assert.ErrorContains(t, err, "Bad Request: jsonschema: invalid json")
+		assert.ErrorContains(t, err, "jsonschema: invalid json")
 	})
 }
