@@ -1,8 +1,9 @@
 package httputil
 
 import (
-	"github.com/Masterminds/semver"
 	"net/http"
+
+	"github.com/Masterminds/semver"
 )
 
 const ProtocolVersionHeader = "X-EventSourcingDB-Protocol-Version"
