@@ -4,8 +4,8 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/docker"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb"
 	"github.com/thenativeweb/goutils/v2/coreutils/retry"
 )
 

@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/configuration"
-	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/pkg/errors"
-	"github.com/thenativeweb/goutils/v2/coreutils/contextutils"
-	"github.com/thenativeweb/goutils/v2/coreutils/retry"
 	"io"
 	"net/http"
+
+	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/errors"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/configuration"
+	"github.com/thenativeweb/goutils/v2/coreutils/contextutils"
+	"github.com/thenativeweb/goutils/v2/coreutils/retry"
 )
 
 type RequestFactory struct {

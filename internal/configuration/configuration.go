@@ -1,8 +1,9 @@
 package configuration
 
 import (
-	"github.com/Masterminds/semver"
 	"net/url"
+
+	"github.com/Masterminds/semver"
 )
 
 type ClientConfiguration struct {

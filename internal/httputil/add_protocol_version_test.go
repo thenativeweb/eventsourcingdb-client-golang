@@ -1,11 +1,12 @@
 package httputil_test
 
 import (
+	"net/http"
+	"testing"
+
 	"github.com/Masterminds/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
-	"net/http"
-	"testing"
 )
 
 func TestAddProtocolVersion(t *testing.T) {

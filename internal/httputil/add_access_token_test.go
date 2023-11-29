@@ -1,11 +1,11 @@
 package httputil_test
 
 import (
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
 	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
 )
 
 func TestAddAccessToken(t *testing.T) {

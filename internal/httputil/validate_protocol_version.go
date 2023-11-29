@@ -3,8 +3,9 @@ package httputil
 import (
 	"errors"
 	"fmt"
-	"github.com/Masterminds/semver"
 	"net/http"
+
+	"github.com/Masterminds/semver"
 )
 
 func validateProtocolVersion(response *http.Response, clientProtocolVersion semver.Version) error {

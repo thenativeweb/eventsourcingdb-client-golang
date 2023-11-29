@@ -1,7 +1,7 @@
 package test
 
 import (
-	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
 )
 
 type TestingDatabase struct {

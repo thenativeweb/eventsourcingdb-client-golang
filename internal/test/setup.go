@@ -2,8 +2,8 @@ package test
 
 import (
 	"github.com/google/uuid"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/docker"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/pkg/eventsourcingdb"
 )
 
 func Setup(dockerfilePath string) (Database, error) {
