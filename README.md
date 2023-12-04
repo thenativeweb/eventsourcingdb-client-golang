@@ -18,7 +18,7 @@ import (
 To create a new client, call the `eventsourcingdb.NewClient` function and specify the URL of your EventSourcingDB instance as well as the access token:
 
 ```golang
-client := eventsourcingdb.NewClient(
+client, err := eventsourcingdb.NewClient(
   "http://localhost:3000",
   "secret",
 )
