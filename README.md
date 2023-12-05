@@ -180,7 +180,7 @@ Optionally, you may specify further options for reading events as additional par
 To change the order in which events are read, specify `eventsourcingdb.ReadChronologically` or `eventsourcingdb.ReadAntichronologically`:
 
 ```golang
-results, err := client.ReadEvents(
+results := client.ReadEvents(
   context.TODO(),
   "/user/23",
   eventsourcingdb.ReadNonRecursively(),
@@ -191,7 +191,7 @@ results, err := client.ReadEvents(
 You also may specify a lower or upper bound for the event ID, i.e. the event ID from which to start reading events or the event ID up to which to read events. For that, use the functions `eventsourcingdb.ReadFromLowerBoundID` and `eventsourcingdb.ReadUntilUpperBoundID` respectively:
 
 ```golang
-results, err := client.ReadEvents(
+results := client.ReadEvents(
   context.TODO(),
   "/user/23",
   eventsourcingdb.ReadNonRecursively(),
@@ -203,7 +203,7 @@ results, err := client.ReadEvents(
 Finally, you may also specify to read from the latest event of a given type by using `eventsourcingdb.ReadFromLatestEvent`. For that, you also have to provide the subject, the event type, and what to do if the event is missing (either `ifeventismissingduringread.ReadNothing` or `ifeventismissingduringread.ReadEverything`):
 
 ```golang
-results, err := client.ReadEvents(
+results := client.ReadEvents(
   context.TODO(),
   "/user/23",
   eventsourcingdb.ReadNonRecursively(),
@@ -220,7 +220,7 @@ results, err := client.ReadEvents(
 To observe events, call the `client.ObserveEvents` function and specify the subject of the events you want to observe as well as whether you want to observe recursively (`eventsourcingdb.ObserveRecursively`) or non-recursively (`eventsourcingdb.ObserveNonRecursively`):
 
 ```golang
-results, err := client.ObserveEvents(
+results := client.ObserveEvents(
   context.TODO(),
   "/user/23",
   eventsourcingdb.ObserveNonRecursively(),
@@ -269,7 +269,7 @@ Optionally, you may specify further options for observing events as additional p
 You may specify a lower bound for the event ID, i.e. the event ID from which to start observing events. For that, use the function `eventsourcingdb.ObserveFromLowerBoundID`:
 
 ```golang
-results, err := client.ObserveEvents(
+results := client.ObserveEvents(
   context.TODO(),
   "/user/23",
   eventsourcingdb.ObserveNonRecursively(),
@@ -280,7 +280,7 @@ results, err := client.ObserveEvents(
 Additionally, you may also specify to observe from the latest event of a given type by using `eventsourcingdb.ObserveFromLatestEvent`. For that, you also have to provide the subject, the event type, and what to do if the event is missing (either `ifeventismissingduringobserve.ReadEverything` or `ifeventismissingduringobserve.WaitForEvent`):
 
 ```golang
-results, err := client.ObserveEvents(
+results := client.ObserveEvents(
   context.TODO(),
   "/user/23",
   eventsourcingdb.ReadNonRecursively(),
