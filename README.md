@@ -131,7 +131,7 @@ err = client.RegisterEventSchema(
 To read events, call the `client.ReadEvents` function and specify the subject of the events you want to read as well as whether you want to read recursively (`eventsourcingdb.ReadRecursively`) or non-recursively (`eventsourcingdb.ReadNonRecursively`):
 
 ```golang
-results, err := client.ReadEvents(
+results := client.ReadEvents(
   context.TODO(),
   "/user/23",
   eventsourcingdb.ReadNonRecursively(),
@@ -297,7 +297,7 @@ results := client.ObserveEvents(
 To read subjects, call the `client.ReadSubjects` function:
 
 ```golang
-results, err := client.ReadSubjects(
+results := client.ReadSubjects(
   context.TODO(),
 )
 ```
@@ -327,7 +327,7 @@ for result := range results {
 Optionally, you may specify a base subject to read subjects from:
 
 ```golang
-results, err := client.ReadSubjects(
+results := client.ReadSubjects(
   context.TODO(),
   eventsourcingdb.BaseSubject("/user"),
 )
@@ -338,7 +338,7 @@ results, err := client.ReadSubjects(
 To read subjects, call the `client.ReadEventTypes` function:
 
 ```golang
-results, err := client.ReadEventTypes(
+results := client.ReadEventTypes(
   context.TODO(),
 )
 ```
