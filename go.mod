@@ -1,8 +1,6 @@
 module github.com/thenativeweb/eventsourcingdb-client-golang
 
-go 1.21
-
-toolchain go1.21.0
+go 1.23.1
 
 require (
 	github.com/Masterminds/semver v1.5.0
