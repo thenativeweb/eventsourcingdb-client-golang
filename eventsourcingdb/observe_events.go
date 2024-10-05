@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/thenativeweb/goutils/v2/coreutils/contextutils"
 
@@ -39,6 +40,9 @@ func newObserveEventsValue(item StoreItem) ObserveEventsResult {
 
 func (client *Client) ObserveEvents(ctx context.Context, subject string, recursive ObserveRecursivelyOption, options ...ObserveEventsOption) <-chan ObserveEventsResult {
 	results := make(chan ObserveEventsResult, 1)
+
+	heartbeatInterval := 1 * time.Second
+	heartbeatTimeout := heartbeatInterval * 3
 
 	go func() {
 		defer close(results)
@@ -94,52 +98,70 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 		}
 		defer response.Body.Close()
 
+		heartbeatTimer := time.NewTimer(heartbeatTimeout)
+		defer heartbeatTimer.Stop()
+
 		unmarshalContext, cancelUnmarshalling := context.WithCancel(ctx)
 		defer cancelUnmarshalling()
 
 		unmarshalResults := ndjson.UnmarshalStream[ndjson.StreamItem](unmarshalContext, response.Body)
 		for unmarshalResult := range unmarshalResults {
-			data, err := unmarshalResult.GetData()
-			if err != nil {
-				if contextutils.IsContextTerminationError(err) {
-					results <- newObserveEventsError(err)
-					return
-				}
-
+			select {
+			case <-heartbeatTimer.C:
 				results <- newObserveEventsError(
-					customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: %s", err.Error())),
+					customErrors.NewServerError("heartbeat timeout"),
 				)
 				return
-			}
 
-			switch data.Type {
-			case "heartbeat":
-				continue
-			case "error":
-				var serverError streamError
-				if err := json.Unmarshal(data.Payload, &serverError); err != nil {
-					results <- newObserveEventsError(
-						customErrors.NewServerError(fmt.Sprintf("unsupported stream error encountered: %s", err.Error())),
-					)
-					return
-				}
-
-				results <- newObserveEventsError(customErrors.NewServerError(serverError.Error))
-			case "item":
-				var storeItem StoreItem
-				if err := json.Unmarshal(data.Payload, &storeItem); err != nil {
-					results <- newObserveEventsError(
-						customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: '%s' (trying to unmarshal '%+v')", err.Error(), data)),
-					)
-					return
-				}
-
-				results <- newObserveEventsValue(storeItem)
 			default:
-				results <- newObserveEventsError(
-					customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: '%+v' does not have a recognized type", data)),
-				)
-				return
+				data, err := unmarshalResult.GetData()
+				if err != nil {
+					if contextutils.IsContextTerminationError(err) {
+						results <- newObserveEventsError(err)
+						return
+					}
+
+					results <- newObserveEventsError(
+						customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: %s", err.Error())),
+					)
+					return
+				}
+
+				switch data.Type {
+				case "heartbeat":
+					if !heartbeatTimer.Stop() {
+						<-heartbeatTimer.C
+					}
+					heartbeatTimer.Reset(heartbeatTimeout)
+
+				case "error":
+					var serverError streamError
+					if err := json.Unmarshal(data.Payload, &serverError); err != nil {
+						results <- newObserveEventsError(
+							customErrors.NewServerError(fmt.Sprintf("unsupported stream error encountered: %s", err.Error())),
+						)
+						return
+					}
+
+					results <- newObserveEventsError(customErrors.NewServerError(serverError.Error))
+
+				case "item":
+					var storeItem StoreItem
+					if err := json.Unmarshal(data.Payload, &storeItem); err != nil {
+						results <- newObserveEventsError(
+							customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: '%s' (trying to unmarshal '%+v')", err.Error(), data)),
+						)
+						return
+					}
+
+					results <- newObserveEventsValue(storeItem)
+
+				default:
+					results <- newObserveEventsError(
+						customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: '%+v' does not have a recognized type", data)),
+					)
+					return
+				}
 			}
 		}
 	}()
