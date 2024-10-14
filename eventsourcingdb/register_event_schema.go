@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/errors"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/event"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
 )
 
@@ -16,7 +15,7 @@ type registerEventSchemaRequestBody struct {
 }
 
 func (client *Client) RegisterEventSchema(eventType string, JSONSchema string) error {
-	if err := event.ValidateType(eventType); err != nil {
+	if err := validateEventType(eventType); err != nil {
 		return customErrors.NewClientError(err.Error())
 	}
 

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/event"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/ifeventismissingduringread"
 )
 
@@ -113,10 +112,10 @@ func ReadFromLatestEvent(subject, eventType string, ifEventIsMissing ifeventismi
 			if options.LowerBoundID != nil {
 				return errors.New("ReadFromLowerBoundID and ReadFromLatestEvent are mutually exclusive")
 			}
-			if err := event.ValidateSubject(subject); err != nil {
+			if err := validateSubject(subject); err != nil {
 				return err
 			}
-			if err := event.ValidateType(eventType); err != nil {
+			if err := validateEventType(eventType); err != nil {
 				return err
 			}
 

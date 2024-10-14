@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/event"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/httpserver"
 )
@@ -18,18 +17,18 @@ import (
 func TestWriteEvents(t *testing.T) {
 	t.Run("returns a server error when trying to write to a non-reachable server.", func(t *testing.T) {
 		client := database.WithInvalidURL.GetClient()
-		source := event.NewSource(events.TestSource)
+		source := eventsourcingdb.NewSource(events.TestSource)
 
 		subject := "/" + uuid.New().String()
 		janeRegistered := events.Events.Registered.JaneDoe
 
 		_, err := client.WriteEvents(
-			[]event.Candidate{
+			[]eventsourcingdb.EventCandidate{
 				source.NewEvent(
 					subject,
 					janeRegistered.Type,
 					janeRegistered.Data,
-					event.WithTraceParent(janeRegistered.TraceParent),
+					eventsourcingdb.WithTraceParent(janeRegistered.TraceParent),
 				),
 			},
 		)
@@ -41,7 +40,7 @@ func TestWriteEvents(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
 
 		_, err := client.WriteEvents(
-			[]event.Candidate{},
+			[]eventsourcingdb.EventCandidate{},
 		)
 
 		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
@@ -52,8 +51,8 @@ func TestWriteEvents(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
 
 		_, err := client.WriteEvents(
-			[]event.Candidate{
-				event.NewCandidate("tag:foobar.com,2023:barbaz", "foobar", "com.foobar.barbaz", struct{}{}),
+			[]eventsourcingdb.EventCandidate{
+				eventsourcingdb.NewEventCandidate("tag:foobar.com,2023:barbaz", "foobar", "com.foobar.barbaz", struct{}{}),
 			},
 		)
 
@@ -65,8 +64,8 @@ func TestWriteEvents(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
 
 		_, err := client.WriteEvents(
-			[]event.Candidate{
-				event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "barbaz", struct{}{}),
+			[]eventsourcingdb.EventCandidate{
+				eventsourcingdb.NewEventCandidate("tag:foobar.com,2023:barbaz", "/foobar", "barbaz", struct{}{}),
 			},
 		)
 
@@ -78,8 +77,8 @@ func TestWriteEvents(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
 
 		_, err := client.WriteEvents(
-			[]event.Candidate{
-				event.NewCandidate("://foobar", "/foobar", "com.foobar.barbaz", struct{}{}),
+			[]eventsourcingdb.EventCandidate{
+				eventsourcingdb.NewEventCandidate("://foobar", "/foobar", "com.foobar.barbaz", struct{}{}),
 			},
 		)
 
@@ -89,18 +88,18 @@ func TestWriteEvents(t *testing.T) {
 
 	t.Run("supports authorization.", func(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
-		source := event.NewSource(events.TestSource)
+		source := eventsourcingdb.NewSource(events.TestSource)
 
 		subject := "/" + uuid.New().String()
 		janeRegistered := events.Events.Registered.JaneDoe
 
 		_, err := client.WriteEvents(
-			[]event.Candidate{
+			[]eventsourcingdb.EventCandidate{
 				source.NewEvent(
 					subject,
 					janeRegistered.Type,
 					janeRegistered.Data,
-					event.WithTraceParent(janeRegistered.TraceParent),
+					eventsourcingdb.WithTraceParent(janeRegistered.TraceParent),
 				),
 			},
 		)
@@ -110,18 +109,18 @@ func TestWriteEvents(t *testing.T) {
 
 	t.Run("writes a single event.", func(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
-		source := event.NewSource(events.TestSource)
+		source := eventsourcingdb.NewSource(events.TestSource)
 
 		subject := "/" + uuid.New().String()
 		janeRegistered := events.Events.Registered.JaneDoe
 
 		_, err := client.WriteEvents(
-			[]event.Candidate{
+			[]eventsourcingdb.EventCandidate{
 				source.NewEvent(
 					subject,
 					janeRegistered.Type,
 					janeRegistered.Data,
-					event.WithTraceParent(janeRegistered.TraceParent),
+					eventsourcingdb.WithTraceParent(janeRegistered.TraceParent),
 				),
 			},
 		)
@@ -131,37 +130,37 @@ func TestWriteEvents(t *testing.T) {
 
 	t.Run("returns the written event metadata.", func(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
-		source := event.NewSource(events.TestSource)
+		source := eventsourcingdb.NewSource(events.TestSource)
 
 		janeRegistered := events.Events.Registered.JaneDoe
 		johnRegistered := events.Events.Registered.JohnDoe
 		johnLoggedIn := events.Events.LoggedIn.JohnDoe
 
 		_, err := client.WriteEvents(
-			[]event.Candidate{
+			[]eventsourcingdb.EventCandidate{
 				source.NewEvent(
 					"/users/registered",
 					janeRegistered.Type,
 					janeRegistered.Data,
-					event.WithTraceParent(janeRegistered.TraceParent),
+					eventsourcingdb.WithTraceParent(janeRegistered.TraceParent),
 				),
 			},
 		)
 		assert.NoError(t, err)
 
 		writtenEventsMetadata, err := client.WriteEvents(
-			[]event.Candidate{
+			[]eventsourcingdb.EventCandidate{
 				source.NewEvent(
 					"/users/registered",
 					johnRegistered.Type,
 					johnRegistered.Data,
-					event.WithTraceParent(johnRegistered.TraceParent),
+					eventsourcingdb.WithTraceParent(johnRegistered.TraceParent),
 				),
 				source.NewEvent(
 					"/users/loggedIn",
 					johnLoggedIn.Type,
 					johnLoggedIn.Data,
-					event.WithTraceParent(johnLoggedIn.TraceParent),
+					eventsourcingdb.WithTraceParent(johnLoggedIn.TraceParent),
 				),
 			},
 		)
@@ -183,25 +182,25 @@ func TestWriteEvents(t *testing.T) {
 
 	t.Run("writes multiple events.", func(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
-		source := event.NewSource(events.TestSource)
+		source := eventsourcingdb.NewSource(events.TestSource)
 
 		subject := "/" + uuid.New().String()
 		janeRegistered := events.Events.Registered.JaneDoe
 		johnRegistered := events.Events.Registered.JohnDoe
 
 		_, err := client.WriteEvents(
-			[]event.Candidate{
+			[]eventsourcingdb.EventCandidate{
 				source.NewEvent(
 					subject,
 					janeRegistered.Type,
 					janeRegistered.Data,
-					event.WithTraceParent(janeRegistered.TraceParent),
+					eventsourcingdb.WithTraceParent(janeRegistered.TraceParent),
 				),
 				source.NewEvent(
 					subject,
 					johnRegistered.Type,
 					johnRegistered.Data,
-					event.WithTraceParent(johnRegistered.TraceParent),
+					eventsourcingdb.WithTraceParent(johnRegistered.TraceParent),
 				),
 			},
 		)
@@ -219,13 +218,13 @@ func TestWriteEvents(t *testing.T) {
 		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
-		source := event.NewSource(events.TestSource)
+		source := eventsourcingdb.NewSource(events.TestSource)
 		subject := "/" + uuid.New().String()
 
 		janeRegistered := events.Events.Registered.JaneDoe
 
 		_, err = client.WriteEvents(
-			[]event.Candidate{
+			[]eventsourcingdb.EventCandidate{
 				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data),
 			},
 		)
@@ -247,13 +246,13 @@ func TestWriteEvents(t *testing.T) {
 		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
-		source := event.NewSource(events.TestSource)
+		source := eventsourcingdb.NewSource(events.TestSource)
 		subject := "/" + uuid.New().String()
 
 		janeRegistered := events.Events.Registered.JaneDoe
 
 		_, err = client.WriteEvents(
-			[]event.Candidate{
+			[]eventsourcingdb.EventCandidate{
 				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data),
 			},
 		)
@@ -274,13 +273,13 @@ func TestWriteEvents(t *testing.T) {
 		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
-		source := event.NewSource(events.TestSource)
+		source := eventsourcingdb.NewSource(events.TestSource)
 		subject := "/" + uuid.New().String()
 
 		janeRegistered := events.Events.Registered.JaneDoe
 
 		_, err = client.WriteEvents(
-			[]event.Candidate{
+			[]eventsourcingdb.EventCandidate{
 				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data),
 			},
 		)
@@ -301,13 +300,13 @@ func TestWriteEvents(t *testing.T) {
 		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
-		source := event.NewSource(events.TestSource)
+		source := eventsourcingdb.NewSource(events.TestSource)
 		subject := "/" + uuid.New().String()
 
 		janeRegistered := events.Events.Registered.JaneDoe
 
 		_, err = client.WriteEvents(
-			[]event.Candidate{
+			[]eventsourcingdb.EventCandidate{
 				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data),
 			},
 		)
@@ -329,13 +328,13 @@ func TestWriteEvents(t *testing.T) {
 		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
-		source := event.NewSource(events.TestSource)
+		source := eventsourcingdb.NewSource(events.TestSource)
 		subject := "/" + uuid.New().String()
 
 		janeRegistered := events.Events.Registered.JaneDoe
 
 		_, err = client.WriteEvents(
-			[]event.Candidate{
+			[]eventsourcingdb.EventCandidate{
 				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data),
 			},
 		)
@@ -359,13 +358,13 @@ func TestWriteEvents(t *testing.T) {
 		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
-		source := event.NewSource(events.TestSource)
+		source := eventsourcingdb.NewSource(events.TestSource)
 		subject := "/" + uuid.New().String()
 
 		janeRegistered := events.Events.Registered.JaneDoe
 
 		_, err = client.WriteEvents(
-			[]event.Candidate{
+			[]eventsourcingdb.EventCandidate{
 				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data),
 			},
 		)
@@ -382,8 +381,8 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 			client := database.WithAuthorization.GetClient()
 
 			_, err := client.WriteEvents(
-				[]event.Candidate{
-					event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}),
+				[]eventsourcingdb.EventCandidate{
+					eventsourcingdb.NewEventCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}),
 				},
 				eventsourcingdb.IsSubjectPristine("invalid"),
 			)
@@ -394,13 +393,13 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 		t.Run("writes events if the subject is pristine.", func(t *testing.T) {
 			client := database.WithAuthorization.GetClient()
-			source := event.NewSource(events.TestSource)
+			source := eventsourcingdb.NewSource(events.TestSource)
 
 			subject := "/" + uuid.New().String()
 			janeRegistered := events.Events.Registered.JaneDoe
 
 			_, err := client.WriteEvents(
-				[]event.Candidate{
+				[]eventsourcingdb.EventCandidate{
 					source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data),
 				},
 				eventsourcingdb.IsSubjectPristine(subject),
@@ -411,20 +410,20 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 		t.Run("returns an error if the subject is not pristine.", func(t *testing.T) {
 			client := database.WithAuthorization.GetClient()
-			source := event.NewSource(events.TestSource)
+			source := eventsourcingdb.NewSource(events.TestSource)
 
 			subject := "/" + uuid.New().String()
 			janeRegistered := events.Events.Registered.JaneDoe
 			johnRegistered := events.Events.Registered.JohnDoe
 
-			_, err := client.WriteEvents([]event.Candidate{
+			_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data),
 			})
 
 			assert.NoError(t, err)
 
 			_, err = client.WriteEvents(
-				[]event.Candidate{
+				[]eventsourcingdb.EventCandidate{
 					source.NewEvent(subject, johnRegistered.Type, johnRegistered.Data),
 				},
 				eventsourcingdb.IsSubjectPristine(subject),
@@ -439,8 +438,8 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 			client := database.WithAuthorization.GetClient()
 
 			_, err := client.WriteEvents(
-				[]event.Candidate{
-					event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}),
+				[]eventsourcingdb.EventCandidate{
+					eventsourcingdb.NewEventCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}),
 				},
 				eventsourcingdb.IsSubjectOnEventID("invalid", "123"),
 			)
@@ -453,8 +452,8 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 			client := database.WithAuthorization.GetClient()
 
 			_, err := client.WriteEvents(
-				[]event.Candidate{
-					event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}),
+				[]eventsourcingdb.EventCandidate{
+					eventsourcingdb.NewEventCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}),
 				},
 				eventsourcingdb.IsSubjectOnEventID("/", "borzel"),
 			)
@@ -467,8 +466,8 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 			client := database.WithAuthorization.GetClient()
 
 			_, err := client.WriteEvents(
-				[]event.Candidate{
-					event.NewCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}),
+				[]eventsourcingdb.EventCandidate{
+					eventsourcingdb.NewEventCandidate("tag:foobar.com,2023:barbaz", "/foobar", "com.foobar.barbaz", struct{}{}),
 				},
 				eventsourcingdb.IsSubjectOnEventID("/", "-1"),
 			)
@@ -479,14 +478,14 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 		t.Run("writes events if the last event of the subject has the given event ID.", func(t *testing.T) {
 			client := database.WithAuthorization.GetClient()
-			source := event.NewSource(events.TestSource)
+			source := eventsourcingdb.NewSource(events.TestSource)
 
 			janeRegistered := events.Events.Registered.JaneDoe
 			johnRegistered := events.Events.Registered.JohnDoe
 			fredRegistered := events.Events.Registered.ApfelFred
 
 			_, err := client.WriteEvents(
-				[]event.Candidate{
+				[]eventsourcingdb.EventCandidate{
 					source.NewEvent("/users", janeRegistered.Type, janeRegistered.Data),
 					source.NewEvent("/users", johnRegistered.Type, johnRegistered.Data),
 				},
@@ -505,7 +504,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 			}
 
 			_, err = client.WriteEvents(
-				[]event.Candidate{
+				[]eventsourcingdb.EventCandidate{
 					source.NewEvent("/users", fredRegistered.Type, fredRegistered.Data),
 				},
 				eventsourcingdb.IsSubjectOnEventID("/users", lastEventID),
@@ -516,14 +515,14 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 		t.Run("returns an error if the last event of the subject does not have the given event ID.", func(t *testing.T) {
 			client := database.WithAuthorization.GetClient()
-			source := event.NewSource(events.TestSource)
+			source := eventsourcingdb.NewSource(events.TestSource)
 
 			janeRegistered := events.Events.Registered.JaneDoe
 			johnRegistered := events.Events.Registered.JohnDoe
 			fredRegistered := events.Events.Registered.ApfelFred
 
 			_, err := client.WriteEvents(
-				[]event.Candidate{
+				[]eventsourcingdb.EventCandidate{
 					source.NewEvent("/users", janeRegistered.Type, janeRegistered.Data),
 					source.NewEvent("/users", johnRegistered.Type, johnRegistered.Data),
 				},
@@ -534,7 +533,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 			lastEventID := "1337"
 
 			_, err = client.WriteEvents(
-				[]event.Candidate{
+				[]eventsourcingdb.EventCandidate{
 					source.NewEvent("/users", fredRegistered.Type, fredRegistered.Data),
 				},
 				eventsourcingdb.IsSubjectOnEventID("/users", lastEventID),
@@ -546,12 +545,12 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 	t.Run("Returns an error when any of the given events does not validate against the schema.", func(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
-		source := event.NewSource(events.TestSource)
+		source := eventsourcingdb.NewSource(events.TestSource)
 
 		err := client.RegisterEventSchema("com.sauer.kraut", `{"type":"object","additionalProperties":false}`)
 		assert.NoError(t, err)
 
-		_, err = client.WriteEvents([]event.Candidate{
+		_, err = client.WriteEvents([]eventsourcingdb.EventCandidate{
 			source.NewEvent("/knabberzeug", "com.sauer.kraut", map[string]any{"foo": "bar"}),
 		})
 		assert.ErrorContains(t, err, "409 Conflict")

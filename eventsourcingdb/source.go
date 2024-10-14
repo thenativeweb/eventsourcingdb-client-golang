@@ -1,11 +1,19 @@
-package event
+package eventsourcingdb
 
 import (
 	"fmt"
 	"net/url"
 )
 
-func ValidateSource(source string) error {
+type Source struct {
+	source string
+}
+
+func NewSource(source string) Source {
+	return Source{source}
+}
+
+func validateSource(source string) error {
 	if _, err := url.Parse(source); err != nil {
 		return fmt.Errorf("malformed event source '%s': source must be a valid URI", source)
 	}

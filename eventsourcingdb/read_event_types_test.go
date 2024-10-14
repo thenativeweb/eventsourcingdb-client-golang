@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/event"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
 	"github.com/thenativeweb/goutils/v2/platformutils"
 )
@@ -16,9 +15,9 @@ import (
 func TestClient_ReadEventTypes(t *testing.T) {
 	t.Run("Reads all event types of existing events, as well as all event types with registered schemas.", func(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
-		source := event.NewSource(events.TestSource)
+		source := eventsourcingdb.NewSource(events.TestSource)
 
-		_, err := client.WriteEvents([]event.Candidate{
+		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 			source.NewEvent("/account", "com.foo.bar", map[string]any{}),
 			source.NewEvent("/account/user", "com.bar.baz", map[string]any{}),
 			source.NewEvent("/account/user", "com.baz.leml", map[string]any{}),

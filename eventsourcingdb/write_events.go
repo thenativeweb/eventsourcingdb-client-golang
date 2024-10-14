@@ -8,18 +8,17 @@ import (
 	"net/http"
 
 	"github.com/thenativeweb/eventsourcingdb-client-golang/errors"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/event"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
 )
 
 type writeEventsRequestBody struct {
 	Preconditions *PreconditionsBody `json:"preconditions,omitempty"`
-	Events        []event.Candidate  `json:"events"`
+	Events        []EventCandidate  `json:"events"`
 }
 
 type WriteEventsOption func(body *writeEventsRequestBody)
 
-func (client *Client) WriteEvents(eventCandidates []event.Candidate, preconditions ...Precondition) ([]event.Context, error) {
+func (client *Client) WriteEvents(eventCandidates []EventCandidate, preconditions ...Precondition) ([]EventContext, error) {
 	requestBody := writeEventsRequestBody{
 		Preconditions(preconditions...),
 		eventCandidates,
@@ -63,7 +62,7 @@ func (client *Client) WriteEvents(eventCandidates []event.Candidate, preconditio
 		return nil, errors.NewServerError(fmt.Sprintf("failed to read the response body: %s", err.Error()))
 	}
 
-	var writeEventsResult []event.Context
+	var writeEventsResult []EventContext
 	err = json.Unmarshal(responseBody, &writeEventsResult)
 	if err != nil {
 		return nil, errors.NewServerError(fmt.Sprintf("failed to parse the response body: %s", err.Error()))

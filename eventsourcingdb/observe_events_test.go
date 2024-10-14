@@ -13,46 +13,45 @@ import (
 	"github.com/stretchr/testify/assert"
 	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/event"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/ifeventismissingduringobserve"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/httpserver"
 )
 
 func TestObserveEvents(t *testing.T) {
-	janeRegistered := event.NewCandidate(
+	janeRegistered := eventsourcingdb.NewEventCandidate(
 		events.TestSource,
 		"/users/registered",
 		events.Events.Registered.JaneDoe.Type,
 		events.Events.Registered.JaneDoe.Data,
-		event.WithTraceParent(events.Events.Registered.JaneDoe.TraceParent),
+		eventsourcingdb.WithTraceParent(events.Events.Registered.JaneDoe.TraceParent),
 	)
-	johnRegistered := event.NewCandidate(
+	johnRegistered := eventsourcingdb.NewEventCandidate(
 		events.TestSource,
 		"/users/registered",
 		events.Events.Registered.JohnDoe.Type,
 		events.Events.Registered.JohnDoe.Data,
-		event.WithTraceParent(events.Events.Registered.JohnDoe.TraceParent),
+		eventsourcingdb.WithTraceParent(events.Events.Registered.JohnDoe.TraceParent),
 	)
-	janeLoggedIn := event.NewCandidate(
+	janeLoggedIn := eventsourcingdb.NewEventCandidate(
 		events.TestSource,
 		"/users/loggedIn",
 		events.Events.LoggedIn.JaneDoe.Type,
 		events.Events.LoggedIn.JaneDoe.Data,
-		event.WithTraceParent(events.Events.LoggedIn.JaneDoe.TraceParent),
+		eventsourcingdb.WithTraceParent(events.Events.LoggedIn.JaneDoe.TraceParent),
 	)
-	johnLoggedIn := event.NewCandidate(
+	johnLoggedIn := eventsourcingdb.NewEventCandidate(
 		events.TestSource,
 		"/users/loggedIn",
 		events.Events.LoggedIn.JohnDoe.Type,
 		events.Events.LoggedIn.JohnDoe.Data,
-		event.WithTraceParent(events.Events.LoggedIn.JohnDoe.TraceParent),
+		eventsourcingdb.WithTraceParent(events.Events.LoggedIn.JohnDoe.TraceParent),
 	)
 
 	prepareClientWithEvents := func(t *testing.T) eventsourcingdb.Client {
 		client := database.WithAuthorization.GetClient()
 
-		_, err := client.WriteEvents([]event.Candidate{
+		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 			janeRegistered,
 			janeLoggedIn,
 			johnRegistered,
@@ -64,7 +63,7 @@ func TestObserveEvents(t *testing.T) {
 		return client
 	}
 
-	getNextEvent := func(t *testing.T, resultChan <-chan eventsourcingdb.ObserveEventsResult) event.Event {
+	getNextEvent := func(t *testing.T, resultChan <-chan eventsourcingdb.ObserveEventsResult) eventsourcingdb.Event {
 		firstStoreItem := <-resultChan
 		data, err := firstStoreItem.GetData()
 
@@ -73,7 +72,7 @@ func TestObserveEvents(t *testing.T) {
 		return data.Event
 	}
 
-	matchRegisteredEvent := func(t *testing.T, event event.Event, expected events.RegisteredEvent) {
+	matchRegisteredEvent := func(t *testing.T, event eventsourcingdb.Event, expected events.RegisteredEvent) {
 		assert.Equal(t, "/users/registered", event.Subject)
 		assert.Equal(t, expected.Type, event.Type)
 		assert.Equal(t, expected.TraceParent, *event.TraceParent)
@@ -86,7 +85,7 @@ func TestObserveEvents(t *testing.T) {
 		assert.Equal(t, expected.Data.Name, eventData.Name)
 	}
 
-	matchLoggedInEvent := func(t *testing.T, event event.Event, expected events.LoggedInEvent) {
+	matchLoggedInEvent := func(t *testing.T, event eventsourcingdb.Event, expected events.LoggedInEvent) {
 		assert.Equal(t, "/users/loggedIn", event.Subject)
 		assert.Equal(t, expected.Type, event.Type)
 		assert.Equal(t, expected.TraceParent, *event.TraceParent)
@@ -125,14 +124,14 @@ func TestObserveEvents(t *testing.T) {
 		secondEvent := getNextEvent(t, resultChan)
 		matchRegisteredEvent(t, secondEvent, events.Events.Registered.JohnDoe)
 
-		apfelFredCandidate := event.NewCandidate(
+		apfelFredCandidate := eventsourcingdb.NewEventCandidate(
 			events.TestSource,
 			"/users/registered",
 			events.Events.Registered.ApfelFred.Type,
 			events.Events.Registered.ApfelFred.Data,
-			event.WithTraceParent(events.Events.Registered.ApfelFred.TraceParent),
+			eventsourcingdb.WithTraceParent(events.Events.Registered.ApfelFred.TraceParent),
 		)
-		_, err := client.WriteEvents([]event.Candidate{
+		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 			apfelFredCandidate,
 		})
 
@@ -543,8 +542,8 @@ func TestObserveEvents(t *testing.T) {
 					return
 				}
 			case <-time.After(11 * time.Second):
-				apfelFredCandidate := event.NewCandidate(events.TestSource, "/users/registered", events.Events.Registered.ApfelFred.Type, events.Events.Registered.ApfelFred.Data)
-				_, _ = client.WriteEvents([]event.Candidate{
+				apfelFredCandidate := eventsourcingdb.NewEventCandidate(events.TestSource, "/users/registered", events.Events.Registered.ApfelFred.Type, events.Events.Registered.ApfelFred.Data)
+				_, _ = client.WriteEvents([]eventsourcingdb.EventCandidate{
 					apfelFredCandidate,
 				})
 				_, ok := <-results

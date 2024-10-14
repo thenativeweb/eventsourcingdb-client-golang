@@ -1,10 +1,10 @@
-package event
+package eventsourcingdb
 
 import (
 	"fmt"
 )
 
-type CandidateContext struct {
+type EventCandidateContext struct {
 	Source      string  `json:"source"`
 	Subject     string  `json:"subject"`
 	Type        string  `json:"type"`
@@ -12,34 +12,34 @@ type CandidateContext struct {
 	TraceState  *string `json:"tracestate,omitempty"`
 }
 
-type Candidate struct {
-	CandidateContext
+type EventCandidate struct {
+	EventCandidateContext
 	Data Data `json:"data"`
 }
 
-type CandidateTransformer func(candidate *Candidate)
+type EventCandidateTransformer func(candidate *EventCandidate)
 
-func WithTraceParent(traceParent string) CandidateTransformer {
-	return func(candidate *Candidate) {
+func WithTraceParent(traceParent string) EventCandidateTransformer {
+	return func(candidate *EventCandidate) {
 		candidate.TraceParent = &traceParent
 	}
 }
 
-func WithTraceState(traceState string) CandidateTransformer {
-	return func(candidate *Candidate) {
+func WithTraceState(traceState string) EventCandidateTransformer {
+	return func(candidate *EventCandidate) {
 		candidate.TraceParent = &traceState
 	}
 }
 
-func NewCandidate(
+func NewEventCandidate(
 	source string,
 	subject string,
 	eventType string,
 	data Data,
-	transformers ...CandidateTransformer,
-) Candidate {
-	candidate := Candidate{
-		CandidateContext{
+	transformers ...EventCandidateTransformer,
+) EventCandidate {
+	candidate := EventCandidate{
+		EventCandidateContext{
 			Source:  source,
 			Subject: subject,
 			Type:    eventType,
@@ -54,16 +54,16 @@ func NewCandidate(
 	return candidate
 }
 
-func (candidate Candidate) Validate() error {
-	if err := ValidateSource(candidate.Source); err != nil {
+func (candidate EventCandidate) Validate() error {
+	if err := validateSource(candidate.Source); err != nil {
 		return fmt.Errorf("event candidate failed to validate: %w", err)
 	}
 
-	if err := ValidateSubject(candidate.Subject); err != nil {
+	if err := validateSubject(candidate.Subject); err != nil {
 		return fmt.Errorf("event candidate failed to validate: %w", err)
 	}
 
-	if err := ValidateType(candidate.Type); err != nil {
+	if err := validateEventType(candidate.Type); err != nil {
 		return fmt.Errorf("event candidate failed to validate: %w", err)
 	}
 

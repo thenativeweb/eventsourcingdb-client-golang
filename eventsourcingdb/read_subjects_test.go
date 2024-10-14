@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/event"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/httpserver"
 	"github.com/thenativeweb/goutils/v2/platformutils"
@@ -43,8 +42,8 @@ func TestReadSubjects(t *testing.T) {
 		subject := "/" + uuid.New().String()
 		janeRegistered := events.Events.Registered.JaneDoe
 
-		_, err := client.WriteEvents([]event.Candidate{
-			event.NewCandidate(events.TestSource, subject, janeRegistered.Type, janeRegistered.Data),
+		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+			eventsourcingdb.NewEventCandidate(events.TestSource, subject, janeRegistered.Type, janeRegistered.Data),
 		})
 
 		assert.NoError(t, err)
@@ -68,8 +67,8 @@ func TestReadSubjects(t *testing.T) {
 		subject := "/foobar/" + uuid.New().String()
 		janeRegistered := events.Events.Registered.JaneDoe
 
-		_, err := client.WriteEvents([]event.Candidate{
-			event.NewCandidate(events.TestSource, subject, janeRegistered.Type, janeRegistered.Data),
+		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+			eventsourcingdb.NewEventCandidate(events.TestSource, subject, janeRegistered.Type, janeRegistered.Data),
 		})
 
 		assert.NoError(t, err)

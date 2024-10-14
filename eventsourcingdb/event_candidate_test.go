@@ -1,24 +1,24 @@
-package event_test
+package eventsourcingdb_test
 
 import (
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/event"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
 	"github.com/thenativeweb/goutils/v2/coreutils"
 )
 
 func TestNewCandidate(t *testing.T) {
 	tests := []struct {
-		timestamp event.Timestamp
+		timestamp eventsourcingdb.Timestamp
 		subject   string
 		eventType string
-		data      event.Data
+		data      eventsourcingdb.Data
 	}{
 		{
-			timestamp: event.Timestamp{Time: time.Now()},
+			timestamp: eventsourcingdb.Timestamp{Time: time.Now()},
 			subject:   "/account/user",
 			eventType: "registered",
 			data:      map[string]any{"username": "jane.doe", "password": "secret"},
@@ -26,7 +26,7 @@ func TestNewCandidate(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		createdEvent := event.NewCandidate(events.TestSource, test.subject, test.eventType, test.data)
+		createdEvent := eventsourcingdb.NewEventCandidate(events.TestSource, test.subject, test.eventType, test.data)
 
 		assert.Equal(t, test.subject, createdEvent.Subject)
 		assert.Equal(t, test.eventType, createdEvent.Type)
@@ -36,8 +36,8 @@ func TestNewCandidate(t *testing.T) {
 
 func TestCandidate_Validate(t *testing.T) {
 	t.Run("returns an error if the source is malformed.", func(t *testing.T) {
-		err := event.Candidate{
-			CandidateContext: event.CandidateContext{
+		err := eventsourcingdb.EventCandidate{
+			EventCandidateContext: eventsourcingdb.EventCandidateContext{
 				Source:  "$%&/(",
 				Subject: "/foo/bar",
 				Type:    "invalid.foobar.event",
@@ -49,8 +49,8 @@ func TestCandidate_Validate(t *testing.T) {
 	})
 
 	t.Run("returns an error if the subject is malformed.", func(t *testing.T) {
-		err := event.Candidate{
-			CandidateContext: event.CandidateContext{
+		err := eventsourcingdb.EventCandidate{
+			EventCandidateContext: eventsourcingdb.EventCandidateContext{
 				Source:  "tag:foobar.invalid,2023:service",
 				Subject: "barbaz",
 				Type:    "invalid.foobar.event",
@@ -62,8 +62,8 @@ func TestCandidate_Validate(t *testing.T) {
 	})
 
 	t.Run("returns an error if the type is malformed.", func(t *testing.T) {
-		err := event.Candidate{
-			CandidateContext: event.CandidateContext{
+		err := eventsourcingdb.EventCandidate{
+			EventCandidateContext: eventsourcingdb.EventCandidateContext{
 				Source:  "tag:foobar.invalid,2023:service",
 				Subject: "/foo/bar",
 				Type:    "invalid",
@@ -75,8 +75,8 @@ func TestCandidate_Validate(t *testing.T) {
 	})
 
 	t.Run("returns an error if a tracestate is given but no traceparent.", func(t *testing.T) {
-		err := event.Candidate{
-			CandidateContext: event.CandidateContext{
+		err := eventsourcingdb.EventCandidate{
+			EventCandidateContext: eventsourcingdb.EventCandidateContext{
 				Source:     "tag:foobar.invalid,2023:service",
 				Subject:    "/foo/bar",
 				Type:       "invalid.foobar.event",

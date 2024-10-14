@@ -11,7 +11,6 @@ import (
 	"github.com/thenativeweb/goutils/v2/coreutils/contextutils"
 
 	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/errors"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/event"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/ndjson"
 	"github.com/thenativeweb/goutils/v2/coreutils/result"
@@ -47,7 +46,7 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 	go func() {
 		defer close(results)
 
-		if err := event.ValidateSubject(subject); err != nil {
+		if err := validateSubject(subject); err != nil {
 			results <- newObserveEventsError(
 				customErrors.NewInvalidParameterError("subject", err.Error()),
 			)

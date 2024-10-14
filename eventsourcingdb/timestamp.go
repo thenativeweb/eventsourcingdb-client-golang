@@ -1,4 +1,4 @@
-package event
+package eventsourcingdb
 
 import (
 	"encoding/json"

@@ -1,9 +1,9 @@
-package event
+package eventsourcingdb
 
 import "encoding/json"
 
-type Context struct {
-	CandidateContext
+type EventContext struct {
+	EventCandidateContext
 	SpecVersion     string    `json:"specversion"`
 	ID              string    `json:"id"`
 	Time            Timestamp `json:"time"`
@@ -12,6 +12,10 @@ type Context struct {
 }
 
 type Event struct {
-	Context
+	EventContext
 	Data json.RawMessage `json:"data"`
+}
+
+func (eventSource Source) NewEvent(subject, eventType string, data Data, options ...EventCandidateTransformer) EventCandidate {
+	return NewEventCandidate(eventSource.source, subject, eventType, data, options...)
 }
