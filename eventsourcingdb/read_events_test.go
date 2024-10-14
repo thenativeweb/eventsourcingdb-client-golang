@@ -95,7 +95,7 @@ func TestReadEvents(t *testing.T) {
 		assert.Equal(t, expected.Data.Name, eventData.Name)
 	}
 
-	t.Run("returns an error when trying to read from a non-reachable server.", func(t *testing.T) {
+	t.Run("returns a server error when trying to read from a non-reachable server.", func(t *testing.T) {
 		client := database.WithInvalidURL.GetClient()
 
 		resultChan := client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadNonRecursively())
@@ -104,7 +104,6 @@ func TestReadEvents(t *testing.T) {
 
 		_, err := firstResult.GetData()
 		assert.True(t, errors.Is(err, customErrors.ErrServerError))
-		assert.ErrorContains(t, err, "server error: retries exceeded")
 	})
 
 	t.Run("reads events from a single subject.", func(t *testing.T) {
@@ -389,7 +388,7 @@ func TestReadEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, "access-token", eventsourcingdb.MaxTries(2))
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadRecursively())
@@ -398,7 +397,6 @@ func TestReadEvents(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, customErrors.ErrServerError))
-		assert.ErrorContains(t, err, "retries exceeded")
 		assert.ErrorContains(t, err, "Bad Gateway")
 	})
 

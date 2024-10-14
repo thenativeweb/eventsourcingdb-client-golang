@@ -2,15 +2,12 @@ package httputil
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
 	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/configuration"
-	"github.com/thenativeweb/goutils/v2/coreutils/contextutils"
-	"github.com/thenativeweb/goutils/v2/coreutils/retry"
 )
 
 type RequestFactory struct {
@@ -36,52 +33,32 @@ func (factory RequestFactory) Create(method string, path string, body io.Reader)
 	addProtocolVersion(request, factory.configuration.ProtocolVersion)
 	addAccessToken(request, factory.configuration.AccessToken)
 
+	// TODO: evalute if we can remove context
 	executor := func(ctx context.Context) (*http.Response, error) {
-		var clientError error
 		var response *http.Response
 
-		retryErr := retry.WithBackoff(ctx, factory.configuration.MaxTries, func() error {
-			var requestError error
-			response, requestError = httpClient.Do(request)
-			if requestError != nil {
-				return requestError
-			}
-			if err := validateProtocolVersion(response, factory.configuration.ProtocolVersion); err != nil {
-				clientError = err
+		response, requestError := httpClient.Do(request)
+		if requestError != nil {
+			return response, customErrors.NewServerError(requestError.Error())
+		}
+		if clientError := validateProtocolVersion(response, factory.configuration.ProtocolVersion); clientError != nil {
+			return response, customErrors.NewClientError(clientError.Error())
+		}
 
-				// Do not retry if the protocol version is not supported.
-				return nil
-			}
-
-			if response.StatusCode == http.StatusOK {
-				return nil
-			}
-
+		if response.StatusCode != http.StatusOK {
 			errorMessage := response.Status
 			if responseBody, err := io.ReadAll(response.Body); err == nil {
 				errorMessage += ": " + string(responseBody)
 			}
 
 			if IsClientError(response) {
-				clientError = errors.New(errorMessage)
-
-				// Do not retry client errors.
-				return nil
+				return response, customErrors.NewClientError(errorMessage)
 			}
 			if IsServerError(response) {
-				return errors.New(errorMessage)
+				return response, customErrors.NewServerError(errorMessage)
 			}
 
-			return customErrors.NewServerError(fmt.Sprintf("unexpected response status: %s", response.Status))
-		})
-		if contextutils.IsContextTerminationError(retryErr) {
-			return response, retryErr
-		}
-		if retryErr != nil {
-			return response, customErrors.NewServerError(retryErr.Error())
-		}
-		if clientError != nil {
-			return response, customErrors.NewClientError(clientError.Error())
+			return response, customErrors.NewServerError(fmt.Sprintf("unexpected response status: %s", response.Status))
 		}
 
 		return response, nil

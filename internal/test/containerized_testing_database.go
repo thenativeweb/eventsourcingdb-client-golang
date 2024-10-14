@@ -13,7 +13,6 @@ type ContainerizedTestingDatabase struct {
 	TestingDatabase
 
 	image       docker.Image
-	options     []eventsourcingdb.ClientOption
 	command     []string
 	accessToken string
 
@@ -22,11 +21,10 @@ type ContainerizedTestingDatabase struct {
 	isFirstRun bool
 }
 
-func NewContainerizedTestingDatabase(image docker.Image, command []string, accessToken string, clientOptions ...eventsourcingdb.ClientOption) (ContainerizedTestingDatabase, error) {
+func NewContainerizedTestingDatabase(image docker.Image, command []string, accessToken string) (ContainerizedTestingDatabase, error) {
 	database := ContainerizedTestingDatabase{
 		TestingDatabase: TestingDatabase{},
 		image:           image,
-		options:         clientOptions,
 		command:         command,
 		accessToken:     accessToken,
 		container:       docker.Container{},
@@ -80,7 +78,7 @@ func (database *ContainerizedTestingDatabase) start() (startResult, error) {
 	}
 
 	baseURL := "http://localhost:" + strconv.Itoa(port)
-	client, err := eventsourcingdb.NewClient(baseURL, database.accessToken, database.options...)
+	client, err := eventsourcingdb.NewClient(baseURL, database.accessToken)
 	if err != nil {
 		return startResult{}, err
 	}

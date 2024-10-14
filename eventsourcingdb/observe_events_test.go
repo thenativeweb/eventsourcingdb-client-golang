@@ -99,7 +99,7 @@ func TestObserveEvents(t *testing.T) {
 		assert.Equal(t, expected.Data.Name, eventData.Name)
 	}
 
-	t.Run("returns an error when trying to observe from a non-reachable server.", func(t *testing.T) {
+	t.Run("returns an server error when trying to observe from a non-reachable server.", func(t *testing.T) {
 		client := database.WithInvalidURL.GetClient()
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -110,7 +110,6 @@ func TestObserveEvents(t *testing.T) {
 
 		_, err := firstResult.GetData()
 		assert.True(t, errors.Is(err, customErrors.ErrServerError))
-		assert.ErrorContains(t, err, "server error: retries exceeded")
 	})
 
 	t.Run("observes events from a single subject.", func(t *testing.T) {
@@ -326,7 +325,7 @@ func TestObserveEvents(t *testing.T) {
 		assert.ErrorContains(t, err, "parameter 'ObserveFromLatestEvent' is invalid: malformed event type")
 	})
 
-	t.Run("returns a sever error if the server responds with HTTP 5xx on every try", func(t *testing.T) {
+	t.Run("returns a sever error if the server responds with HTTP 5xx", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
 			mux.HandleFunc("/api/observe-events", func(writer http.ResponseWriter, request *http.Request) {
 				writer.WriteHeader(http.StatusBadGateway)
@@ -334,7 +333,7 @@ func TestObserveEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, "access-token", eventsourcingdb.MaxTries(2))
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ObserveEvents(context.Background(), "/", eventsourcingdb.ObserveRecursively())
@@ -343,7 +342,6 @@ func TestObserveEvents(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, customErrors.ErrServerError))
-		assert.ErrorContains(t, err, "retries exceeded")
 		assert.ErrorContains(t, err, "Bad Gateway")
 	})
 

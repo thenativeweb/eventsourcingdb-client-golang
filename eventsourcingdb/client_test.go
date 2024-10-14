@@ -36,13 +36,6 @@ func TestNewClient(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("returns an error if maxTries is less than 1.", func(t *testing.T) {
-		_, err := eventsourcingdb.NewClient("http://foobar.invalid", "access-token", eventsourcingdb.MaxTries(0))
-
-		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
-		assert.ErrorContains(t, err, "parameter 'MaxTries' is invalid: maxTries must be 1 or greater")
-	})
-
 	t.Run("returns an error if the accessToken is empty.", func(t *testing.T) {
 		_, err := eventsourcingdb.NewClient("http://foobar.invalid", "")
 
