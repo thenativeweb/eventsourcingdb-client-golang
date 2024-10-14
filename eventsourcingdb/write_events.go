@@ -2,7 +2,6 @@ package eventsourcingdb
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -53,7 +52,7 @@ func (client *Client) WriteEvents(eventCandidates []event.Candidate, preconditio
 		return nil, errors.NewInternalError(err)
 	}
 
-	response, err := executeRequest(context.Background())
+	response, err := executeRequest()
 	if err != nil {
 		return nil, err
 	}

@@ -82,7 +82,7 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectsO
 			return
 		}
 
-		response, err := executeRequest(ctx)
+		response, err := executeRequest()
 		if err != nil {
 			results <- newReadSubjectsError(err)
 			return

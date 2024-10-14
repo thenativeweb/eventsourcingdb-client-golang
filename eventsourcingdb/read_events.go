@@ -86,7 +86,7 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 			return
 		}
 
-		response, err := executeRequest(ctx)
+		response, err := executeRequest()
 		if err != nil {
 			results <- newReadEventsError(err)
 			return

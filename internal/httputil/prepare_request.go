@@ -1,7 +1,6 @@
 package httputil
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,7 +13,7 @@ type RequestFactory struct {
 	configuration configuration.ClientConfiguration
 }
 
-type RequestExecutor func(ctx context.Context) (*http.Response, error)
+type RequestExecutor func() (*http.Response, error)
 
 func NewRequestFactory(configuration configuration.ClientConfiguration) *RequestFactory {
 	return &RequestFactory{
@@ -33,8 +32,7 @@ func (factory RequestFactory) Create(method string, path string, body io.Reader)
 	addProtocolVersion(request, factory.configuration.ProtocolVersion)
 	addAccessToken(request, factory.configuration.AccessToken)
 
-	// TODO: evalute if we can remove context
-	executor := func(ctx context.Context) (*http.Response, error) {
+	executor := func() (*http.Response, error) {
 		var response *http.Response
 
 		response, requestError := httpClient.Do(request)

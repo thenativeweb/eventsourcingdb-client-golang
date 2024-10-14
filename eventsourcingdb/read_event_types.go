@@ -55,7 +55,7 @@ func (client *Client) ReadEventTypes(ctx context.Context) <-chan ReadEventTypesR
 			return
 		}
 
-		response, err := executeRequest(ctx)
+		response, err := executeRequest()
 		if err != nil {
 			results <- newReadEventTypesError(err)
 			return
