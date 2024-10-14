@@ -16,7 +16,7 @@ import (
 )
 
 func TestWriteEvents(t *testing.T) {
-	t.Run("returns an error when trying to write to a non-reachable server.", func(t *testing.T) {
+	t.Run("returns a server error when trying to write to a non-reachable server.", func(t *testing.T) {
 		client := database.WithInvalidURL.GetClient()
 		source := event.NewSource(events.TestSource)
 
@@ -35,7 +35,6 @@ func TestWriteEvents(t *testing.T) {
 		)
 
 		assert.True(t, errors.Is(err, customErrors.ErrServerError))
-		assert.ErrorContains(t, err, "server error: retries exceeded")
 	})
 
 	t.Run("returns an error if no candidates are passed.", func(t *testing.T) {
@@ -217,7 +216,7 @@ func TestWriteEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, "access-token", eventsourcingdb.MaxTries(2))
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		source := event.NewSource(events.TestSource)
@@ -233,7 +232,6 @@ func TestWriteEvents(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, customErrors.ErrServerError))
-		assert.ErrorContains(t, err, "retries exceeded")
 		assert.ErrorContains(t, err, "Bad Gateway")
 	})
 

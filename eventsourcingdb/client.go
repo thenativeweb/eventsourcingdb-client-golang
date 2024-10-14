@@ -12,7 +12,7 @@ type Client struct {
 	configuration configuration.ClientConfiguration
 }
 
-func NewClient(baseURL string, accessToken string, options ...ClientOption) (Client, error) {
+func NewClient(baseURL string, accessToken string) (Client, error) {
 	if strconv.IntSize != 64 {
 		return Client{}, errors.NewClientError("64-bit architecture required")
 	}
@@ -29,12 +29,6 @@ func NewClient(baseURL string, accessToken string, options ...ClientOption) (Cli
 	}
 
 	clientConfiguration := configuration.GetDefaultConfiguration(parsedBaseURL, accessToken)
-
-	for _, option := range options {
-		if err := option.apply(&clientConfiguration); err != nil {
-			return Client{}, errors.NewInvalidParameterError(option.name, err.Error())
-		}
-	}
 
 	client := Client{clientConfiguration}
 

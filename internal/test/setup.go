@@ -30,7 +30,6 @@ func Setup(dockerfilePath string) (Database, error) {
 	client, err := eventsourcingdb.NewClient(
 		"http://localhost.invalid",
 		accessToken,
-		eventsourcingdb.MaxTries(3),
 	)
 	if err != nil {
 		return Database{}, err

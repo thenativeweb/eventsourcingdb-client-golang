@@ -2,7 +2,6 @@ package eventsourcingdb
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 
@@ -40,7 +39,7 @@ func (client *Client) RegisterEventSchema(eventType string, JSONSchema string) e
 		return customErrors.NewInternalError(err)
 	}
 
-	response, err := executeRequest(context.Background())
+	response, err := executeRequest()
 	if err != nil {
 		return err
 	}

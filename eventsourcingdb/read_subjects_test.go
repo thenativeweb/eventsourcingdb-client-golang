@@ -19,14 +19,13 @@ import (
 )
 
 func TestReadSubjects(t *testing.T) {
-	t.Run("returns a channel containing an error when trying to read from a non-reachable server.", func(t *testing.T) {
+	t.Run("returns a channel containing a server error when trying to read from a non-reachable server.", func(t *testing.T) {
 		client := database.WithInvalidURL.GetClient()
 
 		readSubjectResults := client.ReadSubjects(context.Background())
 
 		_, err := (<-readSubjectResults).GetData()
 		assert.True(t, errors.Is(err, customErrors.ErrServerError))
-		assert.ErrorContains(t, err, "server error: retries exceeded")
 	})
 
 	t.Run("closes the channel when no more subjects exist.", func(t *testing.T) {
@@ -142,7 +141,7 @@ func TestReadSubjects(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, "access-token", eventsourcingdb.MaxTries(2))
+		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
 		results := client.ReadSubjects(context.Background())
@@ -151,7 +150,6 @@ func TestReadSubjects(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, customErrors.ErrServerError))
-		assert.ErrorContains(t, err, "retries exceeded")
 		assert.ErrorContains(t, err, "Bad Gateway")
 	})
 

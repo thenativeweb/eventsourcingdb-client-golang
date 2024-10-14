@@ -91,7 +91,7 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 			return
 		}
 
-		response, err := executeRequest(ctx)
+		response, err := executeRequest()
 		if err != nil {
 			results <- newObserveEventsError(err)
 			return
