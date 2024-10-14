@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"net/http"
 
-	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/errors"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/ndjson"
 	"github.com/thenativeweb/goutils/v2/coreutils/contextutils"
 	"github.com/thenativeweb/goutils/v2/coreutils/result"
@@ -46,16 +44,9 @@ func (client *Client) ReadEventTypes(ctx context.Context) <-chan ReadEventTypesR
 	go func() {
 		defer close(results)
 
-		httpRequestFactory := httputil.NewRequestFactory(client.configuration)
-		executeRequest, err := httpRequestFactory.Create(http.MethodPost, "api/read-event-types", http.NoBody)
-		if err != nil {
-			results <- newReadEventTypesError(
-				customErrors.NewInternalError(err),
-			)
-			return
-		}
-
-		response, err := executeRequest()
+		response, err := client.requestServer(
+			http.MethodPost, "api/read-event-types", http.NoBody,
+		)
 		if err != nil {
 			results <- newReadEventTypesError(err)
 			return
@@ -75,7 +66,7 @@ func (client *Client) ReadEventTypes(ctx context.Context) <-chan ReadEventTypesR
 				}
 
 				results <- newReadEventTypesError(
-					customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: %s", err.Error())),
+					NewServerError(fmt.Sprintf("unsupported stream item encountered: %s", err.Error())),
 				)
 				return
 			}
@@ -85,17 +76,17 @@ func (client *Client) ReadEventTypes(ctx context.Context) <-chan ReadEventTypesR
 				var serverError streamError
 				if err := json.Unmarshal(data.Payload, &serverError); err != nil {
 					results <- newReadEventTypesError(
-						customErrors.NewServerError(fmt.Sprintf("unsupported stream error encountered: %s", err.Error())),
+						NewServerError(fmt.Sprintf("unsupported stream error encountered: %s", err.Error())),
 					)
 					return
 				}
 
-				results <- newReadEventTypesError(customErrors.NewServerError(serverError.Error))
+				results <- newReadEventTypesError(NewServerError(serverError.Error))
 			case "eventType":
 				var eventType EventType
 				if err := json.Unmarshal(data.Payload, &eventType); err != nil {
 					results <- newReadEventTypesError(
-						customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: '%s' (trying to unmarshal '%+v')", err.Error(), data)),
+						NewServerError(fmt.Sprintf("unsupported stream item encountered: '%s' (trying to unmarshal '%+v')", err.Error(), data)),
 					)
 					return
 				}
@@ -103,7 +94,7 @@ func (client *Client) ReadEventTypes(ctx context.Context) <-chan ReadEventTypesR
 				results <- newEventType(eventType)
 			default:
 				results <- newReadEventTypesError(
-					customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: '%+v' does not have a recognized type", data)),
+					NewServerError(fmt.Sprintf("unsupported stream item encountered: '%+v' does not have a recognized type", data)),
 				)
 				return
 			}

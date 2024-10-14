@@ -10,8 +10,6 @@ import (
 
 	"github.com/thenativeweb/goutils/v2/coreutils/contextutils"
 
-	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/errors"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/ndjson"
 	"github.com/thenativeweb/goutils/v2/coreutils/result"
 )
@@ -48,7 +46,7 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 
 		if err := validateSubject(subject); err != nil {
 			results <- newObserveEventsError(
-				customErrors.NewInvalidParameterError("subject", err.Error()),
+				NewInvalidParameterError("subject", err.Error()),
 			)
 			return
 		}
@@ -59,7 +57,7 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 		for _, option := range options {
 			if err := option.apply(&requestOptions); err != nil {
 				results <- newObserveEventsError(
-					customErrors.NewInvalidParameterError(option.name, err.Error()),
+					NewInvalidParameterError(option.name, err.Error()),
 				)
 				return
 			}
@@ -72,25 +70,16 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 		requestBodyAsJSON, err := json.Marshal(requestBody)
 		if err != nil {
 			results <- newObserveEventsError(
-				customErrors.NewInternalError(err),
+				NewInternalError(err),
 			)
 			return
 		}
 
-		requestFactory := httputil.NewRequestFactory(client.configuration)
-		executeRequest, err := requestFactory.Create(
+		response, err := client.requestServer(
 			http.MethodPost,
 			"api/observe-events",
 			bytes.NewReader(requestBodyAsJSON),
 		)
-		if err != nil {
-			results <- newObserveEventsError(
-				customErrors.NewInternalError(err),
-			)
-			return
-		}
-
-		response, err := executeRequest()
 		if err != nil {
 			results <- newObserveEventsError(err)
 			return
@@ -108,7 +97,7 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 			select {
 			case <-heartbeatTimer.C:
 				results <- newObserveEventsError(
-					customErrors.NewServerError("heartbeat timeout"),
+					NewServerError("heartbeat timeout"),
 				)
 				return
 
@@ -121,7 +110,7 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 					}
 
 					results <- newObserveEventsError(
-						customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: %s", err.Error())),
+						NewServerError(fmt.Sprintf("unsupported stream item encountered: %s", err.Error())),
 					)
 					return
 				}
@@ -137,18 +126,18 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 					var serverError streamError
 					if err := json.Unmarshal(data.Payload, &serverError); err != nil {
 						results <- newObserveEventsError(
-							customErrors.NewServerError(fmt.Sprintf("unsupported stream error encountered: %s", err.Error())),
+							NewServerError(fmt.Sprintf("unsupported stream error encountered: %s", err.Error())),
 						)
 						return
 					}
 
-					results <- newObserveEventsError(customErrors.NewServerError(serverError.Error))
+					results <- newObserveEventsError(NewServerError(serverError.Error))
 
 				case "item":
 					var storeItem StoreItem
 					if err := json.Unmarshal(data.Payload, &storeItem); err != nil {
 						results <- newObserveEventsError(
-							customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: '%s' (trying to unmarshal '%+v')", err.Error(), data)),
+							NewServerError(fmt.Sprintf("unsupported stream item encountered: '%s' (trying to unmarshal '%+v')", err.Error(), data)),
 						)
 						return
 					}
@@ -157,7 +146,7 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 
 				default:
 					results <- newObserveEventsError(
-						customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: '%+v' does not have a recognized type", data)),
+						NewServerError(fmt.Sprintf("unsupported stream item encountered: '%+v' does not have a recognized type", data)),
 					)
 					return
 				}

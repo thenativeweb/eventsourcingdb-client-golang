@@ -1,11 +1,14 @@
 package eventsourcingdb
 
 import (
+	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 	"strconv"
 
-	"github.com/thenativeweb/eventsourcingdb-client-golang/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/configuration"
+	internalhttputil "github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
 )
 
 type Client struct {
@@ -14,18 +17,18 @@ type Client struct {
 
 func NewClient(baseURL string, accessToken string) (Client, error) {
 	if strconv.IntSize != 64 {
-		return Client{}, errors.NewClientError("64-bit architecture required")
+		return Client{}, NewClientError("64-bit architecture required")
 	}
 	if accessToken == "" {
-		return Client{}, errors.NewInvalidParameterError("AccessToken", "the access token must not be empty")
+		return Client{}, NewInvalidParameterError("AccessToken", "the access token must not be empty")
 	}
 
 	parsedBaseURL, err := url.Parse(baseURL)
 	if err != nil {
-		return Client{}, errors.NewInvalidParameterError("baseURL", err.Error())
+		return Client{}, NewInvalidParameterError("baseURL", err.Error())
 	}
 	if parsedBaseURL.Scheme != "http" && parsedBaseURL.Scheme != "https" {
-		return Client{}, errors.NewInvalidParameterError("baseURL", "must use HTTP or HTTPS")
+		return Client{}, NewInvalidParameterError("baseURL", "must use HTTP or HTTPS")
 	}
 
 	clientConfiguration := configuration.GetDefaultConfiguration(parsedBaseURL, accessToken)
@@ -33,4 +36,44 @@ func NewClient(baseURL string, accessToken string) (Client, error) {
 	client := Client{clientConfiguration}
 
 	return client, nil
+}
+
+func (client Client) requestServer(method string, path string, body io.Reader) (*http.Response, error) {
+	routeURL := client.configuration.BaseURL.JoinPath(path)
+	httpClient := &http.Client{}
+	request, err := http.NewRequest(method, routeURL.String(), body)
+	if err != nil {
+		return nil, NewInternalError(err)
+	}
+
+	internalhttputil.AddProtocolVersion(request, client.configuration.ProtocolVersion)
+	internalhttputil.AddAccessToken(request, client.configuration.AccessToken)
+
+	var response *http.Response
+
+	response, requestError := httpClient.Do(request)
+	if requestError != nil {
+		return response, NewServerError(requestError.Error())
+	}
+	if clientError := internalhttputil.ValidateProtocolVersion(response, client.configuration.ProtocolVersion); clientError != nil {
+		return response, NewClientError(clientError.Error())
+	}
+
+	if response.StatusCode != http.StatusOK {
+		errorMessage := response.Status
+		if responseBody, err := io.ReadAll(response.Body); err == nil {
+			errorMessage += ": " + string(responseBody)
+		}
+
+		if internalhttputil.IsClientError(response) {
+			return response, NewClientError(errorMessage)
+		}
+		if internalhttputil.IsServerError(response) {
+			return response, NewServerError(errorMessage)
+		}
+
+		return response, NewServerError(fmt.Sprintf("unexpected response status: %s", response.Status))
+	}
+
+	return response, nil
 }

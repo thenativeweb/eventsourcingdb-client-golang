@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/ifeventismissingduringread"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
@@ -101,7 +100,7 @@ func TestReadEvents(t *testing.T) {
 		firstResult := <-resultChan
 
 		_, err := firstResult.GetData()
-		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 	})
 
 	t.Run("reads events from a single subject.", func(t *testing.T) {
@@ -289,7 +288,7 @@ func TestReadEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
 		assert.ErrorContains(t, err, "parameter 'ReadFromLowerBoundID' is invalid: lowerBoundID must contain an integer")
 	})
 
@@ -306,7 +305,7 @@ func TestReadEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
 		assert.ErrorContains(t, err, "parameter 'ReadFromLowerBoundID' is invalid: lowerBoundID must be 0 or greater")
 	})
 
@@ -323,7 +322,7 @@ func TestReadEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
 		assert.ErrorContains(t, err, "parameter 'ReadUntilUpperBoundID' is invalid: upperBoundID must contain an integer")
 	})
 
@@ -340,7 +339,7 @@ func TestReadEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
 		assert.ErrorContains(t, err, "parameter 'ReadUntilUpperBoundID' is invalid: upperBoundID must be 0 or greater")
 	})
 
@@ -357,7 +356,7 @@ func TestReadEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
 		assert.ErrorContains(t, err, "parameter 'ReadFromLatestEvent' is invalid: malformed event subject")
 	})
 
@@ -374,7 +373,7 @@ func TestReadEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
 		assert.ErrorContains(t, err, "parameter 'ReadFromLatestEvent' is invalid: malformed event type")
 	})
 
@@ -394,7 +393,7 @@ func TestReadEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 		assert.ErrorContains(t, err, "Bad Gateway")
 	})
 
@@ -415,7 +414,7 @@ func TestReadEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrClientError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrClientError))
 		assert.ErrorContains(t, err, "client error: protocol version mismatch, server '0.0.0', client '1.0.0'")
 	})
 
@@ -435,7 +434,7 @@ func TestReadEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrClientError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrClientError))
 		assert.ErrorContains(t, err, "Bad Request")
 	})
 
@@ -455,7 +454,7 @@ func TestReadEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 		assert.ErrorContains(t, err, "unexpected response status: 202 Accepted")
 	})
 
@@ -477,7 +476,7 @@ func TestReadEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 		assert.ErrorContains(t, err, "server error: unsupported stream item encountered: cannot unmarshal")
 	})
 
@@ -499,7 +498,7 @@ func TestReadEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 		assert.ErrorContains(t, err, "server error: unsupported stream item encountered:")
 		assert.ErrorContains(t, err, "does not have a recognized type")
 	})
@@ -522,7 +521,7 @@ func TestReadEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 		assert.ErrorContains(t, err, "server error: aliens have abducted the server")
 	})
 
@@ -544,7 +543,7 @@ func TestReadEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 		assert.ErrorContains(t, err, "server error: unsupported stream error encountered:")
 	})
 
@@ -566,7 +565,7 @@ func TestReadEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 		assert.ErrorContains(t, err, "server error: unsupported stream item encountered:")
 		assert.ErrorContains(t, err, "(trying to unmarshal")
 	})
@@ -577,7 +576,7 @@ func TestReadEvents(t *testing.T) {
 		results := client.ReadEvents(context.Background(), "uargh", eventsourcingdb.ReadRecursively())
 		_, err := (<-results).GetData()
 
-		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
 		assert.ErrorContains(t, err, "parameter 'subject' is invalid: malformed event subject 'uargh': subject must be an absolute, slash-separated path")
 	})
 
@@ -595,9 +594,9 @@ func TestReadEvents(t *testing.T) {
 		_, err := result.GetData()
 
 		assert.ErrorIs(t, err, context.DeadlineExceeded)
-		assert.NotErrorIs(t, customErrors.ErrServerError, err)
-		assert.NotErrorIs(t, customErrors.ErrClientError, err)
-		assert.NotErrorIs(t, customErrors.ErrInternalError, err)
+		assert.NotErrorIs(t, eventsourcingdb.ErrServerError, err)
+		assert.NotErrorIs(t, eventsourcingdb.ErrClientError, err)
+		assert.NotErrorIs(t, eventsourcingdb.ErrInternalError, err)
 		assert.NotContains(t, err.Error(), "unsupported stream item")
 	})
 }

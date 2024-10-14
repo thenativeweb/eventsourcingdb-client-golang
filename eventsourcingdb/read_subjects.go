@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"net/http"
 
-	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/errors"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/ndjson"
 	"github.com/thenativeweb/goutils/v2/coreutils/contextutils"
 	"github.com/thenativeweb/goutils/v2/coreutils/result"
@@ -55,7 +53,7 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectsO
 		for _, option := range options {
 			if err := option.apply(&requestBody); err != nil {
 				results <- newReadSubjectsError(
-					customErrors.NewInvalidParameterError(option.name, err.Error()),
+					NewInvalidParameterError(option.name, err.Error()),
 				)
 				return
 			}
@@ -64,25 +62,16 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectsO
 		requestBodyAsJSON, err := json.Marshal(requestBody)
 		if err != nil {
 			results <- newReadSubjectsError(
-				customErrors.NewInternalError(err),
+				NewInternalError(err),
 			)
 			return
 		}
 
-		requestFactory := httputil.NewRequestFactory(client.configuration)
-		executeRequest, err := requestFactory.Create(
+		response, err := client.requestServer(
 			http.MethodPost,
 			"api/read-subjects",
 			bytes.NewReader(requestBodyAsJSON),
 		)
-		if err != nil {
-			results <- newReadSubjectsError(
-				customErrors.NewInternalError(err),
-			)
-			return
-		}
-
-		response, err := executeRequest()
 		if err != nil {
 			results <- newReadSubjectsError(err)
 			return
@@ -102,7 +91,7 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectsO
 				}
 
 				results <- newReadSubjectsError(
-					customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: %s", err.Error())),
+					NewServerError(fmt.Sprintf("unsupported stream item encountered: %s", err.Error())),
 				)
 				return
 			}
@@ -112,17 +101,17 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectsO
 				var serverError streamError
 				if err := json.Unmarshal(data.Payload, &serverError); err != nil {
 					results <- newReadSubjectsError(
-						customErrors.NewServerError(fmt.Sprintf("unsupported stream error encountered: %s", err.Error())),
+						NewServerError(fmt.Sprintf("unsupported stream error encountered: %s", err.Error())),
 					)
 					return
 				}
 
-				results <- newReadSubjectsError(customErrors.NewServerError(serverError.Error))
+				results <- newReadSubjectsError(NewServerError(serverError.Error))
 			case "subject":
 				var subject Subject
 				if err := json.Unmarshal(data.Payload, &subject); err != nil {
 					results <- newReadSubjectsError(
-						customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: '%s' (trying to unmarshal '%+v')", err.Error(), data)),
+						NewServerError(fmt.Sprintf("unsupported stream item encountered: '%s' (trying to unmarshal '%+v')", err.Error(), data)),
 					)
 					return
 				}
@@ -130,7 +119,7 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectsO
 				results <- newSubject(subject)
 			default:
 				results <- newReadSubjectsError(
-					customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: '%+v' does not have a recognized type", data)),
+					NewServerError(fmt.Sprintf("unsupported stream item encountered: '%+v' does not have a recognized type", data)),
 				)
 				return
 			}

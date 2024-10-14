@@ -1,4 +1,4 @@
-package errors
+package eventsourcingdb
 
 import (
 	"errors"
@@ -13,11 +13,4 @@ var ErrServerError = errors.New("server error")
 // NewServerError returns a new server error with the given message.
 func NewServerError(message string) error {
 	return errorutils.Join(ErrServerError, errors.New(message))
-}
-
-// IsServerError returns true if the error is a server error.
-//
-// Deprecated: use errors.Is(err, errors.ErrServerError) instead.
-func IsServerError(err error) bool {
-	return errors.Is(err, ErrServerError)
 }

@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"net/http"
 
-	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/errors"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/ndjson"
 	"github.com/thenativeweb/goutils/v2/coreutils/contextutils"
 	"github.com/thenativeweb/goutils/v2/coreutils/result"
@@ -43,7 +41,7 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 
 		if err := validateSubject(subject); err != nil {
 			results <- newReadEventsError(
-				customErrors.NewInvalidParameterError("subject", err.Error()),
+				NewInvalidParameterError("subject", err.Error()),
 			)
 			return
 		}
@@ -54,7 +52,7 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 		for _, option := range options {
 			if err := option.apply(&readOptions); err != nil {
 				results <- newReadEventsError(
-					customErrors.NewInvalidParameterError(option.name, err.Error()),
+					NewInvalidParameterError(option.name, err.Error()),
 				)
 				return
 			}
@@ -67,25 +65,16 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 		requestBodyAsJSON, err := json.Marshal(requestBody)
 		if err != nil {
 			results <- newReadEventsError(
-				customErrors.NewInternalError(err),
+				NewInternalError(err),
 			)
 			return
 		}
 
-		requestFactory := httputil.NewRequestFactory(client.configuration)
-		executeRequest, err := requestFactory.Create(
+		response, err := client.requestServer(
 			http.MethodPost,
 			"api/read-events",
 			bytes.NewReader(requestBodyAsJSON),
 		)
-		if err != nil {
-			results <- newReadEventsError(
-				customErrors.NewInternalError(err),
-			)
-			return
-		}
-
-		response, err := executeRequest()
 		if err != nil {
 			results <- newReadEventsError(err)
 			return
@@ -105,7 +94,7 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 				}
 
 				results <- newReadEventsError(
-					customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: %s", err.Error())),
+					NewServerError(fmt.Sprintf("unsupported stream item encountered: %s", err.Error())),
 				)
 				return
 			}
@@ -115,17 +104,17 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 				var serverError streamError
 				if err := json.Unmarshal(data.Payload, &serverError); err != nil {
 					results <- newReadEventsError(
-						customErrors.NewServerError(fmt.Sprintf("unsupported stream error encountered: %s", err.Error())),
+						NewServerError(fmt.Sprintf("unsupported stream error encountered: %s", err.Error())),
 					)
 					return
 				}
 
-				results <- newReadEventsError(customErrors.NewServerError(serverError.Error))
+				results <- newReadEventsError(NewServerError(serverError.Error))
 			case "item":
 				var storeItem StoreItem
 				if err := json.Unmarshal(data.Payload, &storeItem); err != nil {
 					results <- newReadEventsError(
-						customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: '%s' (trying to unmarshal '%+v')", err.Error(), data)),
+						NewServerError(fmt.Sprintf("unsupported stream item encountered: '%s' (trying to unmarshal '%+v')", err.Error(), data)),
 					)
 					return
 				}
@@ -133,7 +122,7 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 				results <- newStoreItem(storeItem)
 			default:
 				results <- newReadEventsError(
-					customErrors.NewServerError(fmt.Sprintf("unsupported stream item encountered: '%+v' does not have a recognized type", data)),
+					NewServerError(fmt.Sprintf("unsupported stream item encountered: '%+v' does not have a recognized type", data)),
 				)
 				return
 			}

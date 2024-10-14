@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/httpserver"
@@ -32,7 +31,7 @@ func TestWriteEvents(t *testing.T) {
 			},
 		)
 
-		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 	})
 
 	t.Run("returns an error if no candidates are passed.", func(t *testing.T) {
@@ -42,7 +41,7 @@ func TestWriteEvents(t *testing.T) {
 			[]eventsourcingdb.EventCandidate{},
 		)
 
-		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
 		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: eventCandidates must contain at least one EventCandidate")
 	})
 
@@ -55,7 +54,7 @@ func TestWriteEvents(t *testing.T) {
 			},
 		)
 
-		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
 		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: event candidate failed to validate: malformed event subject 'foobar': subject must be an absolute, slash-separated path")
 	})
 
@@ -68,7 +67,7 @@ func TestWriteEvents(t *testing.T) {
 			},
 		)
 
-		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
 		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: event candidate failed to validate: malformed event type 'barbaz': type must be a reverse domain name")
 	})
 
@@ -81,7 +80,7 @@ func TestWriteEvents(t *testing.T) {
 			},
 		)
 
-		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
 		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: event candidate failed to validate: malformed event source '://foobar': source must be a valid URI")
 	})
 
@@ -224,7 +223,7 @@ func TestWriteEvents(t *testing.T) {
 		)
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 		assert.ErrorContains(t, err, "Bad Gateway")
 	})
 
@@ -252,7 +251,7 @@ func TestWriteEvents(t *testing.T) {
 		)
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrClientError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrClientError))
 		assert.ErrorContains(t, err, "client error: protocol version mismatch, server '0.0.0', client '1.0.0'")
 	})
 
@@ -279,7 +278,7 @@ func TestWriteEvents(t *testing.T) {
 		)
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrClientError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrClientError))
 		assert.ErrorContains(t, err, "Bad Request")
 	})
 
@@ -306,7 +305,7 @@ func TestWriteEvents(t *testing.T) {
 		)
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 		assert.ErrorContains(t, err, "unexpected response status: 202 Accepted")
 	})
 
@@ -334,7 +333,7 @@ func TestWriteEvents(t *testing.T) {
 		)
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 		assert.ErrorContains(t, err, "failed to read the response body")
 	})
 
@@ -364,7 +363,7 @@ func TestWriteEvents(t *testing.T) {
 		)
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 		assert.ErrorContains(t, err, "failed to parse the response body")
 	})
 }
@@ -381,7 +380,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 				eventsourcingdb.IsSubjectPristine("invalid"),
 			)
 
-			assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+			assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
 			assert.ErrorContains(t, err, "parameter 'preconditions' is invalid: IsSubjectPristine is invalid: malformed event subject 'invalid': subject must be an absolute, slash-separated path")
 		})
 
@@ -438,7 +437,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 				eventsourcingdb.IsSubjectOnEventID("invalid", "123"),
 			)
 
-			assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+			assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
 			assert.ErrorContains(t, err, "parameter 'preconditions' is invalid: IsSubjectOnEventID is invalid: malformed event subject 'invalid': subject must be an absolute, slash-separated path")
 		})
 
@@ -452,7 +451,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 				eventsourcingdb.IsSubjectOnEventID("/", "borzel"),
 			)
 
-			assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+			assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
 			assert.ErrorContains(t, err, "parameter 'preconditions' is invalid: IsSubjectOnEventID is invalid: eventID must contain an integer")
 		})
 
@@ -466,7 +465,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 				eventsourcingdb.IsSubjectOnEventID("/", "-1"),
 			)
 
-			assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+			assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
 			assert.ErrorContains(t, err, "parameter 'preconditions' is invalid: IsSubjectOnEventID is invalid: eventID must be 0 or greater")
 		})
 
