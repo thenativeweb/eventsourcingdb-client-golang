@@ -15,7 +15,7 @@ func TestNewCandidate(t *testing.T) {
 		timestamp eventsourcingdb.Timestamp
 		subject   string
 		eventType string
-		data      eventsourcingdb.Data
+		data      any
 	}{
 		{
 			timestamp: eventsourcingdb.Timestamp{Time: time.Now()},
@@ -37,12 +37,10 @@ func TestNewCandidate(t *testing.T) {
 func TestCandidate_Validate(t *testing.T) {
 	t.Run("returns an error if the source is malformed.", func(t *testing.T) {
 		err := eventsourcingdb.EventCandidate{
-			EventCandidateContext: eventsourcingdb.EventCandidateContext{
-				Source:  "$%&/(",
-				Subject: "/foo/bar",
-				Type:    "invalid.foobar.event",
-			},
-			Data: map[string]any{},
+			Source:  "$%&/(",
+			Subject: "/foo/bar",
+			Type:    "invalid.foobar.event",
+			Data:    map[string]any{},
 		}.Validate()
 
 		assert.ErrorContains(t, err, "event candidate failed to validate: malformed event source '$%&/(': source must be a valid URI")
@@ -50,12 +48,10 @@ func TestCandidate_Validate(t *testing.T) {
 
 	t.Run("returns an error if the subject is malformed.", func(t *testing.T) {
 		err := eventsourcingdb.EventCandidate{
-			EventCandidateContext: eventsourcingdb.EventCandidateContext{
-				Source:  "tag:foobar.invalid,2023:service",
-				Subject: "barbaz",
-				Type:    "invalid.foobar.event",
-			},
-			Data: map[string]any{},
+			Source:  "tag:foobar.invalid,2023:service",
+			Subject: "barbaz",
+			Type:    "invalid.foobar.event",
+			Data:    map[string]any{},
 		}.Validate()
 
 		assert.ErrorContains(t, err, "event candidate failed to validate: malformed event subject 'barbaz': subject must be an absolute, slash-separated path")
@@ -63,12 +59,10 @@ func TestCandidate_Validate(t *testing.T) {
 
 	t.Run("returns an error if the type is malformed.", func(t *testing.T) {
 		err := eventsourcingdb.EventCandidate{
-			EventCandidateContext: eventsourcingdb.EventCandidateContext{
-				Source:  "tag:foobar.invalid,2023:service",
-				Subject: "/foo/bar",
-				Type:    "invalid",
-			},
-			Data: map[string]any{},
+			Source:  "tag:foobar.invalid,2023:service",
+			Subject: "/foo/bar",
+			Type:    "invalid",
+			Data:    map[string]any{},
 		}.Validate()
 
 		assert.ErrorContains(t, err, "event candidate failed to validate: malformed event type 'invalid': type must be a reverse domain name")
@@ -76,13 +70,11 @@ func TestCandidate_Validate(t *testing.T) {
 
 	t.Run("returns an error if a tracestate is given but no traceparent.", func(t *testing.T) {
 		err := eventsourcingdb.EventCandidate{
-			EventCandidateContext: eventsourcingdb.EventCandidateContext{
-				Source:     "tag:foobar.invalid,2023:service",
-				Subject:    "/foo/bar",
-				Type:       "invalid.foobar.event",
-				TraceState: coreutils.PointerTo("foo=bar"),
-			},
-			Data: map[string]any{},
+			Source:     "tag:foobar.invalid,2023:service",
+			Subject:    "/foo/bar",
+			Type:       "invalid.foobar.event",
+			TraceState: coreutils.PointerTo("foo=bar"),
+			Data:       map[string]any{},
 		}.Validate()
 
 		assert.ErrorContains(t, err, "event candidate failed to validate: traceparent is required when tracestate is provided")

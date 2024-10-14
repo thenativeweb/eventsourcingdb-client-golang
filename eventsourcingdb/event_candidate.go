@@ -4,52 +4,39 @@ import (
 	"fmt"
 )
 
-type EventCandidateContext struct {
+type EventCandidate struct {
 	Source      string  `json:"source"`
 	Subject     string  `json:"subject"`
 	Type        string  `json:"type"`
+	Data        any     `json:"data"`
 	TraceParent *string `json:"traceparent,omitempty"`
 	TraceState  *string `json:"tracestate,omitempty"`
-}
-
-type EventCandidate struct {
-	EventCandidateContext
-	Data Data `json:"data"`
-}
-
-type EventCandidateTransformer func(candidate *EventCandidate)
-
-func WithTraceParent(traceParent string) EventCandidateTransformer {
-	return func(candidate *EventCandidate) {
-		candidate.TraceParent = &traceParent
-	}
-}
-
-func WithTraceState(traceState string) EventCandidateTransformer {
-	return func(candidate *EventCandidate) {
-		candidate.TraceParent = &traceState
-	}
 }
 
 func NewEventCandidate(
 	source string,
 	subject string,
 	eventType string,
-	data Data,
-	transformers ...EventCandidateTransformer,
+	data any,
 ) EventCandidate {
 	candidate := EventCandidate{
-		EventCandidateContext{
-			Source:  source,
-			Subject: subject,
-			Type:    eventType,
-		},
-		data,
+		Source:  source,
+		Subject: subject,
+		Type:    eventType,
+		Data:    data,
 	}
 
-	for _, transformer := range transformers {
-		transformer(&candidate)
-	}
+	return candidate
+}
+
+func (candidate EventCandidate) WithTraceParent(traceParent string) EventCandidate {
+	candidate.TraceParent = &traceParent
+
+	return candidate
+}
+
+func (candidate EventCandidate) WithTraceState(traceState string) EventCandidate {
+	candidate.TraceState = &traceState
 
 	return candidate
 }

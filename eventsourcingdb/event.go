@@ -2,20 +2,29 @@ package eventsourcingdb
 
 import "encoding/json"
 
+type Event struct {
+	Source          string          `json:"source"`
+	Subject         string          `json:"subject"`
+	Type            string          `json:"type"`
+	SpecVersion     string          `json:"specversion"`
+	ID              string          `json:"id"`
+	Time            Timestamp       `json:"time"`
+	DataContentType string          `json:"datacontenttype"`
+	Data            json.RawMessage `json:"data"`
+	PredecessorHash string          `json:"predecessorhash"`
+	TraceParent     *string         `json:"traceparent,omitempty"`
+	TraceState      *string         `json:"tracestate,omitempty"`
+}
+
 type EventContext struct {
-	EventCandidateContext
+	Source          string    `json:"source"`
+	Subject         string    `json:"subject"`
+	Type            string    `json:"type"`
 	SpecVersion     string    `json:"specversion"`
 	ID              string    `json:"id"`
 	Time            Timestamp `json:"time"`
 	DataContentType string    `json:"datacontenttype"`
 	PredecessorHash string    `json:"predecessorhash"`
-}
-
-type Event struct {
-	EventContext
-	Data json.RawMessage `json:"data"`
-}
-
-func (eventSource Source) NewEvent(subject, eventType string, data Data, options ...EventCandidateTransformer) EventCandidate {
-	return NewEventCandidate(eventSource.source, subject, eventType, data, options...)
+	TraceParent     *string   `json:"traceparent,omitempty"`
+	TraceState      *string   `json:"tracestate,omitempty"`
 }

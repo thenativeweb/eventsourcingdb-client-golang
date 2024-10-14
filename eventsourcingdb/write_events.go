@@ -13,7 +13,7 @@ import (
 
 type writeEventsRequestBody struct {
 	Preconditions *PreconditionsBody `json:"preconditions,omitempty"`
-	Events        []EventCandidate  `json:"events"`
+	Events        []EventCandidate   `json:"events"`
 }
 
 type WriteEventsOption func(body *writeEventsRequestBody)

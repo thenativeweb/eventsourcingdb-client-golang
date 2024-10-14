@@ -20,3 +20,7 @@ func validateSource(source string) error {
 
 	return nil
 }
+
+func (eventSource Source) NewEvent(subject, eventType string, data any) EventCandidate {
+	return NewEventCandidate(eventSource.source, subject, eventType, data)
+}

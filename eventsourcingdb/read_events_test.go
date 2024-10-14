@@ -26,29 +26,28 @@ func TestReadEvents(t *testing.T) {
 		"/users/registered",
 		events.Events.Registered.JaneDoe.Type,
 		events.Events.Registered.JaneDoe.Data,
-		eventsourcingdb.WithTraceParent(events.Events.Registered.JaneDoe.TraceParent),
-	)
+	).WithTraceParent(events.Events.Registered.JaneDoe.TraceParent)
+
 	johnRegistered := eventsourcingdb.NewEventCandidate(
 		events.TestSource,
 		"/users/registered",
 		events.Events.Registered.JohnDoe.Type,
 		events.Events.Registered.JohnDoe.Data,
-		eventsourcingdb.WithTraceParent(events.Events.Registered.JohnDoe.TraceParent),
-	)
+	).WithTraceParent(events.Events.Registered.JohnDoe.TraceParent)
+
 	janeLoggedIn := eventsourcingdb.NewEventCandidate(
 		events.TestSource,
 		"/users/loggedIn",
 		events.Events.LoggedIn.JaneDoe.Type,
 		events.Events.LoggedIn.JaneDoe.Data,
-		eventsourcingdb.WithTraceParent(events.Events.LoggedIn.JaneDoe.TraceParent),
-	)
+	).WithTraceParent(events.Events.LoggedIn.JaneDoe.TraceParent)
+
 	johnLoggedIn := eventsourcingdb.NewEventCandidate(
 		events.TestSource,
 		"/users/loggedIn",
 		events.Events.LoggedIn.JohnDoe.Type,
 		events.Events.LoggedIn.JohnDoe.Data,
-		eventsourcingdb.WithTraceParent(events.Events.LoggedIn.JohnDoe.TraceParent),
-	)
+	).WithTraceParent(events.Events.LoggedIn.JohnDoe.TraceParent)
 
 	_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 		janeRegistered,
