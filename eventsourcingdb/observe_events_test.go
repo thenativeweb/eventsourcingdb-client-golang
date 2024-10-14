@@ -99,7 +99,7 @@ func TestObserveEvents(t *testing.T) {
 		assert.Equal(t, expected.Data.Name, eventData.Name)
 	}
 
-	t.Run("returns an server error when trying to observe from a non-reachable server.", func(t *testing.T) {
+	t.Run("returns a server error when trying to observe from a non-reachable server.", func(t *testing.T) {
 		client := database.WithInvalidURL.GetClient()
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
