@@ -250,7 +250,7 @@ func TestObserveEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.ErrorContains(t, err, "parameter 'ObserveFromLatestEvent' is invalid: ObserveFromLowerBoundID and ObserveFromLatestEvent are mutually exclusive")
+		assert.ErrorContains(t, err, "argument 'ObserveFromLatestEvent' is invalid: ObserveFromLowerBoundID and ObserveFromLatestEvent are mutually exclusive")
 	})
 
 	t.Run("returns an error if the given lowerBoundID does not contain an integer.", func(t *testing.T) {
@@ -267,7 +267,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err := result.GetData()
 
 		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
-		assert.ErrorContains(t, err, "parameter 'ObserveFromLowerBoundID' is invalid: lowerBoundID must contain an integer")
+		assert.ErrorContains(t, err, "argument 'ObserveFromLowerBoundID' is invalid: lowerBoundID must contain an integer")
 	})
 
 	t.Run("returns an error if the given lowerBoundID contains an integer that is negative.", func(t *testing.T) {
@@ -284,7 +284,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err := result.GetData()
 
 		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
-		assert.ErrorContains(t, err, "parameter 'ObserveFromLowerBoundID' is invalid: lowerBoundID must be 0 or greater")
+		assert.ErrorContains(t, err, "argument 'ObserveFromLowerBoundID' is invalid: lowerBoundID must be 0 or greater")
 	})
 
 	t.Run("returns an error if an incorrect subject is used in ObserveFromLatestEvent.", func(t *testing.T) {
@@ -301,7 +301,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err := result.GetData()
 
 		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
-		assert.ErrorContains(t, err, "parameter 'ObserveFromLatestEvent' is invalid: malformed event subject")
+		assert.ErrorContains(t, err, "argument 'ObserveFromLatestEvent' is invalid: malformed event subject")
 	})
 
 	t.Run("returns an error if an incorrect type is used in ObserveFromLatestEvent.", func(t *testing.T) {
@@ -318,7 +318,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err := result.GetData()
 
 		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
-		assert.ErrorContains(t, err, "parameter 'ObserveFromLatestEvent' is invalid: malformed event type")
+		assert.ErrorContains(t, err, "argument 'ObserveFromLatestEvent' is invalid: malformed event type")
 	})
 
 	t.Run("returns a sever error if the server responds with HTTP 5xx", func(t *testing.T) {
@@ -521,7 +521,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err := (<-results).GetData()
 
 		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
-		assert.ErrorContains(t, err, "parameter 'subject' is invalid: malformed event subject 'uargh': subject must be an absolute, slash-separated path")
+		assert.ErrorContains(t, err, "argument 'subject' is invalid: malformed event subject 'uargh': subject must be an absolute, slash-separated path")
 	})
 
 	t.Run("observes for longer than ten seconds.", func(t *testing.T) {

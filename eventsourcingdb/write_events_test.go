@@ -42,7 +42,7 @@ func TestWriteEvents(t *testing.T) {
 		)
 
 		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
-		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: eventCandidates must contain at least one EventCandidate")
+		assert.ErrorContains(t, err, "argument 'eventCandidates' is invalid: must contain at least one EventCandidate")
 	})
 
 	t.Run("returns an error if a candidate subject is malformed", func(t *testing.T) {
@@ -55,7 +55,7 @@ func TestWriteEvents(t *testing.T) {
 		)
 
 		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
-		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: event candidate failed to validate: malformed event subject 'foobar': subject must be an absolute, slash-separated path")
+		assert.ErrorContains(t, err, "argument 'eventCandidates' is invalid: event candidate failed to validate: malformed event subject 'foobar': subject must be an absolute, slash-separated path")
 	})
 
 	t.Run("returns an error if a candidate type is malformed", func(t *testing.T) {
@@ -68,7 +68,7 @@ func TestWriteEvents(t *testing.T) {
 		)
 
 		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
-		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: event candidate failed to validate: malformed event type 'barbaz': type must be a reverse domain name")
+		assert.ErrorContains(t, err, "argument 'eventCandidates' is invalid: event candidate failed to validate: malformed event type 'barbaz': type must be a reverse domain name")
 	})
 
 	t.Run("returns an error if a candidate source is malformed", func(t *testing.T) {
@@ -81,7 +81,7 @@ func TestWriteEvents(t *testing.T) {
 		)
 
 		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
-		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: event candidate failed to validate: malformed event source '://foobar': source must be a valid URI")
+		assert.ErrorContains(t, err, "argument 'eventCandidates' is invalid: event candidate failed to validate: malformed event source '://foobar': source must be a valid URI")
 	})
 
 	t.Run("supports authorization.", func(t *testing.T) {
@@ -381,7 +381,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 			)
 
 			assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
-			assert.ErrorContains(t, err, "parameter 'preconditions' is invalid: IsSubjectPristine is invalid: malformed event subject 'invalid': subject must be an absolute, slash-separated path")
+			assert.ErrorContains(t, err, "argument 'preconditions' is invalid: IsSubjectPristine is invalid: malformed event subject 'invalid': subject must be an absolute, slash-separated path")
 		})
 
 		t.Run("writes events if the subject is pristine.", func(t *testing.T) {
@@ -438,7 +438,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 			)
 
 			assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
-			assert.ErrorContains(t, err, "parameter 'preconditions' is invalid: IsSubjectOnEventID is invalid: malformed event subject 'invalid': subject must be an absolute, slash-separated path")
+			assert.ErrorContains(t, err, "argument 'preconditions' is invalid: IsSubjectOnEventID is invalid: malformed event subject 'invalid': subject must be an absolute, slash-separated path")
 		})
 
 		t.Run("returns an error if the IsSubjectOnEventID precondition uses an eventID that does not contain an integer.", func(t *testing.T) {
@@ -452,7 +452,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 			)
 
 			assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
-			assert.ErrorContains(t, err, "parameter 'preconditions' is invalid: IsSubjectOnEventID is invalid: eventID must contain an integer")
+			assert.ErrorContains(t, err, "argument 'preconditions' is invalid: IsSubjectOnEventID is invalid: eventID must contain an integer")
 		})
 
 		t.Run("returns an error if the IsSubjectOnEventID precondition uses an eventID that contains a negative integer", func(t *testing.T) {
@@ -466,7 +466,7 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 			)
 
 			assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
-			assert.ErrorContains(t, err, "parameter 'preconditions' is invalid: IsSubjectOnEventID is invalid: eventID must be 0 or greater")
+			assert.ErrorContains(t, err, "argument 'preconditions' is invalid: IsSubjectOnEventID is invalid: eventID must be 0 or greater")
 		})
 
 		t.Run("writes events if the last event of the subject has the given event ID.", func(t *testing.T) {

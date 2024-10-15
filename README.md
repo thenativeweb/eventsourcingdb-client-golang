@@ -9,7 +9,6 @@ First, import the module:
 ```golang
 import (
   "github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
-  "github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/event"
 )
 ```
 
@@ -24,16 +23,6 @@ client, err := eventsourcingdb.NewClient(
 )
 ```
 
-Optionally, you may specify the number of retries to perform in case of a failure:
-
-```golang
-client, err := eventsourcingdb.NewClient(
-  "http://localhost:3000",
-  "secret",
-  eventsourcingdb.MaxTries(3),
-)
-```
-
 ### Veryfying the connection
 
 To verify the connection to EventSourcingDB, call the `client.Ping` function:
@@ -44,15 +33,15 @@ err := client.Ping()
 
 ### Writing events
 
-Before writing events, you probably want to create a source which represents your application. For that, call the `event.NewSource` function and specify the name of your application:
+Before writing events, you probably want to create a source which represents your application. For that, call the `eventsourcingdb.NewSource` function and specify the name of your application:
 
 ```golang
-source := event.NewSource(
+source := eventsourcingdb.NewSource(
   "tag:thenativeweb.io,2023:auth",
 )
 ```
 
-Then you can start creating events by calling the `source.NewEvent` function and specify the subject of the event as well as the type of the event:
+Then you can start creating events by calling the `eventsorucingdb.NewEvent` function and specify the subject of the event as well as the type of the event:
 
 ```golang
 type UserRegistered struct {
@@ -200,7 +189,7 @@ results := client.ReadEvents(
 )
 ```
 
-Finally, you may also specify to read from the latest event of a given type by using `eventsourcingdb.ReadFromLatestEvent`. For that, you also have to provide the subject, the event type, and what to do if the event is missing (either `ifeventismissingduringread.ReadNothing` or `ifeventismissingduringread.ReadEverything`):
+Finally, you may also specify to read from the latest event of a given type by using `eventsourcingdb.ReadFromLatestEvent`. For that, you also have to provide the subject, the event type, and what to do if the event is missing (either `eventsourcingdb.IfEventIsMissingDuringReadReadNothing` or `eventsourcingdb.IfEventIsMissingDuringReadReadEverything`):
 
 ```golang
 results := client.ReadEvents(
@@ -210,7 +199,7 @@ results := client.ReadEvents(
   eventsourcingdb.ReadFromLatestEvent(
     "/user/23",
     "io.thenativeweb.user.registered",
-    ifeventismissingduringread.ReadEverything,
+    eventsourcingdb.ifEventIsMissingDuringReadReadEverything,
   ),
 )
 ```
@@ -277,7 +266,7 @@ results := client.ObserveEvents(
 )
 ```
 
-Additionally, you may also specify to observe from the latest event of a given type by using `eventsourcingdb.ObserveFromLatestEvent`. For that, you also have to provide the subject, the event type, and what to do if the event is missing (either `ifeventismissingduringobserve.ReadEverything` or `ifeventismissingduringobserve.WaitForEvent`):
+Additionally, you may also specify to observe from the latest event of a given type by using `eventsourcingdb.ObserveFromLatestEvent`. For that, you also have to provide the subject, the event type, and what to do if the event is missing (either `eventsourcingdb.IfEventIsMissingDuringObserveReadEverything` or `eventsourcingdb.IfEventIsMissingDuringObserveWaitForEvent`):
 
 ```golang
 results := client.ObserveEvents(
@@ -287,7 +276,7 @@ results := client.ObserveEvents(
   eventsourcingdb.ReadFromLatestEvent(
     "/user/23",
     "io.thenativeweb.user.registered",
-    ifeventismissingduringobserve.ReadEverything,
+    eventsourcingdb.IfEventIsMissingDuringObserveReadEverything,
   ),
 )
 ```
