@@ -7,7 +7,7 @@ import (
 	"github.com/thenativeweb/goutils/v2/coreutils/errorutils"
 )
 
-// ErrInvalidArgument signal that an argument passed to a function is invalid.
+// ErrInvalidArgument signals that an argument passed to a function is invalid.
 // It is a kind of client error.
 // Invalid argument errors can generally be handled by the user.
 var ErrInvalidArgument = errors.New("invalid argument")
