@@ -362,7 +362,7 @@ func TestReadSubjects(t *testing.T) {
 			assert.NotErrorIs(t, eventsourcingdb.ErrClientError, err)
 			assert.NotErrorIs(t, eventsourcingdb.ErrInternalError, err)
 			assert.NotContains(t, err.Error(), "unsupported stream item")
-			count += 1
+			count++
 		}
 
 		assert.Equal(t, 1, count)
