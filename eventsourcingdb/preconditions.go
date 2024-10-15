@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/event"
 )
 
 const (
@@ -35,12 +33,12 @@ type PreconditionsBody struct {
 
 func (preconditions *PreconditionsBody) validate() error {
 	for _, precondition := range preconditions.isSubjectPristinePreconditions {
-		if err := event.ValidateSubject(precondition.Payload.Subject); err != nil {
+		if err := validateSubject(precondition.Payload.Subject); err != nil {
 			return fmt.Errorf("IsSubjectPristine is invalid: %w", err)
 		}
 	}
 	for _, precondition := range preconditions.isSubjectOnEventIDPreconditions {
-		if err := event.ValidateSubject(precondition.Payload.Subject); err != nil {
+		if err := validateSubject(precondition.Payload.Subject); err != nil {
 			return fmt.Errorf("IsSubjectOnEventID is invalid: %w", err)
 		}
 

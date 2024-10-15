@@ -11,48 +11,45 @@ import (
 	"github.com/thenativeweb/goutils/v2/platformutils"
 
 	"github.com/stretchr/testify/assert"
-	customErrors "github.com/thenativeweb/eventsourcingdb-client-golang/errors"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/event"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/ifeventismissingduringobserve"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/httpserver"
 )
 
 func TestObserveEvents(t *testing.T) {
-	janeRegistered := event.NewCandidate(
+	janeRegistered := eventsourcingdb.NewEventCandidate(
 		events.TestSource,
 		"/users/registered",
 		events.Events.Registered.JaneDoe.Type,
 		events.Events.Registered.JaneDoe.Data,
-		event.WithTraceParent(events.Events.Registered.JaneDoe.TraceParent),
-	)
-	johnRegistered := event.NewCandidate(
+	).WithTraceParent(events.Events.Registered.JaneDoe.TraceParent)
+
+	johnRegistered := eventsourcingdb.NewEventCandidate(
 		events.TestSource,
 		"/users/registered",
 		events.Events.Registered.JohnDoe.Type,
 		events.Events.Registered.JohnDoe.Data,
-		event.WithTraceParent(events.Events.Registered.JohnDoe.TraceParent),
-	)
-	janeLoggedIn := event.NewCandidate(
+	).WithTraceParent(events.Events.Registered.JohnDoe.TraceParent)
+
+	janeLoggedIn := eventsourcingdb.NewEventCandidate(
 		events.TestSource,
 		"/users/loggedIn",
 		events.Events.LoggedIn.JaneDoe.Type,
 		events.Events.LoggedIn.JaneDoe.Data,
-		event.WithTraceParent(events.Events.LoggedIn.JaneDoe.TraceParent),
-	)
-	johnLoggedIn := event.NewCandidate(
+	).WithTraceParent(events.Events.LoggedIn.JaneDoe.TraceParent)
+
+	johnLoggedIn := eventsourcingdb.NewEventCandidate(
 		events.TestSource,
 		"/users/loggedIn",
 		events.Events.LoggedIn.JohnDoe.Type,
 		events.Events.LoggedIn.JohnDoe.Data,
-		event.WithTraceParent(events.Events.LoggedIn.JohnDoe.TraceParent),
-	)
+	).WithTraceParent(events.Events.LoggedIn.JohnDoe.TraceParent)
 
 	prepareClientWithEvents := func(t *testing.T) eventsourcingdb.Client {
 		client := database.WithAuthorization.GetClient()
 
-		_, err := client.WriteEvents([]event.Candidate{
+		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 			janeRegistered,
 			janeLoggedIn,
 			johnRegistered,
@@ -64,7 +61,7 @@ func TestObserveEvents(t *testing.T) {
 		return client
 	}
 
-	getNextEvent := func(t *testing.T, resultChan <-chan eventsourcingdb.ObserveEventsResult) event.Event {
+	getNextEvent := func(t *testing.T, resultChan <-chan eventsourcingdb.ObserveEventsResult) eventsourcingdb.Event {
 		firstStoreItem := <-resultChan
 		data, err := firstStoreItem.GetData()
 
@@ -73,7 +70,7 @@ func TestObserveEvents(t *testing.T) {
 		return data.Event
 	}
 
-	matchRegisteredEvent := func(t *testing.T, event event.Event, expected events.RegisteredEvent) {
+	matchRegisteredEvent := func(t *testing.T, event eventsourcingdb.Event, expected events.RegisteredEvent) {
 		assert.Equal(t, "/users/registered", event.Subject)
 		assert.Equal(t, expected.Type, event.Type)
 		assert.Equal(t, expected.TraceParent, *event.TraceParent)
@@ -86,7 +83,7 @@ func TestObserveEvents(t *testing.T) {
 		assert.Equal(t, expected.Data.Name, eventData.Name)
 	}
 
-	matchLoggedInEvent := func(t *testing.T, event event.Event, expected events.LoggedInEvent) {
+	matchLoggedInEvent := func(t *testing.T, event eventsourcingdb.Event, expected events.LoggedInEvent) {
 		assert.Equal(t, "/users/loggedIn", event.Subject)
 		assert.Equal(t, expected.Type, event.Type)
 		assert.Equal(t, expected.TraceParent, *event.TraceParent)
@@ -109,7 +106,7 @@ func TestObserveEvents(t *testing.T) {
 		firstResult := <-resultChan
 
 		_, err := firstResult.GetData()
-		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 	})
 
 	t.Run("observes events from a single subject.", func(t *testing.T) {
@@ -125,14 +122,14 @@ func TestObserveEvents(t *testing.T) {
 		secondEvent := getNextEvent(t, resultChan)
 		matchRegisteredEvent(t, secondEvent, events.Events.Registered.JohnDoe)
 
-		apfelFredCandidate := event.NewCandidate(
+		apfelFredCandidate := eventsourcingdb.NewEventCandidate(
 			events.TestSource,
 			"/users/registered",
 			events.Events.Registered.ApfelFred.Type,
 			events.Events.Registered.ApfelFred.Data,
-			event.WithTraceParent(events.Events.Registered.ApfelFred.TraceParent),
-		)
-		_, err := client.WriteEvents([]event.Candidate{
+		).WithTraceParent(events.Events.Registered.ApfelFred.TraceParent)
+
+		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 			apfelFredCandidate,
 		})
 
@@ -270,7 +267,7 @@ func TestObserveEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
 		assert.ErrorContains(t, err, "parameter 'ObserveFromLowerBoundID' is invalid: lowerBoundID must contain an integer")
 	})
 
@@ -287,7 +284,7 @@ func TestObserveEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
 		assert.ErrorContains(t, err, "parameter 'ObserveFromLowerBoundID' is invalid: lowerBoundID must be 0 or greater")
 	})
 
@@ -304,7 +301,7 @@ func TestObserveEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
 		assert.ErrorContains(t, err, "parameter 'ObserveFromLatestEvent' is invalid: malformed event subject")
 	})
 
@@ -321,7 +318,7 @@ func TestObserveEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
 		assert.ErrorContains(t, err, "parameter 'ObserveFromLatestEvent' is invalid: malformed event type")
 	})
 
@@ -341,7 +338,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 		assert.ErrorContains(t, err, "Bad Gateway")
 	})
 
@@ -362,7 +359,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrClientError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrClientError))
 		assert.ErrorContains(t, err, "client error: protocol version mismatch, server '0.0.0', client '1.0.0'")
 	})
 
@@ -382,7 +379,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrClientError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrClientError))
 		assert.ErrorContains(t, err, "Bad Request")
 	})
 
@@ -402,7 +399,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 		assert.ErrorContains(t, err, "unexpected response status: 202 Accepted")
 	})
 
@@ -424,7 +421,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 		assert.ErrorContains(t, err, "server error: unsupported stream item encountered: cannot unmarshal")
 	})
 
@@ -446,7 +443,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 		assert.ErrorContains(t, err, "server error: unsupported stream item encountered:")
 		assert.ErrorContains(t, err, "does not have a recognized type")
 	})
@@ -469,7 +466,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 		assert.ErrorContains(t, err, "server error: aliens have abducted the server")
 	})
 
@@ -491,7 +488,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 		assert.ErrorContains(t, err, "server error: unsupported stream error encountered:")
 	})
 
@@ -513,7 +510,7 @@ func TestObserveEvents(t *testing.T) {
 		_, err = result.GetData()
 
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, customErrors.ErrServerError))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 		assert.ErrorContains(t, err, "server error: unsupported stream item encountered:")
 		assert.ErrorContains(t, err, "(trying to unmarshal")
 	})
@@ -524,7 +521,7 @@ func TestObserveEvents(t *testing.T) {
 		results := client.ObserveEvents(context.Background(), "uargh", eventsourcingdb.ObserveRecursively())
 		_, err := (<-results).GetData()
 
-		assert.True(t, errors.Is(err, customErrors.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
 		assert.ErrorContains(t, err, "parameter 'subject' is invalid: malformed event subject 'uargh': subject must be an absolute, slash-separated path")
 	})
 
@@ -543,8 +540,8 @@ func TestObserveEvents(t *testing.T) {
 					return
 				}
 			case <-time.After(11 * time.Second):
-				apfelFredCandidate := event.NewCandidate(events.TestSource, "/users/registered", events.Events.Registered.ApfelFred.Type, events.Events.Registered.ApfelFred.Data)
-				_, _ = client.WriteEvents([]event.Candidate{
+				apfelFredCandidate := eventsourcingdb.NewEventCandidate(events.TestSource, "/users/registered", events.Events.Registered.ApfelFred.Type, events.Events.Registered.ApfelFred.Data)
+				_, _ = client.WriteEvents([]eventsourcingdb.EventCandidate{
 					apfelFredCandidate,
 				})
 				_, ok := <-results
@@ -568,9 +565,9 @@ func TestObserveEvents(t *testing.T) {
 		_, err := result.GetData()
 
 		assert.ErrorIs(t, err, context.DeadlineExceeded)
-		assert.NotErrorIs(t, customErrors.ErrServerError, err)
-		assert.NotErrorIs(t, customErrors.ErrClientError, err)
-		assert.NotErrorIs(t, customErrors.ErrInternalError, err)
+		assert.NotErrorIs(t, eventsourcingdb.ErrServerError, err)
+		assert.NotErrorIs(t, eventsourcingdb.ErrClientError, err)
+		assert.NotErrorIs(t, eventsourcingdb.ErrInternalError, err)
 		assert.NotContains(t, err.Error(), "unsupported stream item")
 	})
 }

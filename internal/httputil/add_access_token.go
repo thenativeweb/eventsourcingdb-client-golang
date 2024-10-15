@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-func addAccessToken(request *http.Request, accessToken string) {
+func AddAccessToken(request *http.Request, accessToken string) {
 	if accessToken == "" {
 		return
 	}

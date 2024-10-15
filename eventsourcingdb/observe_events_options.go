@@ -4,7 +4,6 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/event"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/ifeventismissingduringobserve"
 )
 
@@ -68,10 +67,10 @@ func ObserveFromLatestEvent(subject, eventType string, ifEventIsMissing ifeventi
 			if options.LowerBoundID != nil {
 				return errors.New("ObserveFromLowerBoundID and ObserveFromLatestEvent are mutually exclusive")
 			}
-			if err := event.ValidateSubject(subject); err != nil {
+			if err := validateSubject(subject); err != nil {
 				return err
 			}
-			if err := event.ValidateType(eventType); err != nil {
+			if err := validateEventType(eventType); err != nil {
 				return err
 			}
 

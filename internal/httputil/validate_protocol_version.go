@@ -8,7 +8,7 @@ import (
 	"github.com/Masterminds/semver"
 )
 
-func validateProtocolVersion(response *http.Response, clientProtocolVersion semver.Version) error {
+func ValidateProtocolVersion(response *http.Response, clientProtocolVersion semver.Version) error {
 	if response.StatusCode != http.StatusUnprocessableEntity {
 		return nil
 	}

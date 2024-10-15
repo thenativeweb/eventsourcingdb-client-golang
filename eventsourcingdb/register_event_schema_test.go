@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/event"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
 )
 
@@ -19,8 +19,8 @@ func TestClient_RegisterEventSchema(t *testing.T) {
 	t.Run("Rejects the request if at least one of the existing events conflicts with the schema.", func(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
 
-		_, err := client.WriteEvents([]event.Candidate{
-			event.NewCandidate(events.TestSource, "/", "com.gornisht.ekht", map[string]any{"oy": "gevalt"}),
+		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
+			eventsourcingdb.NewEventCandidate(events.TestSource, "/", "com.gornisht.ekht", map[string]any{"oy": "gevalt"}),
 		})
 		assert.NoError(t, err)
 

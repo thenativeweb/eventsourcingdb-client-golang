@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-
-	"github.com/thenativeweb/eventsourcingdb-client-golang/errors"
 )
 
 func (client *Client) Ping() error {
@@ -14,18 +12,18 @@ func (client *Client) Ping() error {
 
 	response, err := httpClient.Get(url.String())
 	if err != nil {
-		return errors.NewServerError("server did not respond")
+		return NewServerError("server did not respond")
 	}
 	if response.StatusCode != http.StatusOK {
-		return errors.NewServerError(fmt.Sprintf("server responded with an unexpected status: %s", response.Status))
+		return NewServerError(fmt.Sprintf("server responded with an unexpected status: %s", response.Status))
 	}
 
 	data, err := io.ReadAll(response.Body)
 	if err != nil {
-		return errors.NewServerError("failed to read response body")
+		return NewServerError("failed to read response body")
 	}
 	if string(data) != "OK" {
-		return errors.NewServerError(fmt.Sprintf("server responded with an unexpected response body: %s", data))
+		return NewServerError(fmt.Sprintf("server responded with an unexpected response body: %s", data))
 	}
 
 	return nil

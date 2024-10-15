@@ -1,4 +1,4 @@
-package event
+package eventsourcingdb
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ func init() {
 	subjectRegex = regexp.MustCompile(fmt.Sprintf("^/(%[1]s/)*(%[1]s/?)?$", wordRegex))
 }
 
-func ValidateSubject(subject string) error {
+func validateSubject(subject string) error {
 	didMatch := subjectRegex.MatchString(subject)
 	if !didMatch {
 		return fmt.Errorf("malformed event subject '%s': subject must be an absolute, slash-separated path", subject)

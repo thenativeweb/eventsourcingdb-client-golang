@@ -1,4 +1,4 @@
-package errors
+package eventsourcingdb
 
 import (
 	"errors"
@@ -15,11 +15,4 @@ var ErrInvalidParameter = errors.New("invalid parameter")
 // NewInvalidParameterError returns a new invalid parameter error that indicates that the given parameter is invalid.
 func NewInvalidParameterError(parameterName, reason string) error {
 	return errorutils.Join(ErrClientError, ErrInvalidParameter, fmt.Errorf("parameter '%s' is invalid: %s", parameterName, reason))
-}
-
-// IsInvalidParameterError returns true if the error is an invalid parameter error.
-//
-// Deprecated: use errors.Is(err, errors.ErrInvalidParameter) instead.
-func IsInvalidParameterError(err error) bool {
-	return errors.Is(err, ErrInvalidParameter)
 }
