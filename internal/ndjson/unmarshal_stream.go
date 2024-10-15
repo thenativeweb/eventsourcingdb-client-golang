@@ -18,7 +18,8 @@ func UnmarshalStream[TData any](ctx context.Context, reader io.Reader) iter.Seq2
 		go func() {
 			defer close(lineChannel)
 			for scanner.Scan() {
-				if err := scanner.Err(); err != nil {
+				err := scanner.Err()
+				if err != nil {
 					yield(zeroResult, err)
 
 					return

@@ -97,14 +97,11 @@ func TestReadSubjects(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		subject := "/" + uuid.New().String()
+		subject := "/" + uuid.New().String() + "/" + uuid.New().String()
 		janeRegistered := events.Events.Registered.JaneDoe
 
-		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
-			eventsourcingdb.NewEventCandidate(events.TestSource, subject, janeRegistered.Type, janeRegistered.Data),
-			eventsourcingdb.NewEventCandidate(events.TestSource, subject, janeRegistered.Type, janeRegistered.Data),
-			eventsourcingdb.NewEventCandidate(events.TestSource, subject, janeRegistered.Type, janeRegistered.Data),
-			eventsourcingdb.NewEventCandidate(events.TestSource, subject, janeRegistered.Type, janeRegistered.Data),
+		var err error
+		_, err = client.WriteEvents([]eventsourcingdb.EventCandidate{
 			eventsourcingdb.NewEventCandidate(events.TestSource, subject, janeRegistered.Type, janeRegistered.Data),
 		})
 		assert.NoError(t, err)

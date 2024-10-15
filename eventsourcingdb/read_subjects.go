@@ -60,8 +60,7 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectsO
 		}
 		defer response.Body.Close()
 
-		unmarshalResults := ndjson.UnmarshalStream[readSubjectsResponseItem](ctx, response.Body)
-		for data, err := range unmarshalResults {
+		for data, err := range ndjson.UnmarshalStream[readSubjectsResponseItem](ctx, response.Body) {
 			if err != nil {
 				if contextutils.IsContextTerminationError(err) {
 					yield("", err)

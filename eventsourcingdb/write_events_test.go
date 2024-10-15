@@ -486,11 +486,8 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 			assert.NoError(t, err)
 
-			readEvents := client.ReadEvents(context.Background(), "/users", eventsourcingdb.ReadNonRecursively())
-
 			var lastEventID string
-			for readEvent := range readEvents {
-				data, err := readEvent.GetData()
+			for data, err := range client.ReadEvents(context.Background(), "/users", eventsourcingdb.ReadNonRecursively()) {
 				assert.NoError(t, err)
 
 				lastEventID = data.Event.ID
