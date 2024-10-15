@@ -340,7 +340,7 @@ func TestReadSubjects(t *testing.T) {
 			assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 			assert.ErrorContains(t, err, "server error: unsupported stream item encountered:")
 			assert.ErrorContains(t, err, "(trying to unmarshal")
-			count += 1
+			count++
 		}
 
 		assert.Equal(t, 1, count)
