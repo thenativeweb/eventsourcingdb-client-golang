@@ -41,7 +41,8 @@ source := eventsourcingdb.NewSource(
 )
 ```
 
-Then you can start creating events by calling the `eventsorucingdb.NewEvent` function and specify the subject of the event as well as the type of the event:
+Then you can start creating events by calling the `eventsourcingdb.NewEvent` function and specify the subject of the event as well as the type of the event:
+
 
 ```golang
 type UserRegistered struct {
