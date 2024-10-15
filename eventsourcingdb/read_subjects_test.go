@@ -85,7 +85,7 @@ func TestReadSubjects(t *testing.T) {
 
 		count := 0
 		for _, err := range client.ReadSubjects(ctx) {
-			count += 1
+			count++
 			assert.ErrorIs(t, err, context.Canceled)
 		}
 
