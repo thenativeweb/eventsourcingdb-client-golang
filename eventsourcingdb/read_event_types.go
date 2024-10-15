@@ -57,8 +57,7 @@ func (client *Client) ReadEventTypes(ctx context.Context) <-chan ReadEventTypesR
 		defer cancelUnmarshalling()
 
 		unmarshalResults := ndjson.UnmarshalStream[readEventTypesResponseItem](unmarshalContext, response.Body)
-		for unmarshalResult := range unmarshalResults {
-			data, err := unmarshalResult.GetData()
+		for data, err := range unmarshalResults {
 			if err != nil {
 				if contextutils.IsContextTerminationError(err) {
 					results <- newReadEventTypesError(err)

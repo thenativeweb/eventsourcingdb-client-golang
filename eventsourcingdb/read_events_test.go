@@ -13,7 +13,6 @@ import (
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/httpserver"
-	"github.com/thenativeweb/goutils/v2/platformutils"
 )
 
 func TestReadEvents(t *testing.T) {
@@ -583,10 +582,10 @@ func TestReadEvents(t *testing.T) {
 	t.Run("Works with contexts that have a deadline.", func(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
 
-		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(1*platformutils.Jiffy))
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(1*time.Millisecond))
 		defer cancel()
 
-		time.Sleep(2 * platformutils.Jiffy)
+		time.Sleep(2 * time.Millisecond)
 
 		results := client.ReadEvents(ctx, "/", eventsourcingdb.ReadNonRecursively())
 		result := <-results

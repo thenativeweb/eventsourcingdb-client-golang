@@ -85,8 +85,7 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 		defer cancelUnmarshalling()
 
 		unmarshalResults := ndjson.UnmarshalStream[ndjson.StreamItem](unmarshalContext, response.Body)
-		for unmarshalResult := range unmarshalResults {
-			data, err := unmarshalResult.GetData()
+		for data, err := range unmarshalResults {
 			if err != nil {
 				if contextutils.IsContextTerminationError(err) {
 					results <- newReadEventsError(err)

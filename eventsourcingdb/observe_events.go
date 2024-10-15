@@ -93,7 +93,7 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 		defer cancelUnmarshalling()
 
 		unmarshalResults := ndjson.UnmarshalStream[ndjson.StreamItem](unmarshalContext, response.Body)
-		for unmarshalResult := range unmarshalResults {
+		for data, err := range unmarshalResults {
 			select {
 			case <-heartbeatTimer.C:
 				results <- newObserveEventsError(
@@ -102,7 +102,6 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 				return
 
 			default:
-				data, err := unmarshalResult.GetData()
 				if err != nil {
 					if contextutils.IsContextTerminationError(err) {
 						results <- newObserveEventsError(err)
