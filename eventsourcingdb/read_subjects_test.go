@@ -20,7 +20,7 @@ func TestReadSubjects(t *testing.T) {
 
 		count := 0
 		for _, err := range client.ReadSubjects(context.Background()) {
-			count += 1
+			count++
 			assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 		}
 
