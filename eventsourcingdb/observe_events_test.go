@@ -12,7 +12,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/ifeventismissingduringobserve"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/httpserver"
 )
@@ -174,7 +173,7 @@ func TestObserveEvents(t *testing.T) {
 			eventsourcingdb.ObserveFromLatestEvent(
 				"/users/loggedIn",
 				events.PrefixEventType("loggedIn"),
-				ifeventismissingduringobserve.ReadEverything,
+				eventsourcingdb.IfEventIsMissingDuringObserveReadEverything,
 			),
 		)
 
@@ -245,7 +244,7 @@ func TestObserveEvents(t *testing.T) {
 			"/",
 			eventsourcingdb.ObserveRecursively(),
 			eventsourcingdb.ObserveFromLowerBoundID("0"),
-			eventsourcingdb.ObserveFromLatestEvent("/", "com.foo.bar", ifeventismissingduringobserve.WaitForEvent),
+			eventsourcingdb.ObserveFromLatestEvent("/", "com.foo.bar", eventsourcingdb.IfEventIsMissingDuringObserveWaitForEvent),
 		)
 
 		result := <-results
@@ -267,7 +266,7 @@ func TestObserveEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
 		assert.ErrorContains(t, err, "parameter 'ObserveFromLowerBoundID' is invalid: lowerBoundID must contain an integer")
 	})
 
@@ -284,7 +283,7 @@ func TestObserveEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
 		assert.ErrorContains(t, err, "parameter 'ObserveFromLowerBoundID' is invalid: lowerBoundID must be 0 or greater")
 	})
 
@@ -295,13 +294,13 @@ func TestObserveEvents(t *testing.T) {
 			context.Background(),
 			"/",
 			eventsourcingdb.ObserveRecursively(),
-			eventsourcingdb.ObserveFromLatestEvent("", "com.foo.bar", ifeventismissingduringobserve.WaitForEvent),
+			eventsourcingdb.ObserveFromLatestEvent("", "com.foo.bar", eventsourcingdb.IfEventIsMissingDuringObserveWaitForEvent),
 		)
 
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
 		assert.ErrorContains(t, err, "parameter 'ObserveFromLatestEvent' is invalid: malformed event subject")
 	})
 
@@ -312,13 +311,13 @@ func TestObserveEvents(t *testing.T) {
 			context.Background(),
 			"/",
 			eventsourcingdb.ObserveRecursively(),
-			eventsourcingdb.ObserveFromLatestEvent("/", ".bar", ifeventismissingduringobserve.WaitForEvent),
+			eventsourcingdb.ObserveFromLatestEvent("/", ".bar", eventsourcingdb.IfEventIsMissingDuringObserveWaitForEvent),
 		)
 
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
 		assert.ErrorContains(t, err, "parameter 'ObserveFromLatestEvent' is invalid: malformed event type")
 	})
 
@@ -521,7 +520,7 @@ func TestObserveEvents(t *testing.T) {
 		results := client.ObserveEvents(context.Background(), "uargh", eventsourcingdb.ObserveRecursively())
 		_, err := (<-results).GetData()
 
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
 		assert.ErrorContains(t, err, "parameter 'subject' is invalid: malformed event subject 'uargh': subject must be an absolute, slash-separated path")
 	})
 

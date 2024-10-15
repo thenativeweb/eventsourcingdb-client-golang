@@ -3,8 +3,6 @@ package eventsourcingdb
 import (
 	"errors"
 	"strconv"
-
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/ifeventismissingduringread"
 )
 
 type ReadRecursivelyOption func() bool
@@ -22,9 +20,9 @@ func ReadNonRecursively() ReadRecursivelyOption {
 }
 
 type readFromLatestEvent struct {
-	Subject          string                                      `json:"subject"`
-	Type             string                                      `json:"type"`
-	IfEventIsMissing ifeventismissingduringread.IfEventIsMissing `json:"ifEventIsMissing"`
+	Subject          string                     `json:"subject"`
+	Type             string                     `json:"type"`
+	IfEventIsMissing IfEventIsMissingDuringRead `json:"ifEventIsMissing"`
 }
 
 type readEventsOptions struct {
@@ -106,7 +104,7 @@ func ReadUntilUpperBoundID(upperBoundID string) ReadEventsOption {
 	}
 }
 
-func ReadFromLatestEvent(subject, eventType string, ifEventIsMissing ifeventismissingduringread.IfEventIsMissing) ReadEventsOption {
+func ReadFromLatestEvent(subject, eventType string, ifEventIsMissing IfEventIsMissingDuringRead) ReadEventsOption {
 	return ReadEventsOption{
 		apply: func(options *readEventsOptions) error {
 			if options.LowerBoundID != nil {

@@ -127,7 +127,7 @@ func TestReadSubjects(t *testing.T) {
 		result := <-results
 
 		_, err := result.GetData()
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
 		assert.ErrorContains(t, err, "parameter 'BaseSubject' is invalid: malformed event subject")
 	})
 

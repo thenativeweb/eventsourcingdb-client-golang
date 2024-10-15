@@ -53,7 +53,7 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectsO
 		for _, option := range options {
 			if err := option.apply(&requestBody); err != nil {
 				results <- newReadSubjectsError(
-					NewInvalidParameterError(option.name, err.Error()),
+					NewInvalidArgumentError(option.name, err.Error()),
 				)
 				return
 			}

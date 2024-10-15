@@ -22,14 +22,14 @@ func (client *Client) WriteEvents(eventCandidates []EventCandidate, precondition
 	}
 
 	if err := requestBody.Preconditions.validate(); err != nil {
-		return nil, NewInvalidParameterError("preconditions", err.Error())
+		return nil, NewInvalidArgumentError("preconditions", err.Error())
 	}
 	if len(eventCandidates) < 1 {
-		return nil, NewInvalidParameterError("eventCandidates", "eventCandidates must contain at least one EventCandidate")
+		return nil, NewInvalidArgumentError("eventCandidates", "must contain at least one EventCandidate")
 	}
 	for i := 0; i < len(eventCandidates); i++ {
 		if err := eventCandidates[i].Validate(); err != nil {
-			return nil, NewInvalidParameterError("eventCandidates", err.Error())
+			return nil, NewInvalidArgumentError("eventCandidates", err.Error())
 		}
 	}
 

@@ -41,7 +41,7 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 
 		if err := validateSubject(subject); err != nil {
 			results <- newReadEventsError(
-				NewInvalidParameterError("subject", err.Error()),
+				NewInvalidArgumentError("subject", err.Error()),
 			)
 			return
 		}
@@ -52,7 +52,7 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 		for _, option := range options {
 			if err := option.apply(&readOptions); err != nil {
 				results <- newReadEventsError(
-					NewInvalidParameterError(option.name, err.Error()),
+					NewInvalidArgumentError(option.name, err.Error()),
 				)
 				return
 			}

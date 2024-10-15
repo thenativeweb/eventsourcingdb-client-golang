@@ -46,7 +46,7 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 
 		if err := validateSubject(subject); err != nil {
 			results <- newObserveEventsError(
-				NewInvalidParameterError("subject", err.Error()),
+				NewInvalidArgumentError("subject", err.Error()),
 			)
 			return
 		}
@@ -57,7 +57,7 @@ func (client *Client) ObserveEvents(ctx context.Context, subject string, recursi
 		for _, option := range options {
 			if err := option.apply(&requestOptions); err != nil {
 				results <- newObserveEventsError(
-					NewInvalidParameterError(option.name, err.Error()),
+					NewInvalidArgumentError(option.name, err.Error()),
 				)
 				return
 			}

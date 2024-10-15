@@ -11,7 +11,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/ifeventismissingduringread"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/httpserver"
 	"github.com/thenativeweb/goutils/v2/platformutils"
@@ -169,7 +168,7 @@ func TestReadEvents(t *testing.T) {
 			eventsourcingdb.ReadFromLatestEvent(
 				"/users/loggedIn",
 				events.PrefixEventType("loggedIn"),
-				ifeventismissingduringread.ReadEverything,
+				eventsourcingdb.IfEventIsMissingDuringReadReadEverything,
 			),
 		)
 
@@ -266,7 +265,7 @@ func TestReadEvents(t *testing.T) {
 			"/",
 			eventsourcingdb.ReadRecursively(),
 			eventsourcingdb.ReadFromLowerBoundID("0"),
-			eventsourcingdb.ReadFromLatestEvent("/", "com.foo.bar", ifeventismissingduringread.ReadEverything),
+			eventsourcingdb.ReadFromLatestEvent("/", "com.foo.bar", eventsourcingdb.IfEventIsMissingDuringReadReadEverything),
 		)
 
 		result := <-results
@@ -288,7 +287,7 @@ func TestReadEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
 		assert.ErrorContains(t, err, "parameter 'ReadFromLowerBoundID' is invalid: lowerBoundID must contain an integer")
 	})
 
@@ -305,7 +304,7 @@ func TestReadEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
 		assert.ErrorContains(t, err, "parameter 'ReadFromLowerBoundID' is invalid: lowerBoundID must be 0 or greater")
 	})
 
@@ -322,7 +321,7 @@ func TestReadEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
 		assert.ErrorContains(t, err, "parameter 'ReadUntilUpperBoundID' is invalid: upperBoundID must contain an integer")
 	})
 
@@ -339,7 +338,7 @@ func TestReadEvents(t *testing.T) {
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
 		assert.ErrorContains(t, err, "parameter 'ReadUntilUpperBoundID' is invalid: upperBoundID must be 0 or greater")
 	})
 
@@ -350,13 +349,13 @@ func TestReadEvents(t *testing.T) {
 			context.Background(),
 			"/",
 			eventsourcingdb.ReadRecursively(),
-			eventsourcingdb.ReadFromLatestEvent("", "com.foo.bar", ifeventismissingduringread.ReadNothing),
+			eventsourcingdb.ReadFromLatestEvent("", "com.foo.bar", eventsourcingdb.IfEventIsMissingDuringReadReadNothing),
 		)
 
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
 		assert.ErrorContains(t, err, "parameter 'ReadFromLatestEvent' is invalid: malformed event subject")
 	})
 
@@ -367,13 +366,13 @@ func TestReadEvents(t *testing.T) {
 			context.Background(),
 			"/",
 			eventsourcingdb.ReadRecursively(),
-			eventsourcingdb.ReadFromLatestEvent("/", ".bar", ifeventismissingduringread.ReadNothing),
+			eventsourcingdb.ReadFromLatestEvent("/", ".bar", eventsourcingdb.IfEventIsMissingDuringReadReadNothing),
 		)
 
 		result := <-results
 		_, err := result.GetData()
 
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
 		assert.ErrorContains(t, err, "parameter 'ReadFromLatestEvent' is invalid: malformed event type")
 	})
 
@@ -576,7 +575,7 @@ func TestReadEvents(t *testing.T) {
 		results := client.ReadEvents(context.Background(), "uargh", eventsourcingdb.ReadRecursively())
 		_, err := (<-results).GetData()
 
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
 		assert.ErrorContains(t, err, "parameter 'subject' is invalid: malformed event subject 'uargh': subject must be an absolute, slash-separated path")
 	})
 
