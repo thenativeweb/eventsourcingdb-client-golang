@@ -9,7 +9,7 @@ import (
 	"net/http"
 
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/ndjson"
-	"github.com/thenativeweb/goutils/v2/coreutils/contextutils"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/util"
 )
 
 type Subject struct {
@@ -57,7 +57,7 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectsO
 
 		for data, err := range ndjson.UnmarshalStream[readSubjectsResponseItem](ctx, response.Body) {
 			if err != nil {
-				if contextutils.IsContextTerminationError(err) {
+				if util.IsContextTerminationError(err) {
 					yield("", err)
 					return
 				}

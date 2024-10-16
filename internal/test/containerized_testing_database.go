@@ -1,12 +1,11 @@
 package test
 
 import (
-	"context"
+	"errors"
 	"strconv"
 
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/docker"
-	"github.com/thenativeweb/goutils/v2/coreutils/retry"
 )
 
 type ContainerizedTestingDatabase struct {
@@ -39,11 +38,19 @@ func NewContainerizedTestingDatabase(image docker.Image, command []string, acces
 	database.container = startResult.container
 	database.client = startResult.client
 
-	err = retry.WithBackoff(context.Background(), 10, func() error {
-		return database.client.Ping()
-	})
-	if err != nil {
-		return ContainerizedTestingDatabase{}, err
+	var retryError error
+	for try := 0; try < 10; try++ {
+		err := database.client.Ping()
+		if err != nil {
+			retryError = errors.Join(retryError, err)
+			continue
+		}
+
+		retryError = nil
+		break
+	}
+	if retryError != nil {
+		return ContainerizedTestingDatabase{}, retryError
 	}
 
 	return database, nil
@@ -83,11 +90,19 @@ func (database *ContainerizedTestingDatabase) start() (startResult, error) {
 		return startResult{}, err
 	}
 
-	err = retry.WithBackoff(context.Background(), 10, func() error {
-		return client.Ping()
-	})
-	if err != nil {
-		return startResult{}, err
+	var retryError error
+	for try := 0; try < 10; try++ {
+		err := client.Ping()
+		if err != nil {
+			retryError = errors.Join(retryError, err)
+			continue
+		}
+
+		retryError = nil
+		break
+	}
+	if retryError != nil {
+		return startResult{}, retryError
 	}
 
 	return startResult{

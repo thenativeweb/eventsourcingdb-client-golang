@@ -170,7 +170,7 @@ func TestReadSubjects(t *testing.T) {
 		for _, err := range client.ReadSubjects(context.Background()) {
 			assert.Error(t, err)
 			assert.True(t, errors.Is(err, eventsourcingdb.ErrClientError))
-			assert.ErrorContains(t, err, "client error: protocol version mismatch, server '0.0.0', client '1.0.0'")
+			assert.ErrorContains(t, err, "protocol version mismatch, server '0.0.0', client '1.0.0'")
 		}
 		count += 1
 
@@ -238,7 +238,7 @@ func TestReadSubjects(t *testing.T) {
 		for _, err := range client.ReadSubjects(context.Background()) {
 			assert.Error(t, err)
 			assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
-			assert.ErrorContains(t, err, "server error: unsupported stream item encountered: cannot unmarshal")
+			assert.ErrorContains(t, err, "unsupported stream item encountered: cannot unmarshal")
 			count += 1
 		}
 
@@ -262,7 +262,7 @@ func TestReadSubjects(t *testing.T) {
 		for _, err := range client.ReadSubjects(context.Background()) {
 			assert.Error(t, err)
 			assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
-			assert.ErrorContains(t, err, "server error: unsupported stream item encountered:")
+			assert.ErrorContains(t, err, "unsupported stream item encountered:")
 			assert.ErrorContains(t, err, "does not have a recognized type")
 			count += 1
 		}
@@ -287,7 +287,7 @@ func TestReadSubjects(t *testing.T) {
 		for _, err := range client.ReadSubjects(context.Background()) {
 			assert.Error(t, err)
 			assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
-			assert.ErrorContains(t, err, "server error: aliens have abducted the server")
+			assert.ErrorContains(t, err, "aliens have abducted the server")
 			count++
 		}
 
@@ -311,7 +311,7 @@ func TestReadSubjects(t *testing.T) {
 		for _, err := range client.ReadSubjects(context.Background()) {
 			assert.Error(t, err)
 			assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
-			assert.ErrorContains(t, err, "server error: unexpected stream error encountered:")
+			assert.ErrorContains(t, err, "unexpected stream error encountered:")
 			count++
 		}
 
@@ -335,7 +335,7 @@ func TestReadSubjects(t *testing.T) {
 		for _, err := range client.ReadSubjects(context.Background()) {
 			assert.Error(t, err)
 			assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
-			assert.ErrorContains(t, err, "server error: unsupported stream item encountered:")
+			assert.ErrorContains(t, err, "unsupported stream item encountered:")
 			assert.ErrorContains(t, err, "(trying to unmarshal")
 			count++
 		}

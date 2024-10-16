@@ -9,9 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/thenativeweb/goutils/v2/coreutils/contextutils"
-
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/ndjson"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/util"
 )
 
 type observeEventsRequest struct {
@@ -87,7 +86,7 @@ func (client *Client) ObserveEvents(
 				return
 			default:
 				if err != nil {
-					if contextutils.IsContextTerminationError(err) {
+					if util.IsContextTerminationError(err) {
 						yield(StoreItem{}, err)
 						return
 					}

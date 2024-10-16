@@ -6,8 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-
-	"github.com/thenativeweb/goutils/v2/coreutils/retry"
+	"time"
 )
 
 type RegisterHandlers func(mux *http.ServeMux)
@@ -39,20 +38,25 @@ func NewHTTPServer(registerHandlers RegisterHandlers) (httpAddress string, cance
 
 	serverAddress := fmt.Sprintf("http://%s", localServerAddress)
 
-	err := retry.WithBackoff(ctx, 10, func() error {
+	var retryError error
+	for try := 0; try < 10; try++ {
+		time.Sleep(100 * time.Millisecond)
 		response, err := http.Get(fmt.Sprintf("%s/__test__/ready", serverAddress))
 		if err != nil {
-			return err
+			retryError = errors.Join(retryError, err)
+			continue
 		}
 
 		if response.StatusCode != http.StatusOK {
-			return errors.New("server not ready")
+			retryError = errors.Join(retryError, err)
+			continue
 		}
 
-		return nil
-	})
-	if err != nil {
-		panic(err)
+		retryError = nil
+		break
+	}
+	if retryError != nil {
+		panic(retryError)
 	}
 
 	return serverAddress, cancel

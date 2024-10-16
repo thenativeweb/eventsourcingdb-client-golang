@@ -8,7 +8,7 @@ import (
 	"net/http"
 
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/ndjson"
-	"github.com/thenativeweb/goutils/v2/coreutils/contextutils"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/util"
 )
 
 type readEventTypesResponseItem struct {
@@ -40,7 +40,7 @@ func (client *Client) ReadEventTypes(ctx context.Context) iter.Seq2[EventType, e
 		unmarshalResults := ndjson.UnmarshalStream[readEventTypesResponseItem](unmarshalContext, response.Body)
 		for data, err := range unmarshalResults {
 			if err != nil {
-				if contextutils.IsContextTerminationError(err) {
+				if util.IsContextTerminationError(err) {
 					yield(EventType{}, err)
 					return
 				}

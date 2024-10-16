@@ -2,8 +2,6 @@ package eventsourcingdb
 
 import (
 	"errors"
-
-	"github.com/thenativeweb/goutils/v2/coreutils/errorutils"
 )
 
 // ErrInternalError signals an error in the internal logic of the database client.
@@ -12,5 +10,5 @@ var ErrInternalError = errors.New("internal error")
 
 // NewInternalError returns a new internal error that wraps the given cause.
 func NewInternalError(cause error) error {
-	return errorutils.Join(ErrInternalError, cause)
+	return errors.Join(ErrInternalError, cause)
 }

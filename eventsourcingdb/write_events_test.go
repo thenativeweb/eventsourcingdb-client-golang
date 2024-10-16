@@ -252,7 +252,7 @@ func TestWriteEvents(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, eventsourcingdb.ErrClientError))
-		assert.ErrorContains(t, err, "client error: protocol version mismatch, server '0.0.0', client '1.0.0'")
+		assert.ErrorContains(t, err, "protocol version mismatch, server '0.0.0', client '1.0.0'")
 	})
 
 	t.Run("returns a client error if the server returns a 4xx status code.", func(t *testing.T) {
