@@ -90,29 +90,29 @@ func TestReadEvents(t *testing.T) {
 	})
 
 	t.Run("reads events from a single subject.", func(t *testing.T) {
-		readEvents, err := test.Take(2, client.ReadEvents(context.Background(), "/users/registered", eventsourcingdb.ReadNonRecursively()))
+		results, err := test.Take(2, client.ReadEvents(context.Background(), "/users/registered", eventsourcingdb.ReadNonRecursively()))
 		assert.NoError(t, err)
 
-		assertRegisteredEvent(t, readEvents[0].Event, events.Events.Registered.JaneDoe)
-		assertRegisteredEvent(t, readEvents[1].Event, events.Events.Registered.JohnDoe)
+		assertRegisteredEvent(t, results[0].Event, events.Events.Registered.JaneDoe)
+		assertRegisteredEvent(t, results[1].Event, events.Events.Registered.JohnDoe)
 	})
 
 	t.Run("reads events from a subject including child subjects.", func(t *testing.T) {
-		readEvents, err := test.Take(4, client.ReadEvents(
+		results, err := test.Take(4, client.ReadEvents(
 			context.Background(),
 			"/users",
 			eventsourcingdb.ReadRecursively(),
 		))
 		assert.NoError(t, err)
 
-		assertRegisteredEvent(t, readEvents[0].Event, events.Events.Registered.JaneDoe)
-		assertLoggedInEvent(t, readEvents[1].Event, events.Events.LoggedIn.JaneDoe)
-		assertRegisteredEvent(t, readEvents[2].Event, events.Events.Registered.JohnDoe)
-		assertLoggedInEvent(t, readEvents[3].Event, events.Events.LoggedIn.JohnDoe)
+		assertRegisteredEvent(t, results[0].Event, events.Events.Registered.JaneDoe)
+		assertLoggedInEvent(t, results[1].Event, events.Events.LoggedIn.JaneDoe)
+		assertRegisteredEvent(t, results[2].Event, events.Events.Registered.JohnDoe)
+		assertLoggedInEvent(t, results[3].Event, events.Events.LoggedIn.JohnDoe)
 	})
 
 	t.Run("reads the events in antichronological order.", func(t *testing.T) {
-		readEvents, err := test.Take(2, client.ReadEvents(
+		results, err := test.Take(2, client.ReadEvents(
 			context.Background(),
 			"/users/registered",
 			eventsourcingdb.ReadNonRecursively(),
@@ -120,12 +120,12 @@ func TestReadEvents(t *testing.T) {
 		))
 		assert.NoError(t, err)
 
-		assertRegisteredEvent(t, readEvents[0].Event, events.Events.Registered.JohnDoe)
-		assertRegisteredEvent(t, readEvents[1].Event, events.Events.Registered.JaneDoe)
+		assertRegisteredEvent(t, results[0].Event, events.Events.Registered.JohnDoe)
+		assertRegisteredEvent(t, results[1].Event, events.Events.Registered.JaneDoe)
 	})
 
 	t.Run("reads events starting from the latest event matching the given event name.", func(t *testing.T) {
-		readEvents, err := test.Take(1, client.ReadEvents(
+		results, err := test.Take(1, client.ReadEvents(
 			context.Background(),
 			"/users/loggedIn",
 			eventsourcingdb.ReadRecursively(),
@@ -137,11 +137,11 @@ func TestReadEvents(t *testing.T) {
 		))
 		assert.NoError(t, err)
 
-		assertLoggedInEvent(t, readEvents[0].Event, events.Events.LoggedIn.JohnDoe)
+		assertLoggedInEvent(t, results[0].Event, events.Events.LoggedIn.JohnDoe)
 	})
 
 	t.Run("reads events starting from the lower bound ID.", func(t *testing.T) {
-		readEvents, err := test.Take(2, client.ReadEvents(
+		results, err := test.Take(2, client.ReadEvents(
 			context.Background(),
 			"/users",
 			eventsourcingdb.ReadRecursively(),
@@ -149,12 +149,12 @@ func TestReadEvents(t *testing.T) {
 		))
 		assert.NoError(t, err)
 
-		assertRegisteredEvent(t, readEvents[0].Event, events.Events.Registered.JohnDoe)
-		assertLoggedInEvent(t, readEvents[1].Event, events.Events.LoggedIn.JohnDoe)
+		assertRegisteredEvent(t, results[0].Event, events.Events.Registered.JohnDoe)
+		assertLoggedInEvent(t, results[1].Event, events.Events.LoggedIn.JohnDoe)
 	})
 
 	t.Run("reads events up to the upper bound ID.", func(t *testing.T) {
-		readEvents, err := test.Take(2, client.ReadEvents(
+		results, err := test.Take(2, client.ReadEvents(
 			context.Background(),
 			"/users",
 			eventsourcingdb.ReadRecursively(),
@@ -162,8 +162,8 @@ func TestReadEvents(t *testing.T) {
 		))
 		assert.NoError(t, err)
 
-		assertRegisteredEvent(t, readEvents[0].Event, events.Events.Registered.JaneDoe)
-		assertLoggedInEvent(t, readEvents[1].Event, events.Events.LoggedIn.JaneDoe)
+		assertRegisteredEvent(t, results[0].Event, events.Events.Registered.JaneDoe)
+		assertLoggedInEvent(t, results[1].Event, events.Events.LoggedIn.JaneDoe)
 	})
 
 	t.Run("returns a ContextCanceledError when the context is canceled before sending the request.", func(t *testing.T) {
@@ -451,7 +451,7 @@ func TestReadEvents(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
-		assert.ErrorContains(t, err, "server error: unsupported stream error encountered:")
+		assert.ErrorContains(t, err, "server error: unexpected stream error encountered:")
 	})
 
 	t.Run("returns a server error if the server sends an item that can't be unmarshalled.", func(t *testing.T) {

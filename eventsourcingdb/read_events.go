@@ -73,7 +73,7 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 				var serverError streamError
 				err := json.Unmarshal(data.Payload, &serverError)
 				if err != nil {
-					yield(StoreItem{}, NewServerError(fmt.Sprintf("unsupported stream error encountered: %s", err.Error())))
+					yield(StoreItem{}, NewServerError(fmt.Sprintf("unexpected stream error encountered: %s", err.Error())))
 					return
 				}
 

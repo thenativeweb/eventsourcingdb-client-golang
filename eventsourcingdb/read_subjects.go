@@ -10,15 +10,10 @@ import (
 
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/ndjson"
 	"github.com/thenativeweb/goutils/v2/coreutils/contextutils"
-	"github.com/thenativeweb/goutils/v2/coreutils/result"
 )
 
 type Subject struct {
 	Subject string `json:"subject"`
-}
-
-type ReadSubjectsResult struct {
-	result.Result[string]
 }
 
 type readSubjectsRequestBody struct {
@@ -76,7 +71,7 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectsO
 				var serverError streamError
 				err := json.Unmarshal(data.Payload, &serverError)
 				if err != nil {
-					yield("", NewServerError(fmt.Sprintf("unsupported stream error encountered: %s", err.Error())))
+					yield("", NewServerError(fmt.Sprintf("unexpected stream error encountered: %s", err.Error())))
 					return
 				}
 

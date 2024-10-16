@@ -311,7 +311,7 @@ func TestReadSubjects(t *testing.T) {
 		for _, err := range client.ReadSubjects(context.Background()) {
 			assert.Error(t, err)
 			assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
-			assert.ErrorContains(t, err, "server error: unsupported stream error encountered:")
+			assert.ErrorContains(t, err, "server error: unexpected stream error encountered:")
 			count++
 		}
 

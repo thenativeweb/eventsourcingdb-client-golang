@@ -12,16 +12,11 @@ import (
 	"github.com/thenativeweb/goutils/v2/coreutils/contextutils"
 
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/ndjson"
-	"github.com/thenativeweb/goutils/v2/coreutils/result"
 )
 
 type observeEventsRequest struct {
 	Subject string               `json:"subject,omitempty"`
 	Options observeEventsOptions `json:"options,omitempty"`
-}
-
-type ObserveEventsResult struct {
-	result.Result[StoreItem]
 }
 
 func (client *Client) ObserveEvents(
@@ -78,12 +73,18 @@ func (client *Client) ObserveEvents(
 		unmarshalContext, cancelUnmarshalling := context.WithCancel(ctx)
 		defer cancelUnmarshalling()
 
+		stopC := make(chan struct{})
+		go func() {
+			<-heartbeatTimer.C
+			yield(StoreItem{}, NewServerError("heartbeat timeout"))
+			close(stopC)
+			cancelUnmarshalling()
+		}()
+
 		for data, err := range ndjson.UnmarshalStream[ndjson.StreamItem](unmarshalContext, response.Body) {
 			select {
-			case <-heartbeatTimer.C:
-				yield(StoreItem{}, NewServerError("heartbeat timeout"))
+			case <-stopC:
 				return
-
 			default:
 				if err != nil {
 					if contextutils.IsContextTerminationError(err) {
@@ -105,7 +106,7 @@ func (client *Client) ObserveEvents(
 				case "error":
 					var serverError streamError
 					if err := json.Unmarshal(data.Payload, &serverError); err != nil {
-						yield(StoreItem{}, NewServerError(fmt.Sprintf("unsupported stream error encountered: %s", err.Error())))
+						yield(StoreItem{}, NewServerError(fmt.Sprintf("unexpected stream error encountered: %s", err.Error())))
 						return
 					}
 

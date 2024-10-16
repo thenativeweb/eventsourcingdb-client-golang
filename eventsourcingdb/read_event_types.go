@@ -75,7 +75,7 @@ func (client *Client) ReadEventTypes(ctx context.Context) <-chan ReadEventTypesR
 				var serverError streamError
 				if err := json.Unmarshal(data.Payload, &serverError); err != nil {
 					results <- newReadEventTypesError(
-						NewServerError(fmt.Sprintf("unsupported stream error encountered: %s", err.Error())),
+						NewServerError(fmt.Sprintf("unexpected stream error encountered: %s", err.Error())),
 					)
 					return
 				}
