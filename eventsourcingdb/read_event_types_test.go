@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
 )
 
@@ -29,7 +30,6 @@ func TestClient_ReadEventTypes(t *testing.T) {
 		err = client.RegisterEventSchema("org.bing.chilling", `{"type":"object"}`)
 		assert.NoError(t, err)
 
-		results := client.ReadEventTypes(context.Background())
 		expectedResults := []eventsourcingdb.EventType{
 			{
 				EventType: "com.foo.bar",
@@ -64,8 +64,7 @@ func TestClient_ReadEventTypes(t *testing.T) {
 		}
 
 		var observedEventTypes []eventsourcingdb.EventType
-		for result := range results {
-			data, err := result.GetData()
+		for data, err := range client.ReadEventTypes(context.Background()) {
 			assert.NoError(t, err)
 			if err != nil {
 				continue
@@ -88,9 +87,7 @@ func TestClient_ReadEventTypes(t *testing.T) {
 
 		time.Sleep(2 * time.Millisecond)
 
-		results := client.ReadEventTypes(ctx)
-		result := <-results
-		_, err := result.GetData()
+		_, err := test.Take(1, client.ReadEventTypes(ctx))
 
 		assert.ErrorIs(t, err, context.DeadlineExceeded)
 		assert.NotErrorIs(t, eventsourcingdb.ErrServerError, err)
