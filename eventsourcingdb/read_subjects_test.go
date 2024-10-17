@@ -112,7 +112,7 @@ func TestReadSubjects(t *testing.T) {
 				assert.NoError(t, err)
 				cancel()
 			}
-			count += 1
+			count++
 		}
 
 		assert.GreaterOrEqual(t, count, 2)
