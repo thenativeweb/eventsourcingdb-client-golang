@@ -125,29 +125,18 @@ results := client.ReadEvents(
   context.TODO(),
   "/user/23",
   eventsourcingdb.ReadNonRecursively(),
-)
+) 
 ```
 
-The return value is a channel that you can iterate over. Each item in this channel can be an event or an error. You may use the `result.IsData` and `result.IsError` functions to determine the type of the item:
+The return value is an iterator. Each item in this iterator has a result value and an error value. If the error value is `nil` the result value can be used safely.
 
 ```golang
-for result := range results {
-  fmt.Println(result.IsData())
-  fmt.Println(result.IsError())
-}
-```
-
-Alternatively, you may call the `result.GetData` function to get the event or the error:
-
-```golang
-for result := range results {
-  hashedEvent, err := result.GetData()
+for result, err := range results {
   if err != nil {
-    // ...
+    // handle error
   }
 
-  fmt.Println(hashedEvent.Hash)
-  fmt.Println(hashedEvent.Event)
+  fmt.Prinln(result.Event.Id)
 }
 ```
 
@@ -155,7 +144,7 @@ To access the event's data, you need to unmarshal the event's `Data` property:
 
 ```golang
 userRegistered := &UserRegistered{}
-err := json.Unmarshal(hashedEvent.Event.Data, userRegistered)
+err := json.Unmarshal(result.Event.Data, userRegistered)
 if err != nil {
   // ...
 }
@@ -217,26 +206,15 @@ results := client.ObserveEvents(
 )
 ```
 
-The return value is a channel that you can iterate over. Each item in this channel can be an event or an error. You may use the `result.IsData` and `result.IsError` functions to determine the type of the item:
+The return value is an iterator. Each item in this iterator has a result value and an error value. If the error value is `nil` the result value can be used safely.
 
 ```golang
-for result := range results {
-  fmt.Println(result.IsData())
-  fmt.Println(result.IsError())
-}
-```
-
-Alternatively, you may call the `result.GetData` function to get the event or the error:
-
-```golang
-for result := range results {
-  hashedEvent, err := result.GetData()
+for result, err := range results {
   if err != nil {
-    // ...
+    // handle error
   }
 
-  fmt.Println(hashedEvent.Hash)
-  fmt.Println(hashedEvent.Event)
+  fmt.Println(result.Event.Id)
 }
 ```
 
@@ -244,7 +222,7 @@ To access the event's data, you need to unmarshal the event's `Data` property:
 
 ```golang
 userRegistered := &UserRegistered{}
-err := json.Unmarshal(hashedEvent.Event.Data, userRegistered)
+err := json.Unmarshal(result.Event.Data, userRegistered)
 if err != nil {
   // ...
 }
@@ -292,22 +270,12 @@ results := client.ReadSubjects(
 )
 ```
 
-The return value is a channel that you can iterate over. Each item in this channel can be a subject or an error. You may use the `result.IsData` and `result.IsError` functions to determine the type of the item:
+The return value is an iterator. Each item in this iterator has a result value and an error value. If the error value is `nil` the result value can be used safely.
 
 ```golang
-for result := range results {
-  fmt.Println(result.IsData())
-  fmt.Println(result.IsError())
-}
-```
-
-Alternatively, you may call the `result.GetData` function to get the subject or the error:
-
-```golang
-for result := range results {
-  subject, err := result.GetData()
+for subject, err := range results {
   if err != nil {
-    // ...
+    // handle error
   }
 
   fmt.Println(subject)
@@ -333,22 +301,12 @@ results := client.ReadEventTypes(
 )
 ```
 
-The return value is a channel that you can iterate over. Each item in this channel can be an event type or an error. You may use the `result.IsData` and `result.IsError` functions to determine the type of the item:
+The return value is an iterator. Each item in this iterator has a result value and an error value. If the error value is `nil` the result value can be used safely.
 
 ```golang
-for result := range results {
-  fmt.Println(result.IsData())
-  fmt.Println(result.IsError())
-}
-```
-
-Alternatively, you may call the `result.GetData` function to get the event type or the error:
-
-```golang
-for result := range results {
-  eventType, err := result.GetData()
+for eventType, err := range results {
   if err != nil {
-    // ...
+    // handle error
   }
 
   fmt.Println(eventType)
