@@ -264,7 +264,7 @@ func TestReadSubjects(t *testing.T) {
 			assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 			assert.ErrorContains(t, err, "unsupported stream item encountered:")
 			assert.ErrorContains(t, err, "does not have a recognized type")
-			count += 1
+			count++
 		}
 
 		assert.Equal(t, 1, count)
