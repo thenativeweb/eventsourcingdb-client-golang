@@ -20,15 +20,15 @@ func NewClient(baseURL string, accessToken string) (Client, error) {
 		return Client{}, NewClientError("64-bit architecture required")
 	}
 	if accessToken == "" {
-		return Client{}, NewInvalidParameterError("AccessToken", "the access token must not be empty")
+		return Client{}, NewInvalidArgumentError("accessToken", "must not be empty")
 	}
 
 	parsedBaseURL, err := url.Parse(baseURL)
 	if err != nil {
-		return Client{}, NewInvalidParameterError("baseURL", err.Error())
+		return Client{}, NewInvalidArgumentError("baseURL", err.Error())
 	}
 	if parsedBaseURL.Scheme != "http" && parsedBaseURL.Scheme != "https" {
-		return Client{}, NewInvalidParameterError("baseURL", "must use HTTP or HTTPS")
+		return Client{}, NewInvalidArgumentError("baseURL", "must use HTTP or HTTPS")
 	}
 
 	clientConfiguration := configuration.GetDefaultConfiguration(parsedBaseURL, accessToken)
@@ -40,15 +40,15 @@ func NewClient(baseURL string, accessToken string) (Client, error) {
 
 func (client Client) requestServer(method string, path string, body io.Reader) (*http.Response, error) {
 	routeURL := client.configuration.BaseURL.JoinPath(path)
-	httpClient := &http.Client{}
 	request, err := http.NewRequest(method, routeURL.String(), body)
 	if err != nil {
 		return nil, NewInternalError(err)
 	}
 
-	internalhttputil.AddProtocolVersion(request, client.configuration.ProtocolVersion)
-	internalhttputil.AddAccessToken(request, client.configuration.AccessToken)
+	request.Header.Add("X-EventSourcingDB-Protocol-Version", client.configuration.ProtocolVersion.String())
+	request.Header.Add("Authorization", "Bearer "+client.configuration.AccessToken)
 
+	httpClient := &http.Client{}
 	var response *http.Response
 
 	response, requestError := httpClient.Do(request)

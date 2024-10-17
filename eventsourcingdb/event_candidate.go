@@ -13,11 +13,26 @@ type EventCandidate struct {
 	TraceState  *string `json:"tracestate,omitempty"`
 }
 
+type EventOptions func(candidate *EventCandidate)
+
+func WithTraceParent(traceParent string) EventOptions {
+	return func(candidate *EventCandidate) {
+		candidate.TraceParent = &traceParent
+	}
+}
+
+func WithTraceState(traceState string) EventOptions {
+	return func(candidate *EventCandidate) {
+		candidate.TraceState = &traceState
+	}
+}
+
 func NewEventCandidate(
 	source string,
 	subject string,
 	eventType string,
 	data any,
+	options ...EventOptions,
 ) EventCandidate {
 	candidate := EventCandidate{
 		Source:  source,
@@ -26,17 +41,9 @@ func NewEventCandidate(
 		Data:    data,
 	}
 
-	return candidate
-}
-
-func (candidate EventCandidate) WithTraceParent(traceParent string) EventCandidate {
-	candidate.TraceParent = &traceParent
-
-	return candidate
-}
-
-func (candidate EventCandidate) WithTraceState(traceState string) EventCandidate {
-	candidate.TraceState = &traceState
+	for _, option := range options {
+		option(&candidate)
+	}
 
 	return candidate
 }

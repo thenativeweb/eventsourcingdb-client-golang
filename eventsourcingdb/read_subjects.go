@@ -5,31 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"iter"
 	"net/http"
 
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/ndjson"
-	"github.com/thenativeweb/goutils/v2/coreutils/contextutils"
-	"github.com/thenativeweb/goutils/v2/coreutils/result"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/util"
 )
 
 type Subject struct {
 	Subject string `json:"subject"`
-}
-
-type ReadSubjectsResult struct {
-	result.Result[string]
-}
-
-func newReadSubjectsError(err error) ReadSubjectsResult {
-	return ReadSubjectsResult{
-		result.NewResultWithError[string](err),
-	}
-}
-
-func newSubject(subject Subject) ReadSubjectsResult {
-	return ReadSubjectsResult{
-		result.NewResultWithData(subject.Subject),
-	}
 }
 
 type readSubjectsRequestBody struct {
@@ -41,29 +25,22 @@ type readSubjectsResponseItem struct {
 	Payload json.RawMessage `json:"payload"`
 }
 
-func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectsOption) <-chan ReadSubjectsResult {
-	results := make(chan ReadSubjectsResult, 1)
-
-	go func() {
-		defer close(results)
-
+func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectsOption) iter.Seq2[string, error] {
+	return func(yield func(string, error) bool) {
 		requestBody := readSubjectsRequestBody{
 			BaseSubject: "/",
 		}
 		for _, option := range options {
-			if err := option.apply(&requestBody); err != nil {
-				results <- newReadSubjectsError(
-					NewInvalidParameterError(option.name, err.Error()),
-				)
+			err := option.apply(&requestBody)
+			if err != nil {
+				yield("", NewInvalidArgumentError(option.name, err.Error()))
 				return
 			}
 		}
 
 		requestBodyAsJSON, err := json.Marshal(requestBody)
 		if err != nil {
-			results <- newReadSubjectsError(
-				NewInternalError(err),
-			)
+			yield("", NewInternalError(err))
 			return
 		}
 
@@ -73,58 +50,50 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectsO
 			bytes.NewReader(requestBodyAsJSON),
 		)
 		if err != nil {
-			results <- newReadSubjectsError(err)
+			yield("", NewInternalError(err))
 			return
 		}
 		defer response.Body.Close()
 
-		unmarshalContext, cancelUnmarshalling := context.WithCancel(ctx)
-		defer cancelUnmarshalling()
-
-		unmarshalResults := ndjson.UnmarshalStream[readSubjectsResponseItem](unmarshalContext, response.Body)
-		for unmarshalResult := range unmarshalResults {
-			data, err := unmarshalResult.GetData()
+		for data, err := range ndjson.UnmarshalStream[readSubjectsResponseItem](ctx, response.Body) {
 			if err != nil {
-				if contextutils.IsContextTerminationError(err) {
-					results <- newReadSubjectsError(err)
+				if util.IsContextTerminationError(err) {
+					yield("", err)
 					return
 				}
 
-				results <- newReadSubjectsError(
-					NewServerError(fmt.Sprintf("unsupported stream item encountered: %s", err.Error())),
-				)
+				yield("", NewServerError(fmt.Sprintf("unsupported stream item encountered: %s", err.Error())))
 				return
 			}
 
 			switch data.Type {
 			case "error":
 				var serverError streamError
-				if err := json.Unmarshal(data.Payload, &serverError); err != nil {
-					results <- newReadSubjectsError(
-						NewServerError(fmt.Sprintf("unsupported stream error encountered: %s", err.Error())),
-					)
+				err := json.Unmarshal(data.Payload, &serverError)
+				if err != nil {
+					yield("", NewServerError(fmt.Sprintf("unexpected stream error encountered: %s", err.Error())))
 					return
 				}
 
-				results <- newReadSubjectsError(NewServerError(serverError.Error))
+				if !yield("", NewServerError(serverError.Error)) {
+					return
+				}
+
 			case "subject":
 				var subject Subject
-				if err := json.Unmarshal(data.Payload, &subject); err != nil {
-					results <- newReadSubjectsError(
-						NewServerError(fmt.Sprintf("unsupported stream item encountered: '%s' (trying to unmarshal '%+v')", err.Error(), data)),
-					)
+				err := json.Unmarshal(data.Payload, &subject)
+				if err != nil {
+					yield("", NewServerError(fmt.Sprintf("unsupported stream item encountered: '%s' (trying to unmarshal '%+v')", err.Error(), data)))
 					return
 				}
 
-				results <- newSubject(subject)
+				if !yield(subject.Subject, nil) {
+					return
+				}
 			default:
-				results <- newReadSubjectsError(
-					NewServerError(fmt.Sprintf("unsupported stream item encountered: '%+v' does not have a recognized type", data)),
-				)
+				yield("", NewServerError(fmt.Sprintf("unsupported stream item encountered: '%+v' does not have a recognized type", data)))
 				return
 			}
 		}
-	}()
-
-	return results
+	}
 }

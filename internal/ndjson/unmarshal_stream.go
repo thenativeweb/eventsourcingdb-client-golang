@@ -6,67 +6,50 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-
-	"github.com/thenativeweb/goutils/v2/coreutils/result"
+	"iter"
 )
 
-type UnmarshalStreamResult[TData any] struct {
-	result.Result[TData]
-}
+func UnmarshalStream[TData any](ctx context.Context, reader io.Reader) iter.Seq2[TData, error] {
+	return func(yield func(TData, error) bool) {
+		var zeroResult TData
+		scanner := bufio.NewScanner(reader)
+		lineChannel := make(chan string)
 
-func newError[TData any](err error) UnmarshalStreamResult[TData] {
-	return UnmarshalStreamResult[TData]{
-		result.NewResultWithError[TData](err),
-	}
-}
+		go func() {
+			defer close(lineChannel)
+			for scanner.Scan() {
+				err := scanner.Err()
+				if err != nil {
+					yield(zeroResult, err)
 
-func newData[TData any](data TData) UnmarshalStreamResult[TData] {
-	return UnmarshalStreamResult[TData]{
-		result.NewResultWithData(data),
-	}
-}
+					return
+				}
 
-func UnmarshalStream[TData any](ctx context.Context, reader io.Reader) <-chan UnmarshalStreamResult[TData] {
-	scanner := bufio.NewScanner(reader)
-	resultChannel := make(chan UnmarshalStreamResult[TData], 1)
-	lineChannel := make(chan string)
-
-	go func() {
-		defer close(lineChannel)
-		for scanner.Scan() {
-			if err := scanner.Err(); err != nil {
-				resultChannel <- newError[TData](err)
-
-				return
+				lineChannel <- scanner.Text()
 			}
+		}()
 
-			lineChannel <- scanner.Text()
-		}
-	}()
-
-	go func() {
-		defer close(resultChannel)
-
-	LineLoop:
 		for {
 			select {
 			case <-ctx.Done():
-				resultChannel <- newError[TData](ctx.Err())
+				yield(zeroResult, ctx.Err())
+				return
 			case currentLine, ok := <-lineChannel:
 				if !ok {
-					break LineLoop
+					return
 				}
 
 				var data TData
-				if err := json.Unmarshal([]byte(currentLine), &data); err != nil {
-					resultChannel <- newError[TData](fmt.Errorf("cannot unmarshal '%s': %w", currentLine, err))
+				err := json.Unmarshal([]byte(currentLine), &data)
+				if err != nil {
+					yield(zeroResult, fmt.Errorf("cannot unmarshal '%s': %w", currentLine, err))
 					break
 				}
 
-				resultChannel <- newData(data)
+				if !yield(data, nil) {
+					return
+				}
 			}
 		}
-	}()
-
-	return resultChannel
+	}
 }

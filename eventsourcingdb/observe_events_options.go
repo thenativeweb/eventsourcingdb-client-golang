@@ -3,8 +3,6 @@ package eventsourcingdb
 import (
 	"errors"
 	"strconv"
-
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb/ifeventismissingduringobserve"
 )
 
 type ObserveRecursivelyOption func() bool
@@ -22,9 +20,9 @@ func ObserveNonRecursively() ObserveRecursivelyOption {
 }
 
 type observeFromLatestEvent struct {
-	Subject          string                                         `json:"subject"`
-	Type             string                                         `json:"type"`
-	IfEventIsMissing ifeventismissingduringobserve.IfEventIsMissing `json:"ifEventIsMissing"`
+	Subject          string                        `json:"subject"`
+	Type             string                        `json:"type"`
+	IfEventIsMissing IfEventIsMissingDuringObserve `json:"ifEventIsMissing"`
 }
 
 type observeEventsOptions struct {
@@ -61,7 +59,7 @@ func ObserveFromLowerBoundID(lowerBoundID string) ObserveEventsOption {
 	}
 }
 
-func ObserveFromLatestEvent(subject, eventType string, ifEventIsMissing ifeventismissingduringobserve.IfEventIsMissing) ObserveEventsOption {
+func ObserveFromLatestEvent(subject, eventType string, ifEventIsMissing IfEventIsMissingDuringObserve) ObserveEventsOption {
 	return ObserveEventsOption{
 		apply: func(options *observeEventsOptions) error {
 			if options.LowerBoundID != nil {

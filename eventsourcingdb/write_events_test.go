@@ -27,7 +27,8 @@ func TestWriteEvents(t *testing.T) {
 					subject,
 					janeRegistered.Type,
 					janeRegistered.Data,
-				).WithTraceParent(janeRegistered.TraceParent),
+					eventsourcingdb.WithTraceParent(janeRegistered.TraceParent),
+				),
 			},
 		)
 
@@ -41,8 +42,8 @@ func TestWriteEvents(t *testing.T) {
 			[]eventsourcingdb.EventCandidate{},
 		)
 
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
-		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: eventCandidates must contain at least one EventCandidate")
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
+		assert.ErrorContains(t, err, "argument 'eventCandidates' is invalid: must contain at least one EventCandidate")
 	})
 
 	t.Run("returns an error if a candidate subject is malformed", func(t *testing.T) {
@@ -54,8 +55,8 @@ func TestWriteEvents(t *testing.T) {
 			},
 		)
 
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
-		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: event candidate failed to validate: malformed event subject 'foobar': subject must be an absolute, slash-separated path")
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
+		assert.ErrorContains(t, err, "argument 'eventCandidates' is invalid: event candidate failed to validate: malformed event subject 'foobar': subject must be an absolute, slash-separated path")
 	})
 
 	t.Run("returns an error if a candidate type is malformed", func(t *testing.T) {
@@ -67,8 +68,8 @@ func TestWriteEvents(t *testing.T) {
 			},
 		)
 
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
-		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: event candidate failed to validate: malformed event type 'barbaz': type must be a reverse domain name")
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
+		assert.ErrorContains(t, err, "argument 'eventCandidates' is invalid: event candidate failed to validate: malformed event type 'barbaz': type must be a reverse domain name")
 	})
 
 	t.Run("returns an error if a candidate source is malformed", func(t *testing.T) {
@@ -80,8 +81,8 @@ func TestWriteEvents(t *testing.T) {
 			},
 		)
 
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
-		assert.ErrorContains(t, err, "parameter 'eventCandidates' is invalid: event candidate failed to validate: malformed event source '://foobar': source must be a valid URI")
+		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
+		assert.ErrorContains(t, err, "argument 'eventCandidates' is invalid: event candidate failed to validate: malformed event source '://foobar': source must be a valid URI")
 	})
 
 	t.Run("supports authorization.", func(t *testing.T) {
@@ -97,7 +98,8 @@ func TestWriteEvents(t *testing.T) {
 					subject,
 					janeRegistered.Type,
 					janeRegistered.Data,
-				).WithTraceParent(janeRegistered.TraceParent),
+					eventsourcingdb.WithTraceParent(janeRegistered.TraceParent),
+				),
 			},
 		)
 
@@ -117,7 +119,8 @@ func TestWriteEvents(t *testing.T) {
 					subject,
 					janeRegistered.Type,
 					janeRegistered.Data,
-				).WithTraceParent(janeRegistered.TraceParent),
+					eventsourcingdb.WithTraceParent(janeRegistered.TraceParent),
+				),
 			},
 		)
 
@@ -138,7 +141,8 @@ func TestWriteEvents(t *testing.T) {
 					"/users/registered",
 					janeRegistered.Type,
 					janeRegistered.Data,
-				).WithTraceParent(janeRegistered.TraceParent),
+					eventsourcingdb.WithTraceParent(janeRegistered.TraceParent),
+				),
 			},
 		)
 		assert.NoError(t, err)
@@ -149,13 +153,15 @@ func TestWriteEvents(t *testing.T) {
 					"/users/registered",
 					johnRegistered.Type,
 					johnRegistered.Data,
-				).WithTraceParent(johnRegistered.TraceParent),
+					eventsourcingdb.WithTraceParent(johnRegistered.TraceParent),
+				),
 
 				source.NewEvent(
 					"/users/loggedIn",
 					johnLoggedIn.Type,
 					johnLoggedIn.Data,
-				).WithTraceParent(johnLoggedIn.TraceParent),
+					eventsourcingdb.WithTraceParent(johnLoggedIn.TraceParent),
+				),
 			},
 		)
 
@@ -188,13 +194,15 @@ func TestWriteEvents(t *testing.T) {
 					subject,
 					janeRegistered.Type,
 					janeRegistered.Data,
-				).WithTraceParent(janeRegistered.TraceParent),
+					eventsourcingdb.WithTraceParent(janeRegistered.TraceParent),
+				),
 
 				source.NewEvent(
 					subject,
 					johnRegistered.Type,
 					johnRegistered.Data,
-				).WithTraceParent(johnRegistered.TraceParent),
+					eventsourcingdb.WithTraceParent(johnRegistered.TraceParent),
+				),
 			},
 		)
 		assert.NoError(t, err)
@@ -252,7 +260,7 @@ func TestWriteEvents(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, eventsourcingdb.ErrClientError))
-		assert.ErrorContains(t, err, "client error: protocol version mismatch, server '0.0.0', client '1.0.0'")
+		assert.ErrorContains(t, err, "protocol version mismatch, server '0.0.0', client '1.0.0'")
 	})
 
 	t.Run("returns a client error if the server returns a 4xx status code.", func(t *testing.T) {
@@ -380,8 +388,8 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 				eventsourcingdb.IsSubjectPristine("invalid"),
 			)
 
-			assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
-			assert.ErrorContains(t, err, "parameter 'preconditions' is invalid: IsSubjectPristine is invalid: malformed event subject 'invalid': subject must be an absolute, slash-separated path")
+			assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
+			assert.ErrorContains(t, err, "argument 'preconditions' is invalid: IsSubjectPristine is invalid: malformed event subject 'invalid': subject must be an absolute, slash-separated path")
 		})
 
 		t.Run("writes events if the subject is pristine.", func(t *testing.T) {
@@ -437,8 +445,8 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 				eventsourcingdb.IsSubjectOnEventID("invalid", "123"),
 			)
 
-			assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
-			assert.ErrorContains(t, err, "parameter 'preconditions' is invalid: IsSubjectOnEventID is invalid: malformed event subject 'invalid': subject must be an absolute, slash-separated path")
+			assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
+			assert.ErrorContains(t, err, "argument 'preconditions' is invalid: IsSubjectOnEventID is invalid: malformed event subject 'invalid': subject must be an absolute, slash-separated path")
 		})
 
 		t.Run("returns an error if the IsSubjectOnEventID precondition uses an eventID that does not contain an integer.", func(t *testing.T) {
@@ -451,8 +459,8 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 				eventsourcingdb.IsSubjectOnEventID("/", "borzel"),
 			)
 
-			assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
-			assert.ErrorContains(t, err, "parameter 'preconditions' is invalid: IsSubjectOnEventID is invalid: eventID must contain an integer")
+			assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
+			assert.ErrorContains(t, err, "argument 'preconditions' is invalid: IsSubjectOnEventID is invalid: eventID must contain an integer")
 		})
 
 		t.Run("returns an error if the IsSubjectOnEventID precondition uses an eventID that contains a negative integer", func(t *testing.T) {
@@ -465,8 +473,8 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 				eventsourcingdb.IsSubjectOnEventID("/", "-1"),
 			)
 
-			assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
-			assert.ErrorContains(t, err, "parameter 'preconditions' is invalid: IsSubjectOnEventID is invalid: eventID must be 0 or greater")
+			assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
+			assert.ErrorContains(t, err, "argument 'preconditions' is invalid: IsSubjectOnEventID is invalid: eventID must be 0 or greater")
 		})
 
 		t.Run("writes events if the last event of the subject has the given event ID.", func(t *testing.T) {
@@ -486,11 +494,8 @@ func TestWriteEventsWithPreconditions(t *testing.T) {
 
 			assert.NoError(t, err)
 
-			readEvents := client.ReadEvents(context.Background(), "/users", eventsourcingdb.ReadNonRecursively())
-
 			var lastEventID string
-			for readEvent := range readEvents {
-				data, err := readEvent.GetData()
+			for data, err := range client.ReadEvents(context.Background(), "/users", eventsourcingdb.ReadNonRecursively()) {
 				assert.NoError(t, err)
 
 				lastEventID = data.Event.ID

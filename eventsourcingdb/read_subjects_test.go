@@ -3,7 +3,6 @@ package eventsourcingdb_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -13,26 +12,27 @@ import (
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/events"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/test/httpserver"
-	"github.com/thenativeweb/goutils/v2/platformutils"
 )
 
 func TestReadSubjects(t *testing.T) {
-	t.Run("returns a channel containing a server error when trying to read from a non-reachable server.", func(t *testing.T) {
+	t.Run("returns an iterator yielding exactly one server error when trying to read from a non-reachable server.", func(t *testing.T) {
 		client := database.WithInvalidURL.GetClient()
 
-		readSubjectResults := client.ReadSubjects(context.Background())
+		count := 0
+		for _, err := range client.ReadSubjects(context.Background()) {
+			count++
+			assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
+		}
 
-		_, err := (<-readSubjectResults).GetData()
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
+		assert.Equal(t, 1, count)
 	})
 
-	t.Run("closes the channel when no more subjects exist.", func(t *testing.T) {
+	t.Run("closes iterator when no more subjects exist.", func(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
 
-		readSubjectResults := client.ReadSubjects(context.Background())
-
-		_, ok := <-readSubjectResults
-		assert.False(t, ok)
+		for _, err := range client.ReadSubjects(context.Background()) {
+			assert.NoError(t, err)
+		}
 	})
 
 	t.Run("reads all subjects starting from /.", func(t *testing.T) {
@@ -44,17 +44,13 @@ func TestReadSubjects(t *testing.T) {
 		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 			eventsourcingdb.NewEventCandidate(events.TestSource, subject, janeRegistered.Type, janeRegistered.Data),
 		})
-
 		assert.NoError(t, err)
 
-		readSubjectResults := client.ReadSubjects(context.Background())
 		subjects := make([]string, 0, 2)
-
-		for result := range readSubjectResults {
-			data, err := result.GetData()
+		for subject, err := range client.ReadSubjects(context.Background()) {
 			assert.NoError(t, err)
 
-			subjects = append(subjects, data)
+			subjects = append(subjects, subject)
 		}
 
 		assert.Equal(t, []string{"/", subject}, subjects)
@@ -69,69 +65,74 @@ func TestReadSubjects(t *testing.T) {
 		_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 			eventsourcingdb.NewEventCandidate(events.TestSource, subject, janeRegistered.Type, janeRegistered.Data),
 		})
-
 		assert.NoError(t, err)
 
-		readSubjectResults := client.ReadSubjects(context.Background(), eventsourcingdb.BaseSubject("/foobar"))
 		subjects := make([]string, 0, 2)
-
-		for result := range readSubjectResults {
-			data, err := result.GetData()
+		for subject, err := range client.ReadSubjects(context.Background(), eventsourcingdb.BaseSubject("/foobar")) {
 			assert.NoError(t, err)
 
-			subjects = append(subjects, data)
+			subjects = append(subjects, subject)
 		}
 
 		assert.Equal(t, []string{"/foobar", subject}, subjects)
 	})
 
-	t.Run("returns an error if the context is cancelled before the request is sent.", func(t *testing.T) {
+	t.Run("yields exactly one error if the context is cancelled before the request is sent.", func(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
 
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
-		readSubjectResults := client.ReadSubjects(ctx)
 
-		canceledResult := <-readSubjectResults
-		_, err := canceledResult.GetData()
-		assert.ErrorIs(t, err, context.Canceled)
+		count := 0
+		for _, err := range client.ReadSubjects(ctx) {
+			count++
+			assert.ErrorIs(t, err, context.Canceled)
+		}
 
-		superfluousResult, ok := <-readSubjectResults
-		assert.False(t, ok, fmt.Sprintf("channel did not close %+v", superfluousResult))
+		assert.Equal(t, 1, count)
 	})
 
 	t.Run("returns an error if the context is cancelled while reading the ndjson stream.", func(t *testing.T) {
+		client := database.WithAuthorization.GetClient()
 		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 
-		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
-			mux.HandleFunc("/api/read-subjects", func(writer http.ResponseWriter, request *http.Request) {
-				if _, err := writer.Write([]byte("{\"type\": \"item\", \"payload\": {}}\n")); err != nil {
-					panic(err)
-				}
-				cancel()
-			})
+		subject := "/" + uuid.New().String() + "/" + uuid.New().String()
+		janeRegistered := events.Events.Registered.JaneDoe
+
+		var err error
+		_, err = client.WriteEvents([]eventsourcingdb.EventCandidate{
+			eventsourcingdb.NewEventCandidate(events.TestSource, subject, janeRegistered.Type, janeRegistered.Data),
 		})
-		defer stopServer()
+		assert.NoError(t, err)
 
-		client, _ := eventsourcingdb.NewClient(serverAddress, "access-token")
-		resultChan := client.ReadSubjects(ctx)
+		count := 0
+		for _, err = range client.ReadSubjects(ctx) {
+			if count == 0 {
+				assert.NoError(t, err)
+				cancel()
+			}
+			count++
+		}
 
-		_, err := (<-resultChan).GetData()
+		assert.GreaterOrEqual(t, count, 2)
 		assert.ErrorIs(t, err, context.Canceled)
 	})
 
-	t.Run("returns an error when the base subject is malformed.", func(t *testing.T) {
+	t.Run("yields exactly one error when the base subject is malformed.", func(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
 
-		results := client.ReadSubjects(context.Background(), eventsourcingdb.BaseSubject("schkibididopdop"))
-		result := <-results
+		count := 0
+		for _, err := range client.ReadSubjects(context.Background(), eventsourcingdb.BaseSubject("schkibididopdop")) {
+			assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
+			assert.ErrorContains(t, err, "argument 'BaseSubject' is invalid: malformed event subject")
+			count++
+		}
 
-		_, err := result.GetData()
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidParameter))
-		assert.ErrorContains(t, err, "parameter 'BaseSubject' is invalid: malformed event subject")
+		assert.Equal(t, 1, count)
 	})
 
-	t.Run("returns a sever error if the server responds with HTTP 5xx on every try", func(t *testing.T) {
+	t.Run("yields exactly one error if the server responds with HTTP 5xx", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
 			mux.HandleFunc("/api/read-subjects", func(writer http.ResponseWriter, request *http.Request) {
 				writer.WriteHeader(http.StatusBadGateway)
@@ -142,16 +143,18 @@ func TestReadSubjects(t *testing.T) {
 		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
-		results := client.ReadSubjects(context.Background())
-		result := <-results
-		_, err = result.GetData()
+		count := 0
+		for _, err := range client.ReadSubjects(context.Background()) {
+			assert.Error(t, err)
+			assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
+			assert.ErrorContains(t, err, "Bad Gateway")
+			count++
+		}
 
-		assert.Error(t, err)
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
-		assert.ErrorContains(t, err, "Bad Gateway")
+		assert.Equal(t, 1, count)
 	})
 
-	t.Run("returns an error if the server's protocol version does not match.", func(t *testing.T) {
+	t.Run("yields exactly one error if the server's protocol version does not match.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
 			mux.HandleFunc("/api/read-subjects", func(writer http.ResponseWriter, request *http.Request) {
 				writer.Header().Add("X-EventSourcingDB-Protocol-Version", "0.0.0")
@@ -163,16 +166,18 @@ func TestReadSubjects(t *testing.T) {
 		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
-		results := client.ReadSubjects(context.Background())
-		result := <-results
-		_, err = result.GetData()
+		count := 0
+		for _, err := range client.ReadSubjects(context.Background()) {
+			assert.Error(t, err)
+			assert.True(t, errors.Is(err, eventsourcingdb.ErrClientError))
+			assert.ErrorContains(t, err, "protocol version mismatch, server '0.0.0', client '1.0.0'")
+		}
+		count++
 
-		assert.Error(t, err)
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrClientError))
-		assert.ErrorContains(t, err, "client error: protocol version mismatch, server '0.0.0', client '1.0.0'")
+		assert.Equal(t, 1, count)
 	})
 
-	t.Run("returns a client error if the server returns a 4xx status code.", func(t *testing.T) {
+	t.Run("yields exactly one client error if the server returns a 4xx status code.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
 			mux.HandleFunc("/api/read-subjects", func(writer http.ResponseWriter, request *http.Request) {
 				writer.WriteHeader(http.StatusBadRequest)
@@ -183,16 +188,18 @@ func TestReadSubjects(t *testing.T) {
 		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
-		results := client.ReadSubjects(context.Background())
-		result := <-results
-		_, err = result.GetData()
+		count := 0
+		for _, err := range client.ReadSubjects(context.Background()) {
+			assert.Error(t, err)
+			assert.True(t, errors.Is(err, eventsourcingdb.ErrClientError))
+			assert.ErrorContains(t, err, "Bad Request")
+			count++
+		}
 
-		assert.Error(t, err)
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrClientError))
-		assert.ErrorContains(t, err, "Bad Request")
+		assert.Equal(t, 1, count)
 	})
 
-	t.Run("returns a server error if the server returns a non 200, 5xx or 4xx status code.", func(t *testing.T) {
+	t.Run("yields exactly one server error if the server returns a non 200, 5xx or 4xx status code.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
 			mux.HandleFunc("/api/read-subjects", func(writer http.ResponseWriter, request *http.Request) {
 				writer.WriteHeader(http.StatusAccepted)
@@ -203,16 +210,18 @@ func TestReadSubjects(t *testing.T) {
 		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
-		results := client.ReadSubjects(context.Background())
-		result := <-results
-		_, err = result.GetData()
+		count := 0
+		for _, err := range client.ReadSubjects(context.Background()) {
+			assert.Error(t, err)
+			assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
+			assert.ErrorContains(t, err, "unexpected response status: 202 Accepted")
+			count++
+		}
 
-		assert.Error(t, err)
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
-		assert.ErrorContains(t, err, "unexpected response status: 202 Accepted")
+		assert.Equal(t, 1, count)
 	})
 
-	t.Run("returns a server error if the server sends a stream item that can't be unmarshalled.", func(t *testing.T) {
+	t.Run("yields exactly one server error if the server sends a stream item that can't be unmarshalled.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
 			mux.HandleFunc("/api/read-subjects", func(writer http.ResponseWriter, request *http.Request) {
 				if _, err := writer.Write([]byte("{\"type\": 42}\n")); err != nil {
@@ -225,16 +234,18 @@ func TestReadSubjects(t *testing.T) {
 		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
-		results := client.ReadSubjects(context.Background())
-		result := <-results
-		_, err = result.GetData()
+		count := 0
+		for _, err := range client.ReadSubjects(context.Background()) {
+			assert.Error(t, err)
+			assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
+			assert.ErrorContains(t, err, "unsupported stream item encountered: cannot unmarshal")
+			count++
+		}
 
-		assert.Error(t, err)
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
-		assert.ErrorContains(t, err, "server error: unsupported stream item encountered: cannot unmarshal")
+		assert.Equal(t, 1, count)
 	})
 
-	t.Run("returns a server error if the server sends a stream item that can't be unmarshalled.", func(t *testing.T) {
+	t.Run("yields exactly one server error if the server sends a stream item that can't be unmarshalled.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
 			mux.HandleFunc("/api/read-subjects", func(writer http.ResponseWriter, request *http.Request) {
 				if _, err := writer.Write([]byte("{\"clowns\": 8}\n")); err != nil {
@@ -247,17 +258,19 @@ func TestReadSubjects(t *testing.T) {
 		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
-		results := client.ReadSubjects(context.Background())
-		result := <-results
-		_, err = result.GetData()
+		count := 0
+		for _, err := range client.ReadSubjects(context.Background()) {
+			assert.Error(t, err)
+			assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
+			assert.ErrorContains(t, err, "unsupported stream item encountered:")
+			assert.ErrorContains(t, err, "does not have a recognized type")
+			count++
+		}
 
-		assert.Error(t, err)
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
-		assert.ErrorContains(t, err, "server error: unsupported stream item encountered:")
-		assert.ErrorContains(t, err, "does not have a recognized type")
+		assert.Equal(t, 1, count)
 	})
 
-	t.Run("returns a server error if the server sends a an error item through the ndjson stream.", func(t *testing.T) {
+	t.Run("yields exactly one server error if the server sends a an error item through the ndjson stream.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
 			mux.HandleFunc("/api/read-subjects", func(writer http.ResponseWriter, request *http.Request) {
 				if _, err := writer.Write([]byte("{\"type\": \"error\", \"payload\": {\"error\": \"aliens have abducted the server\"}}\n")); err != nil {
@@ -270,16 +283,18 @@ func TestReadSubjects(t *testing.T) {
 		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
-		results := client.ReadSubjects(context.Background())
-		result := <-results
-		_, err = result.GetData()
+		count := 0
+		for _, err := range client.ReadSubjects(context.Background()) {
+			assert.Error(t, err)
+			assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
+			assert.ErrorContains(t, err, "aliens have abducted the server")
+			count++
+		}
 
-		assert.Error(t, err)
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
-		assert.ErrorContains(t, err, "server error: aliens have abducted the server")
+		assert.Equal(t, 1, count)
 	})
 
-	t.Run("returns a server error if the server sends a an error item through the ndjson stream, but the error can't be unmarshalled.", func(t *testing.T) {
+	t.Run("yields exactly one a server error if the server sends a an error item through the ndjson stream, but the error can't be unmarshalled.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
 			mux.HandleFunc("/api/read-subjects", func(writer http.ResponseWriter, request *http.Request) {
 				if _, err := writer.Write([]byte("{\"type\": \"error\", \"payload\": {\"error\": 8}}\n")); err != nil {
@@ -292,16 +307,18 @@ func TestReadSubjects(t *testing.T) {
 		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
-		results := client.ReadSubjects(context.Background())
-		result := <-results
-		_, err = result.GetData()
+		count := 0
+		for _, err := range client.ReadSubjects(context.Background()) {
+			assert.Error(t, err)
+			assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
+			assert.ErrorContains(t, err, "unexpected stream error encountered:")
+			count++
+		}
 
-		assert.Error(t, err)
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
-		assert.ErrorContains(t, err, "server error: unsupported stream error encountered:")
+		assert.Equal(t, 1, count)
 	})
 
-	t.Run("returns a server error if the server sends an item that can't be unmarshalled.", func(t *testing.T) {
+	t.Run("yields exactly one server error if the server sends an item that can't be unmarshalled.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
 			mux.HandleFunc("/api/read-subjects", func(writer http.ResponseWriter, request *http.Request) {
 				if _, err := writer.Write([]byte("{\"type\": \"subject\", \"subject\": 8}\n")); err != nil {
@@ -314,33 +331,37 @@ func TestReadSubjects(t *testing.T) {
 		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
 		assert.NoError(t, err)
 
-		results := client.ReadSubjects(context.Background())
-		result := <-results
-		_, err = result.GetData()
+		count := 0
+		for _, err := range client.ReadSubjects(context.Background()) {
+			assert.Error(t, err)
+			assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
+			assert.ErrorContains(t, err, "unsupported stream item encountered:")
+			assert.ErrorContains(t, err, "(trying to unmarshal")
+			count++
+		}
 
-		assert.Error(t, err)
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
-		assert.ErrorContains(t, err, "server error: unsupported stream item encountered:")
-		assert.ErrorContains(t, err, "(trying to unmarshal")
+		assert.Equal(t, 1, count)
 	})
 
 	// Regression test for https://github.com/thenativeweb/eventsourcingdb-client-golang/pull/97
 	t.Run("Works with contexts that have a deadline.", func(t *testing.T) {
 		client := database.WithAuthorization.GetClient()
 
-		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(1*platformutils.Jiffy))
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(1*time.Millisecond))
 		defer cancel()
 
-		time.Sleep(2 * platformutils.Jiffy)
+		time.Sleep(2 * time.Millisecond)
 
-		results := client.ReadSubjects(ctx)
-		result := <-results
-		_, err := result.GetData()
+		count := 0
+		for _, err := range client.ReadSubjects(ctx) {
+			assert.ErrorIs(t, err, context.DeadlineExceeded)
+			assert.NotErrorIs(t, eventsourcingdb.ErrServerError, err)
+			assert.NotErrorIs(t, eventsourcingdb.ErrClientError, err)
+			assert.NotErrorIs(t, eventsourcingdb.ErrInternalError, err)
+			assert.NotContains(t, err.Error(), "unsupported stream item")
+			count++
+		}
 
-		assert.ErrorIs(t, err, context.DeadlineExceeded)
-		assert.NotErrorIs(t, eventsourcingdb.ErrServerError, err)
-		assert.NotErrorIs(t, eventsourcingdb.ErrClientError, err)
-		assert.NotErrorIs(t, eventsourcingdb.ErrInternalError, err)
-		assert.NotContains(t, err.Error(), "unsupported stream item")
+		assert.Equal(t, 1, count)
 	})
 }

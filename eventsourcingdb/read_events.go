@@ -5,11 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"iter"
 	"net/http"
 
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/ndjson"
-	"github.com/thenativeweb/goutils/v2/coreutils/contextutils"
-	"github.com/thenativeweb/goutils/v2/coreutils/result"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/util"
 )
 
 type readEventsRequest struct {
@@ -17,32 +17,11 @@ type readEventsRequest struct {
 	Options readEventsOptions `json:"options,omitempty"`
 }
 
-type ReadEventsResult struct {
-	result.Result[StoreItem]
-}
-
-func newReadEventsError(err error) ReadEventsResult {
-	return ReadEventsResult{
-		result.NewResultWithError[StoreItem](err),
-	}
-}
-
-func newStoreItem(item StoreItem) ReadEventsResult {
-	return ReadEventsResult{
-		result.NewResultWithData(item),
-	}
-}
-
-func (client *Client) ReadEvents(ctx context.Context, subject string, recursive ReadRecursivelyOption, options ...ReadEventsOption) <-chan ReadEventsResult {
-	results := make(chan ReadEventsResult, 1)
-
-	go func() {
-		defer close(results)
-
-		if err := validateSubject(subject); err != nil {
-			results <- newReadEventsError(
-				NewInvalidParameterError("subject", err.Error()),
-			)
+func (client *Client) ReadEvents(ctx context.Context, subject string, recursive ReadRecursivelyOption, options ...ReadEventsOption) iter.Seq2[StoreItem, error] {
+	return func(yield func(StoreItem, error) bool) {
+		err := validateSubject(subject)
+		if err != nil {
+			yield(StoreItem{}, NewInvalidArgumentError("subject", err.Error()))
 			return
 		}
 
@@ -50,10 +29,9 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 			Recursive: recursive(),
 		}
 		for _, option := range options {
-			if err := option.apply(&readOptions); err != nil {
-				results <- newReadEventsError(
-					NewInvalidParameterError(option.name, err.Error()),
-				)
+			err := option.apply(&readOptions)
+			if err != nil {
+				yield(StoreItem{}, NewInvalidArgumentError(option.name, err.Error()))
 				return
 			}
 		}
@@ -64,9 +42,7 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 		}
 		requestBodyAsJSON, err := json.Marshal(requestBody)
 		if err != nil {
-			results <- newReadEventsError(
-				NewInternalError(err),
-			)
+			yield(StoreItem{}, NewInternalError(err))
 			return
 		}
 
@@ -76,58 +52,50 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 			bytes.NewReader(requestBodyAsJSON),
 		)
 		if err != nil {
-			results <- newReadEventsError(err)
+			yield(StoreItem{}, err)
 			return
 		}
 		defer response.Body.Close()
 
-		unmarshalContext, cancelUnmarshalling := context.WithCancel(ctx)
-		defer cancelUnmarshalling()
-
-		unmarshalResults := ndjson.UnmarshalStream[ndjson.StreamItem](unmarshalContext, response.Body)
-		for unmarshalResult := range unmarshalResults {
-			data, err := unmarshalResult.GetData()
+		for data, err := range ndjson.UnmarshalStream[ndjson.StreamItem](ctx, response.Body) {
 			if err != nil {
-				if contextutils.IsContextTerminationError(err) {
-					results <- newReadEventsError(err)
+				if util.IsContextTerminationError(err) {
+					yield(StoreItem{}, err)
 					return
 				}
 
-				results <- newReadEventsError(
-					NewServerError(fmt.Sprintf("unsupported stream item encountered: %s", err.Error())),
-				)
+				yield(StoreItem{}, NewServerError(fmt.Sprintf("unsupported stream item encountered: %s", err.Error())))
 				return
 			}
 
 			switch data.Type {
 			case "error":
 				var serverError streamError
-				if err := json.Unmarshal(data.Payload, &serverError); err != nil {
-					results <- newReadEventsError(
-						NewServerError(fmt.Sprintf("unsupported stream error encountered: %s", err.Error())),
-					)
+				err := json.Unmarshal(data.Payload, &serverError)
+				if err != nil {
+					yield(StoreItem{}, NewServerError(fmt.Sprintf("unexpected stream error encountered: %s", err.Error())))
 					return
 				}
 
-				results <- newReadEventsError(NewServerError(serverError.Error))
+				if !yield(StoreItem{}, NewServerError(serverError.Error)) {
+					return
+				}
+
 			case "item":
 				var storeItem StoreItem
-				if err := json.Unmarshal(data.Payload, &storeItem); err != nil {
-					results <- newReadEventsError(
-						NewServerError(fmt.Sprintf("unsupported stream item encountered: '%s' (trying to unmarshal '%+v')", err.Error(), data)),
-					)
+				err := json.Unmarshal(data.Payload, &storeItem)
+				if err != nil {
+					yield(StoreItem{}, NewServerError(fmt.Sprintf("unsupported stream item encountered: '%s' (trying to unmarshal '%+v')", err.Error(), data)))
 					return
 				}
 
-				results <- newStoreItem(storeItem)
+				if !yield(storeItem, nil) {
+					return
+				}
 			default:
-				results <- newReadEventsError(
-					NewServerError(fmt.Sprintf("unsupported stream item encountered: '%+v' does not have a recognized type", data)),
-				)
+				yield(StoreItem{}, NewServerError(fmt.Sprintf("unsupported stream item encountered: '%+v' does not have a recognized type", data)))
 				return
 			}
 		}
-	}()
-
-	return results
+	}
 }
