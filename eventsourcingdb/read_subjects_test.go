@@ -126,7 +126,7 @@ func TestReadSubjects(t *testing.T) {
 		for _, err := range client.ReadSubjects(context.Background(), eventsourcingdb.BaseSubject("schkibididopdop")) {
 			assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
 			assert.ErrorContains(t, err, "argument 'BaseSubject' is invalid: malformed event subject")
-			count += 1
+			count++
 		}
 
 		assert.Equal(t, 1, count)
