@@ -148,7 +148,7 @@ func TestReadSubjects(t *testing.T) {
 			assert.Error(t, err)
 			assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 			assert.ErrorContains(t, err, "Bad Gateway")
-			count += 1
+			count++
 		}
 
 		assert.Equal(t, 1, count)
