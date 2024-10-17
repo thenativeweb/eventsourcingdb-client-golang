@@ -43,7 +43,6 @@ source := eventsourcingdb.NewSource(
 
 Then you can start creating events by calling the `source.NewEvent` function and specify the subject of the event as well as the type of the event:
 
-
 ```golang
 type UserRegistered struct {
   Login    string `json:"login"`
@@ -128,7 +127,7 @@ results := client.ReadEvents(
 ) 
 ```
 
-The return value is an iterator. Each item in this iterator has a result value and an error value. If the error value is `nil` the result value can be used safely.
+The return value is an iterator. Each item in this iterator has a result value and an error value. If the error value is `nil` the result value can be used safely:
 
 ```golang
 for result, err := range results {
@@ -206,7 +205,7 @@ results := client.ObserveEvents(
 )
 ```
 
-The return value is an iterator. Each item in this iterator has a result value and an error value. If the error value is `nil` the result value can be used safely.
+The return value is an iterator. Each item in this iterator has a result value and an error value. If the error value is `nil` the result value can be used safely:
 
 ```golang
 for result, err := range results {
@@ -270,7 +269,7 @@ results := client.ReadSubjects(
 )
 ```
 
-The return value is an iterator. Each item in this iterator has a result value and an error value. If the error value is `nil` the result value can be used safely.
+The return value is an iterator. Each item in this iterator has a result value and an error value. If the error value is `nil` the result value can be used safely:
 
 ```golang
 for subject, err := range results {
@@ -301,7 +300,7 @@ results := client.ReadEventTypes(
 )
 ```
 
-The return value is an iterator. Each item in this iterator has a result value and an error value. If the error value is `nil` the result value can be used safely.
+The return value is an iterator. Each item in this iterator has a result value and an error value. If the error value is `nil` the result value can be used safely:
 
 ```golang
 for eventType, err := range results {
