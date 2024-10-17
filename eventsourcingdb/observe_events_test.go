@@ -21,28 +21,32 @@ func TestObserveEvents(t *testing.T) {
 		"/users/registered",
 		events.Events.Registered.JaneDoe.Type,
 		events.Events.Registered.JaneDoe.Data,
-	).WithTraceParent(events.Events.Registered.JaneDoe.TraceParent)
+		eventsourcingdb.WithTraceParent(events.Events.Registered.JaneDoe.TraceParent),
+	)
 
 	johnRegistered := eventsourcingdb.NewEventCandidate(
 		events.TestSource,
 		"/users/registered",
 		events.Events.Registered.JohnDoe.Type,
 		events.Events.Registered.JohnDoe.Data,
-	).WithTraceParent(events.Events.Registered.JohnDoe.TraceParent)
+		eventsourcingdb.WithTraceParent(events.Events.Registered.JohnDoe.TraceParent),
+	)
 
 	janeLoggedIn := eventsourcingdb.NewEventCandidate(
 		events.TestSource,
 		"/users/loggedIn",
 		events.Events.LoggedIn.JaneDoe.Type,
 		events.Events.LoggedIn.JaneDoe.Data,
-	).WithTraceParent(events.Events.LoggedIn.JaneDoe.TraceParent)
+		eventsourcingdb.WithTraceParent(events.Events.LoggedIn.JaneDoe.TraceParent),
+	)
 
 	johnLoggedIn := eventsourcingdb.NewEventCandidate(
 		events.TestSource,
 		"/users/loggedIn",
 		events.Events.LoggedIn.JohnDoe.Type,
 		events.Events.LoggedIn.JohnDoe.Data,
-	).WithTraceParent(events.Events.LoggedIn.JohnDoe.TraceParent)
+		eventsourcingdb.WithTraceParent(events.Events.LoggedIn.JohnDoe.TraceParent),
+	)
 
 	prepareClientWithEvents := func(t *testing.T) eventsourcingdb.Client {
 		client := database.WithAuthorization.GetClient()
@@ -108,7 +112,8 @@ func TestObserveEvents(t *testing.T) {
 				"/users/registered",
 				events.Events.Registered.ApfelFred.Type,
 				events.Events.Registered.ApfelFred.Data,
-			).WithTraceParent(events.Events.Registered.ApfelFred.TraceParent)
+				eventsourcingdb.WithTraceParent(events.Events.Registered.ApfelFred.TraceParent),
+			)
 
 			_, err := client.WriteEvents([]eventsourcingdb.EventCandidate{
 				apfelFredCandidate,

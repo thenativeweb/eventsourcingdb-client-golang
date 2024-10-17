@@ -27,7 +27,8 @@ func TestWriteEvents(t *testing.T) {
 					subject,
 					janeRegistered.Type,
 					janeRegistered.Data,
-				).WithTraceParent(janeRegistered.TraceParent),
+					eventsourcingdb.WithTraceParent(janeRegistered.TraceParent),
+				),
 			},
 		)
 
@@ -97,7 +98,8 @@ func TestWriteEvents(t *testing.T) {
 					subject,
 					janeRegistered.Type,
 					janeRegistered.Data,
-				).WithTraceParent(janeRegistered.TraceParent),
+					eventsourcingdb.WithTraceParent(janeRegistered.TraceParent),
+				),
 			},
 		)
 
@@ -117,7 +119,8 @@ func TestWriteEvents(t *testing.T) {
 					subject,
 					janeRegistered.Type,
 					janeRegistered.Data,
-				).WithTraceParent(janeRegistered.TraceParent),
+					eventsourcingdb.WithTraceParent(janeRegistered.TraceParent),
+				),
 			},
 		)
 
@@ -138,7 +141,8 @@ func TestWriteEvents(t *testing.T) {
 					"/users/registered",
 					janeRegistered.Type,
 					janeRegistered.Data,
-				).WithTraceParent(janeRegistered.TraceParent),
+					eventsourcingdb.WithTraceParent(janeRegistered.TraceParent),
+				),
 			},
 		)
 		assert.NoError(t, err)
@@ -149,13 +153,15 @@ func TestWriteEvents(t *testing.T) {
 					"/users/registered",
 					johnRegistered.Type,
 					johnRegistered.Data,
-				).WithTraceParent(johnRegistered.TraceParent),
+					eventsourcingdb.WithTraceParent(johnRegistered.TraceParent),
+				),
 
 				source.NewEvent(
 					"/users/loggedIn",
 					johnLoggedIn.Type,
 					johnLoggedIn.Data,
-				).WithTraceParent(johnLoggedIn.TraceParent),
+					eventsourcingdb.WithTraceParent(johnLoggedIn.TraceParent),
+				),
 			},
 		)
 
@@ -188,13 +194,15 @@ func TestWriteEvents(t *testing.T) {
 					subject,
 					janeRegistered.Type,
 					janeRegistered.Data,
-				).WithTraceParent(janeRegistered.TraceParent),
+					eventsourcingdb.WithTraceParent(janeRegistered.TraceParent),
+				),
 
 				source.NewEvent(
 					subject,
 					johnRegistered.Type,
 					johnRegistered.Data,
-				).WithTraceParent(johnRegistered.TraceParent),
+					eventsourcingdb.WithTraceParent(johnRegistered.TraceParent),
+				),
 			},
 		)
 		assert.NoError(t, err)
