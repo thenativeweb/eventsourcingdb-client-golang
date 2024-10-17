@@ -41,7 +41,7 @@ source := eventsourcingdb.NewSource(
 )
 ```
 
-Then you can start creating events by calling the `eventsourcingdb.NewEvent` function and specify the subject of the event as well as the type of the event:
+Then you can start creating events by calling the `source.NewEvent` function and specify the subject of the event as well as the type of the event:
 
 
 ```golang
