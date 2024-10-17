@@ -172,7 +172,7 @@ func TestReadSubjects(t *testing.T) {
 			assert.True(t, errors.Is(err, eventsourcingdb.ErrClientError))
 			assert.ErrorContains(t, err, "protocol version mismatch, server '0.0.0', client '1.0.0'")
 		}
-		count += 1
+		count++
 
 		assert.Equal(t, 1, count)
 	})
