@@ -193,7 +193,7 @@ func TestReadSubjects(t *testing.T) {
 			assert.Error(t, err)
 			assert.True(t, errors.Is(err, eventsourcingdb.ErrClientError))
 			assert.ErrorContains(t, err, "Bad Request")
-			count += 1
+			count++
 		}
 
 		assert.Equal(t, 1, count)
