@@ -215,7 +215,7 @@ func TestReadSubjects(t *testing.T) {
 			assert.Error(t, err)
 			assert.True(t, errors.Is(err, eventsourcingdb.ErrServerError))
 			assert.ErrorContains(t, err, "unexpected response status: 202 Accepted")
-			count += 1
+			count++
 		}
 
 		assert.Equal(t, 1, count)
