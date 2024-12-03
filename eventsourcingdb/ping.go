@@ -8,7 +8,7 @@ import (
 
 func (client *Client) Ping() error {
 	httpClient := &http.Client{}
-	url := client.configuration.BaseURL.JoinPath("ping")
+	url := client.configuration.BaseURL.JoinPath("api/ping")
 
 	response, err := httpClient.Get(url.String())
 	if err != nil {

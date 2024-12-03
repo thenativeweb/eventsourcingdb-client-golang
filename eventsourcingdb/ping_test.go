@@ -21,7 +21,7 @@ func TestPing(t *testing.T) {
 
 	t.Run("returns an error if the server responds with an unexpected status code.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
-			mux.HandleFunc("/ping", func(writer http.ResponseWriter, request *http.Request) {
+			mux.HandleFunc("/api/ping", func(writer http.ResponseWriter, request *http.Request) {
 				writer.WriteHeader(http.StatusBadGateway)
 			})
 		})
@@ -38,7 +38,7 @@ func TestPing(t *testing.T) {
 
 	t.Run("returns an error if the server's response body can't be read.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
-			mux.HandleFunc("/ping", func(writer http.ResponseWriter, request *http.Request) {
+			mux.HandleFunc("/api/ping", func(writer http.ResponseWriter, request *http.Request) {
 				// Set an incorrect content length so that the reader tries to read out of bounds.
 				writer.Header().Set("Content-Length", "1")
 			})
@@ -56,7 +56,7 @@ func TestPing(t *testing.T) {
 
 	t.Run("returns an error if the server's response body is not 'OK'.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
-			mux.HandleFunc("/ping", func(writer http.ResponseWriter, request *http.Request) {
+			mux.HandleFunc("/api/ping", func(writer http.ResponseWriter, request *http.Request) {
 				if _, err := writer.Write([]byte(":-)")); err != nil {
 					panic(err)
 				}
