@@ -48,7 +48,7 @@ func (client *Client) ReadEvents(ctx context.Context, subject string, recursive 
 
 		response, err := client.requestServer(
 			http.MethodPost,
-			"api/read-events",
+			"api/v1/read-events",
 			bytes.NewReader(requestBodyAsJSON),
 		)
 		if err != nil {

@@ -46,7 +46,7 @@ func (client *Client) ReadSubjects(ctx context.Context, options ...ReadSubjectsO
 
 		response, err := client.requestServer(
 			http.MethodPost,
-			"api/read-subjects",
+			"api/v1/read-subjects",
 			bytes.NewReader(requestBodyAsJSON),
 		)
 		if err != nil {

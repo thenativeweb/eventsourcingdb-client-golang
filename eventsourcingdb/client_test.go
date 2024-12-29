@@ -10,35 +10,35 @@ import (
 
 func TestNewClient(t *testing.T) {
 	t.Run("returns an error if the baseURL is malformed.", func(t *testing.T) {
-		_, err := eventsourcingdb.NewClient("$%&/()", "access-token")
+		_, err := eventsourcingdb.NewClient("$%&/()", "api-token")
 
 		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
 		assert.ErrorContains(t, err, "argument 'baseURL' is invalid:")
 	})
 
 	t.Run("returns an error if the baseURL uses neither the HTTP scheme nor HTTPS scheme.", func(t *testing.T) {
-		_, err := eventsourcingdb.NewClient("telnet://foobar.invalid", "access-token")
+		_, err := eventsourcingdb.NewClient("telnet://foobar.invalid", "api-token")
 
 		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
 		assert.ErrorContains(t, err, "argument 'baseURL' is invalid: must use HTTP or HTTPS")
 	})
 
 	t.Run("returns no error if the baseURL uses the HTTP scheme.", func(t *testing.T) {
-		_, err := eventsourcingdb.NewClient("http://foobar.invalid", "access-token")
+		_, err := eventsourcingdb.NewClient("http://foobar.invalid", "api-token")
 
 		assert.NoError(t, err)
 	})
 
 	t.Run("returns no error if the baseURL uses the HTTPS scheme.", func(t *testing.T) {
-		_, err := eventsourcingdb.NewClient("https://foobar.invalid", "access-token")
+		_, err := eventsourcingdb.NewClient("https://foobar.invalid", "api-token")
 
 		assert.NoError(t, err)
 	})
 
-	t.Run("returns an error if the accessToken is empty.", func(t *testing.T) {
+	t.Run("returns an error if the apiToken is empty.", func(t *testing.T) {
 		_, err := eventsourcingdb.NewClient("http://foobar.invalid", "")
 
 		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
-		assert.ErrorContains(t, err, "argument 'accessToken' is invalid: must not be empty")
+		assert.ErrorContains(t, err, "argument 'apiToken' is invalid: must not be empty")
 	})
 }

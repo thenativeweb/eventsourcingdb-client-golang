@@ -14,7 +14,7 @@ import (
 
 ### Creating a client
 
-To create a new client, call the `eventsourcingdb.NewClient` function and specify the URL of your EventSourcingDB instance as well as the access token:
+To create a new client, call the `eventsourcingdb.NewClient` function and specify the URL of your EventSourcingDB instance as well as the API token:
 
 ```golang
 client, err := eventsourcingdb.NewClient(
@@ -124,7 +124,7 @@ results := client.ReadEvents(
   context.TODO(),
   "/user/23",
   eventsourcingdb.ReadNonRecursively(),
-) 
+)
 ```
 
 The return value is an iterator. Each item in this iterator has a result value and an error value. If the error value is `nil` the result value can be used safely:

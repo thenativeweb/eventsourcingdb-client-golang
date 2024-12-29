@@ -27,7 +27,7 @@ func (client *Client) RegisterEventSchema(eventType string, JSONSchema string) e
 
 	response, err := client.requestServer(
 		http.MethodPost,
-		"api/register-event-schema",
+		"api/v1/register-event-schema",
 		bytes.NewReader(requestBodyAsJSON),
 	)
 	if err != nil {

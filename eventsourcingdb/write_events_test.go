@@ -210,13 +210,13 @@ func TestWriteEvents(t *testing.T) {
 
 	t.Run("returns a sever error if the server responds with HTTP 5xx on every try", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
-			mux.HandleFunc("/api/write-events", func(writer http.ResponseWriter, request *http.Request) {
+			mux.HandleFunc("/api/v1/write-events", func(writer http.ResponseWriter, request *http.Request) {
 				writer.WriteHeader(http.StatusBadGateway)
 			})
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
+		client, err := eventsourcingdb.NewClient(serverAddress, "api-token")
 		assert.NoError(t, err)
 
 		source := eventsourcingdb.NewSource(events.TestSource)
@@ -235,43 +235,15 @@ func TestWriteEvents(t *testing.T) {
 		assert.ErrorContains(t, err, "Bad Gateway")
 	})
 
-	t.Run("returns an error if the server's protocol version does not match.", func(t *testing.T) {
-		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
-			mux.HandleFunc("/api/write-events", func(writer http.ResponseWriter, request *http.Request) {
-				writer.Header().Add("X-EventSourcingDB-Protocol-Version", "0.0.0")
-				writer.WriteHeader(http.StatusUnprocessableEntity)
-			})
-		})
-		defer stopServer()
-
-		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
-		assert.NoError(t, err)
-
-		source := eventsourcingdb.NewSource(events.TestSource)
-		subject := "/" + uuid.New().String()
-
-		janeRegistered := events.Events.Registered.JaneDoe
-
-		_, err = client.WriteEvents(
-			[]eventsourcingdb.EventCandidate{
-				source.NewEvent(subject, janeRegistered.Type, janeRegistered.Data),
-			},
-		)
-
-		assert.Error(t, err)
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrClientError))
-		assert.ErrorContains(t, err, "protocol version mismatch, server '0.0.0', client '1.0.0'")
-	})
-
 	t.Run("returns a client error if the server returns a 4xx status code.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
-			mux.HandleFunc("/api/write-events", func(writer http.ResponseWriter, request *http.Request) {
+			mux.HandleFunc("/api/v1/write-events", func(writer http.ResponseWriter, request *http.Request) {
 				writer.WriteHeader(http.StatusBadRequest)
 			})
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
+		client, err := eventsourcingdb.NewClient(serverAddress, "api-token")
 		assert.NoError(t, err)
 
 		source := eventsourcingdb.NewSource(events.TestSource)
@@ -292,13 +264,13 @@ func TestWriteEvents(t *testing.T) {
 
 	t.Run("returns a server error if the server returns a non 200, 5xx or 4xx status code.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
-			mux.HandleFunc("/api/write-events", func(writer http.ResponseWriter, request *http.Request) {
+			mux.HandleFunc("/api/v1/write-events", func(writer http.ResponseWriter, request *http.Request) {
 				writer.WriteHeader(http.StatusAccepted)
 			})
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
+		client, err := eventsourcingdb.NewClient(serverAddress, "api-token")
 		assert.NoError(t, err)
 
 		source := eventsourcingdb.NewSource(events.TestSource)
@@ -319,14 +291,14 @@ func TestWriteEvents(t *testing.T) {
 
 	t.Run("returns a server error if the server's response can't be read.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
-			mux.HandleFunc("/api/write-events", func(writer http.ResponseWriter, request *http.Request) {
+			mux.HandleFunc("/api/v1/write-events", func(writer http.ResponseWriter, request *http.Request) {
 				// Use an incorrect content length so the reader tries to read out of bounds.
 				writer.Header().Set("Content-Length", "1")
 			})
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
+		client, err := eventsourcingdb.NewClient(serverAddress, "api-token")
 		assert.NoError(t, err)
 
 		source := eventsourcingdb.NewSource(events.TestSource)
@@ -347,7 +319,7 @@ func TestWriteEvents(t *testing.T) {
 
 	t.Run("returns a server error if the server's response can't be parsed.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
-			mux.HandleFunc("/api/write-events", func(writer http.ResponseWriter, request *http.Request) {
+			mux.HandleFunc("/api/v1/write-events", func(writer http.ResponseWriter, request *http.Request) {
 				// Use an incorrect content length so the reader tries to read out of bounds.
 				if _, err := writer.Write([]byte(":-)")); err != nil {
 					panic(err)
@@ -356,7 +328,7 @@ func TestWriteEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
+		client, err := eventsourcingdb.NewClient(serverAddress, "api-token")
 		assert.NoError(t, err)
 
 		source := eventsourcingdb.NewSource(events.TestSource)

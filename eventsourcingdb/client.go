@@ -15,12 +15,12 @@ type Client struct {
 	configuration configuration.ClientConfiguration
 }
 
-func NewClient(baseURL string, accessToken string) (Client, error) {
+func NewClient(baseURL string, apiToken string) (Client, error) {
 	if strconv.IntSize != 64 {
 		return Client{}, NewClientError("64-bit architecture required")
 	}
-	if accessToken == "" {
-		return Client{}, NewInvalidArgumentError("accessToken", "must not be empty")
+	if apiToken == "" {
+		return Client{}, NewInvalidArgumentError("apiToken", "must not be empty")
 	}
 
 	parsedBaseURL, err := url.Parse(baseURL)
@@ -31,7 +31,7 @@ func NewClient(baseURL string, accessToken string) (Client, error) {
 		return Client{}, NewInvalidArgumentError("baseURL", "must use HTTP or HTTPS")
 	}
 
-	clientConfiguration := configuration.GetDefaultConfiguration(parsedBaseURL, accessToken)
+	clientConfiguration := configuration.GetDefaultConfiguration(parsedBaseURL, apiToken)
 
 	client := Client{clientConfiguration}
 
@@ -45,8 +45,7 @@ func (client Client) requestServer(method string, path string, body io.Reader) (
 		return nil, NewInternalError(err)
 	}
 
-	request.Header.Add("X-EventSourcingDB-Protocol-Version", client.configuration.ProtocolVersion.String())
-	request.Header.Add("Authorization", "Bearer "+client.configuration.AccessToken)
+	request.Header.Add("Authorization", "Bearer "+client.configuration.APIToken)
 
 	httpClient := &http.Client{}
 	var response *http.Response
@@ -54,9 +53,6 @@ func (client Client) requestServer(method string, path string, body io.Reader) (
 	response, requestError := httpClient.Do(request)
 	if requestError != nil {
 		return response, NewServerError(requestError.Error())
-	}
-	if clientError := internalhttputil.ValidateProtocolVersion(response, client.configuration.ProtocolVersion); clientError != nil {
-		return response, NewClientError(clientError.Error())
 	}
 
 	if response.StatusCode != http.StatusOK {

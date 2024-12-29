@@ -8,7 +8,7 @@ import (
 
 func (client *Client) Ping() error {
 	httpClient := &http.Client{}
-	url := client.configuration.BaseURL.JoinPath("api/ping")
+	url := client.configuration.BaseURL.JoinPath("api/v1/ping")
 
 	response, err := httpClient.Get(url.String())
 	if err != nil {
@@ -22,7 +22,7 @@ func (client *Client) Ping() error {
 	if err != nil {
 		return NewServerError("failed to read response body")
 	}
-	if string(data) != "OK" {
+	if string(data) != `{"status":"ok"}` {
 		return NewServerError(fmt.Sprintf("server responded with an unexpected response body: %s", data))
 	}
 

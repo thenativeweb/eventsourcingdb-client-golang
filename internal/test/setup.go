@@ -17,11 +17,11 @@ func Setup(dockerfilePath string) (Database, error) {
 		return Database{}, err
 	}
 
-	accessToken := uuid.New().String()
+	apiToken := uuid.New().String()
 	withAuthorization, err := NewContainerizedTestingDatabase(
 		image,
-		[]string{"run", "--ui", "--access-token", accessToken, "--store-temporary"},
-		accessToken,
+		[]string{"run", "--api-token", apiToken, "--data-directory-temporary", "--http-enabled", "--https-enabled=false", "--with-ui"},
+		apiToken,
 	)
 	if err != nil {
 		return Database{}, err
@@ -29,7 +29,7 @@ func Setup(dockerfilePath string) (Database, error) {
 
 	client, err := eventsourcingdb.NewClient(
 		"http://localhost.invalid",
-		accessToken,
+		apiToken,
 	)
 	if err != nil {
 		return Database{}, err

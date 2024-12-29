@@ -57,7 +57,7 @@ func (client *Client) ObserveEvents(
 
 		response, err := client.requestServer(
 			http.MethodPost,
-			"api/observe-events",
+			"api/v1/observe-events",
 			bytes.NewReader(requestBodyAsJSON),
 		)
 		if err != nil {
