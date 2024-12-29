@@ -26,7 +26,7 @@ func (client *Client) ReadEventTypes(ctx context.Context) iter.Seq2[EventType, e
 	return func(yield func(EventType, error) bool) {
 
 		response, err := client.requestServer(
-			http.MethodPost, "api/read-event-types", http.NoBody,
+			http.MethodPost, "api/v1/read-event-types", http.NoBody,
 		)
 		if err != nil {
 			yield(EventType{}, err)

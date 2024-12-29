@@ -8,14 +8,14 @@ import (
 
 type ClientConfiguration struct {
 	BaseURL         *url.URL
-	AccessToken     string
+	APIToken        string
 	ProtocolVersion semver.Version
 }
 
-func GetDefaultConfiguration(baseURL *url.URL, accessToken string) ClientConfiguration {
+func GetDefaultConfiguration(baseURL *url.URL, apiToken string) ClientConfiguration {
 	return ClientConfiguration{
 		BaseURL:         baseURL,
-		AccessToken:     accessToken,
+		APIToken:        apiToken,
 		ProtocolVersion: *semver.MustParse("1.0.0"),
 	}
 }

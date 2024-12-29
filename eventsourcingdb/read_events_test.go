@@ -306,13 +306,13 @@ func TestReadEvents(t *testing.T) {
 
 	t.Run("returns a sever error if the server responds with HTTP 5xx on every try", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
-			mux.HandleFunc("/api/read-events", func(writer http.ResponseWriter, request *http.Request) {
+			mux.HandleFunc("/api/v1/read-events", func(writer http.ResponseWriter, request *http.Request) {
 				writer.WriteHeader(http.StatusBadGateway)
 			})
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
+		client, err := eventsourcingdb.NewClient(serverAddress, "api-token")
 		assert.NoError(t, err)
 
 		_, err = test.Take(1, client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadRecursively()))
@@ -322,34 +322,15 @@ func TestReadEvents(t *testing.T) {
 		assert.ErrorContains(t, err, "Bad Gateway")
 	})
 
-	t.Run("returns an error if the server's protocol version does not match.", func(t *testing.T) {
-		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
-			mux.HandleFunc("/api/read-events", func(writer http.ResponseWriter, request *http.Request) {
-				writer.Header().Add("X-EventSourcingDB-Protocol-Version", "0.0.0")
-				writer.WriteHeader(http.StatusUnprocessableEntity)
-			})
-		})
-		defer stopServer()
-
-		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
-		assert.NoError(t, err)
-
-		_, err = test.Take(1, client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadRecursively()))
-
-		assert.Error(t, err)
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrClientError))
-		assert.ErrorContains(t, err, "protocol version mismatch, server '0.0.0', client '1.0.0'")
-	})
-
 	t.Run("returns a client error if the server returns a 4xx status code.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
-			mux.HandleFunc("/api/read-events", func(writer http.ResponseWriter, request *http.Request) {
+			mux.HandleFunc("/api/v1/read-events", func(writer http.ResponseWriter, request *http.Request) {
 				writer.WriteHeader(http.StatusBadRequest)
 			})
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
+		client, err := eventsourcingdb.NewClient(serverAddress, "api-token")
 		assert.NoError(t, err)
 
 		_, err = test.Take(1, client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadRecursively()))
@@ -361,13 +342,13 @@ func TestReadEvents(t *testing.T) {
 
 	t.Run("returns a server error if the server returns a non 200, 5xx or 4xx status code.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
-			mux.HandleFunc("/api/read-events", func(writer http.ResponseWriter, request *http.Request) {
+			mux.HandleFunc("/api/v1/read-events", func(writer http.ResponseWriter, request *http.Request) {
 				writer.WriteHeader(http.StatusAccepted)
 			})
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
+		client, err := eventsourcingdb.NewClient(serverAddress, "api-token")
 		assert.NoError(t, err)
 
 		_, err = test.Take(1, client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadRecursively()))
@@ -379,7 +360,7 @@ func TestReadEvents(t *testing.T) {
 
 	t.Run("returns a server error if the server sends a stream item that can't be unmarshalled.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
-			mux.HandleFunc("/api/read-events", func(writer http.ResponseWriter, request *http.Request) {
+			mux.HandleFunc("/api/v1/read-events", func(writer http.ResponseWriter, request *http.Request) {
 				if _, err := writer.Write([]byte("{\"type\": 42}\n")); err != nil {
 					panic(err)
 				}
@@ -387,7 +368,7 @@ func TestReadEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
+		client, err := eventsourcingdb.NewClient(serverAddress, "api-token")
 		assert.NoError(t, err)
 
 		_, err = test.Take(1, client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadRecursively()))
@@ -399,7 +380,7 @@ func TestReadEvents(t *testing.T) {
 
 	t.Run("returns a server error if the server sends a stream item that can't be unmarshalled.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
-			mux.HandleFunc("/api/read-events", func(writer http.ResponseWriter, request *http.Request) {
+			mux.HandleFunc("/api/v1/read-events", func(writer http.ResponseWriter, request *http.Request) {
 				if _, err := writer.Write([]byte("{\"clowns\": 8}\n")); err != nil {
 					panic(err)
 				}
@@ -407,7 +388,7 @@ func TestReadEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
+		client, err := eventsourcingdb.NewClient(serverAddress, "api-token")
 		assert.NoError(t, err)
 
 		_, err = test.Take(1, client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadRecursively()))
@@ -420,7 +401,7 @@ func TestReadEvents(t *testing.T) {
 
 	t.Run("returns a server error if the server sends a an error item through the ndjson stream.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
-			mux.HandleFunc("/api/read-events", func(writer http.ResponseWriter, request *http.Request) {
+			mux.HandleFunc("/api/v1/read-events", func(writer http.ResponseWriter, request *http.Request) {
 				if _, err := writer.Write([]byte("{\"type\": \"error\", \"payload\": {\"error\": \"aliens have abducted the server\"}}\n")); err != nil {
 					panic(err)
 				}
@@ -428,7 +409,7 @@ func TestReadEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
+		client, err := eventsourcingdb.NewClient(serverAddress, "api-token")
 		assert.NoError(t, err)
 
 		_, err = test.Take(1, client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadRecursively()))
@@ -440,7 +421,7 @@ func TestReadEvents(t *testing.T) {
 
 	t.Run("returns a server error if the server sends a an error item through the ndjson stream, but the error can't be unmarshalled.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
-			mux.HandleFunc("/api/read-events", func(writer http.ResponseWriter, request *http.Request) {
+			mux.HandleFunc("/api/v1/read-events", func(writer http.ResponseWriter, request *http.Request) {
 				if _, err := writer.Write([]byte("{\"type\": \"error\", \"payload\": {\"error\": 8}}\n")); err != nil {
 					panic(err)
 				}
@@ -448,7 +429,7 @@ func TestReadEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
+		client, err := eventsourcingdb.NewClient(serverAddress, "api-token")
 		assert.NoError(t, err)
 
 		_, err = test.Take(1, client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadRecursively()))
@@ -460,7 +441,7 @@ func TestReadEvents(t *testing.T) {
 
 	t.Run("returns a server error if the server sends an item that can't be unmarshalled.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
-			mux.HandleFunc("/api/read-events", func(writer http.ResponseWriter, request *http.Request) {
+			mux.HandleFunc("/api/v1/read-events", func(writer http.ResponseWriter, request *http.Request) {
 				if _, err := writer.Write([]byte("{\"type\": \"item\", \"payload\": {\"event\": 8}}\n")); err != nil {
 					panic(err)
 				}
@@ -468,7 +449,7 @@ func TestReadEvents(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
+		client, err := eventsourcingdb.NewClient(serverAddress, "api-token")
 		assert.NoError(t, err)
 
 		_, err = test.Take(1, client.ReadEvents(context.Background(), "/", eventsourcingdb.ReadRecursively()))

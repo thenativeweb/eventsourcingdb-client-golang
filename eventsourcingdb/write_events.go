@@ -40,7 +40,7 @@ func (client *Client) WriteEvents(eventCandidates []EventCandidate, precondition
 
 	response, err := client.requestServer(
 		http.MethodPost,
-		"api/write-events",
+		"api/v1/write-events",
 		bytes.NewReader(requestBodyAsJSON),
 	)
 	if err != nil {

@@ -21,13 +21,13 @@ func TestPing(t *testing.T) {
 
 	t.Run("returns an error if the server responds with an unexpected status code.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
-			mux.HandleFunc("/api/ping", func(writer http.ResponseWriter, request *http.Request) {
+			mux.HandleFunc("/api/v1/ping", func(writer http.ResponseWriter, request *http.Request) {
 				writer.WriteHeader(http.StatusBadGateway)
 			})
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
+		client, err := eventsourcingdb.NewClient(serverAddress, "api-token")
 		assert.NoError(t, err)
 
 		err = client.Ping()
@@ -38,14 +38,14 @@ func TestPing(t *testing.T) {
 
 	t.Run("returns an error if the server's response body can't be read.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
-			mux.HandleFunc("/api/ping", func(writer http.ResponseWriter, request *http.Request) {
+			mux.HandleFunc("/api/v1/ping", func(writer http.ResponseWriter, request *http.Request) {
 				// Set an incorrect content length so that the reader tries to read out of bounds.
 				writer.Header().Set("Content-Length", "1")
 			})
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
+		client, err := eventsourcingdb.NewClient(serverAddress, "api-token")
 		assert.NoError(t, err)
 
 		err = client.Ping()
@@ -56,7 +56,7 @@ func TestPing(t *testing.T) {
 
 	t.Run("returns an error if the server's response body is not 'OK'.", func(t *testing.T) {
 		serverAddress, stopServer := httpserver.NewHTTPServer(func(mux *http.ServeMux) {
-			mux.HandleFunc("/api/ping", func(writer http.ResponseWriter, request *http.Request) {
+			mux.HandleFunc("/api/v1/ping", func(writer http.ResponseWriter, request *http.Request) {
 				if _, err := writer.Write([]byte(":-)")); err != nil {
 					panic(err)
 				}
@@ -64,7 +64,7 @@ func TestPing(t *testing.T) {
 		})
 		defer stopServer()
 
-		client, err := eventsourcingdb.NewClient(serverAddress, "access-token")
+		client, err := eventsourcingdb.NewClient(serverAddress, "api-token")
 		assert.NoError(t, err)
 
 		err = client.Ping()
