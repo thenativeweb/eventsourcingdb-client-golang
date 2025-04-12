@@ -38,6 +38,9 @@ func (c *Client) getURL(path string) (*url.URL, error) {
 
 func (c *Client) Ping() error {
 	pingURL, err := c.getURL("/api/v1/ping")
+	if err != nil {
+		return err
+	}
 
 	response, err := http.Get(pingURL.String())
 	if err != nil {
@@ -68,6 +71,9 @@ func (c *Client) Ping() error {
 
 func (c *Client) VerifyAPIToken() error {
 	verifyAPITokenURL, err := c.getURL("/api/v1/verify-api-token")
+	if err != nil {
+		return err
+	}
 
 	request := &http.Request{
 		Method: http.MethodPost,

@@ -135,12 +135,12 @@ func (c *Container) Stop(ctx context.Context) error {
 }
 
 func (c *Container) GetClient(ctx context.Context) (*Client, error) {
-	baseUrl, err := c.GetBaseURL(ctx)
+	baseURL, err := c.GetBaseURL(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := NewClient(baseUrl, c.apiToken)
+	client, err := NewClient(baseURL, c.apiToken)
 	if err != nil {
 		return nil, err
 	}
