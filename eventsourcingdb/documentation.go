@@ -1,2 +1,2 @@
-// Package eventsourcingdb provides the client SDK for the EventSourcingDB.
+// Package eventsourcingdb provides the official Go client SDK for EventSourcingDB.
 package eventsourcingdb
