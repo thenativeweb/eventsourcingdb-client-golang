@@ -1,8 +1,12 @@
 module github.com/thenativeweb/eventsourcingdb-client-golang
 
-go 1.23.4
+go 1.24.0
 
-require github.com/testcontainers/testcontainers-go v0.36.0
+require (
+	github.com/docker/go-connections v0.5.0
+	github.com/stretchr/testify v1.10.0
+	github.com/testcontainers/testcontainers-go v0.36.0
+)
 
 require (
 	dario.cat/mergo v1.0.1 // indirect
@@ -15,7 +19,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/docker/docker v28.0.1+incompatible // indirect
-	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/ebitengine/purego v0.8.2 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -41,7 +44,6 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/shirou/gopsutil/v4 v4.25.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/stretchr/testify v1.10.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
