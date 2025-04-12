@@ -137,14 +137,7 @@ func (c *Client) WriteEvents(events []EventCandidate, preconditions []Preconditi
 
 	var requestBody RequestBody
 	for _, event := range events {
-		requestBody.Events = append(requestBody.Events, RequestBodyEvent{
-			Source:      event.Source,
-			Subject:     event.Subject,
-			Type:        event.Type,
-			Data:        event.Data,
-			TraceParent: event.TraceParent,
-			TraceState:  event.TraceState,
-		})
+		requestBody.Events = append(requestBody.Events, RequestBodyEvent(event))
 	}
 
 	for _, precondition := range preconditions {
