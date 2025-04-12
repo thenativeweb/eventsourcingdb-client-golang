@@ -1,75 +1,111 @@
 package eventsourcingdb
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
-	"strconv"
-
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal/configuration"
-	internalhttputil "github.com/thenativeweb/eventsourcingdb-client-golang/internal/httputil"
 )
 
 type Client struct {
-	configuration configuration.ClientConfiguration
+	baseURL  *url.URL
+	apiToken string
 }
 
-func NewClient(baseURL string, apiToken string) (Client, error) {
-	if strconv.IntSize != 64 {
-		return Client{}, NewClientError("64-bit architecture required")
+func NewClient(baseURL *url.URL, apiToken string) (*Client, error) {
+	client := &Client{
+		baseURL,
+		apiToken,
 	}
-	if apiToken == "" {
-		return Client{}, NewInvalidArgumentError("apiToken", "must not be empty")
-	}
-
-	parsedBaseURL, err := url.Parse(baseURL)
-	if err != nil {
-		return Client{}, NewInvalidArgumentError("baseURL", err.Error())
-	}
-	if parsedBaseURL.Scheme != "http" && parsedBaseURL.Scheme != "https" {
-		return Client{}, NewInvalidArgumentError("baseURL", "must use HTTP or HTTPS")
-	}
-
-	clientConfiguration := configuration.GetDefaultConfiguration(parsedBaseURL, apiToken)
-
-	client := Client{clientConfiguration}
 
 	return client, nil
 }
 
-func (client Client) requestServer(method string, path string, body io.Reader) (*http.Response, error) {
-	routeURL := client.configuration.BaseURL.JoinPath(path)
-	request, err := http.NewRequest(method, routeURL.String(), body)
+func (c *Client) getURL(path string) (*url.URL, error) {
+	urlPath, err := url.Parse(path)
 	if err != nil {
-		return nil, NewInternalError(err)
+		return nil, err
 	}
 
-	request.Header.Add("Authorization", "Bearer "+client.configuration.APIToken)
-
-	httpClient := &http.Client{}
-	var response *http.Response
-
-	response, requestError := httpClient.Do(request)
-	if requestError != nil {
-		return response, NewServerError(requestError.Error())
+	targetURL := c.baseURL.ResolveReference(urlPath)
+	if err != nil {
+		return nil, err
 	}
+
+	return targetURL, nil
+}
+
+func (c *Client) Ping() error {
+	pingURL, err := c.getURL("/api/v1/ping")
+	if err != nil {
+		return err
+	}
+
+	response, err := http.Get(pingURL.String())
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		errorMessage := response.Status
-		if responseBody, err := io.ReadAll(response.Body); err == nil {
-			errorMessage += ": " + string(responseBody)
-		}
-
-		if internalhttputil.IsClientError(response) {
-			return response, NewClientError(errorMessage)
-		}
-		if internalhttputil.IsServerError(response) {
-			return response, NewServerError(errorMessage)
-		}
-
-		return response, NewServerError(fmt.Sprintf("unexpected response status: %s", response.Status))
+		return fmt.Errorf("failed to ping, got HTTP status code '%d', expected '%d'", response.StatusCode, http.StatusOK)
 	}
 
-	return response, nil
+	type ResponseBody struct {
+		Type string `json:"type"`
+	}
+
+	var responseBody ResponseBody
+	err = json.NewDecoder(response.Body).Decode(&responseBody)
+	if err != nil {
+		return err
+	}
+
+	if responseBody.Type != "io.eventsourcingdb.api.ping-received" {
+		return errors.New("failed to ping")
+	}
+
+	return nil
+}
+
+func (c *Client) VerifyAPIToken() error {
+	verifyAPITokenURL, err := c.getURL("/api/v1/verify-api-token")
+	if err != nil {
+		return err
+	}
+
+	request := &http.Request{
+		Method: http.MethodPost,
+		URL:    verifyAPITokenURL,
+		Header: http.Header{
+			"Authorization": []string{"Bearer " + c.apiToken},
+		},
+	}
+
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to verify API token, got HTTP status code '%d', expected '%d'", response.StatusCode, http.StatusOK)
+	}
+
+	type ResponseBody struct {
+		Type string `json:"type"`
+	}
+
+	var responseBody ResponseBody
+	err = json.NewDecoder(response.Body).Decode(&responseBody)
+	if err != nil {
+		return err
+	}
+
+	if responseBody.Type != "io.eventsourcingdb.api.api-token-verified" {
+		return errors.New("failed to verify API token")
+	}
+
+	return nil
 }

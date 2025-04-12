@@ -1,321 +1,106 @@
-# eventsourcing-client-golang
+# eventsourcingdb
 
-The Go client for EventSourcingDB.
+The official Go client SDK for [EventSourcingDB](https://www.eventsourcingdb.io) – a purpose-built database for event sourcing.
 
-## Quick start
+EventSourcingDB enables you to build and operate event-driven applications with native support for writing, reading, and observing events. This client SDK provides convenient access to its capabilities in Go.
 
-First, import the module:
+For more information on EventSourcingDB, see its [official documentation](https://docs.eventsourcingdb.io/).
 
-```golang
+This client SDK includes support for [Testcontainers](https://testcontainers.com/) to spin up EventSourcingDB instances in integration tests. For details, see [Using Testcontainers](#using-testcontainers).
+
+## Getting Started
+
+Import the package and create an instance by providing the URL of your EventSourcingDB instance and the API token to use:
+
+```go
 import (
+  "net/url"
+
   "github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
 )
+
+// ...
+
+baseUrl, err := url.Parse("http://localhost:3000")
+if err != nil {
+  // ...
+}
+
+apiToken := "secret"
+
+client, err := eventsourcingdb.NewClient(baseUrl, apiToken)
+if err != nil {
+  // ...
+}
 ```
 
-### Creating a client
+Then call the `Ping` function to check whether the instance is reachable. If it is not, the function will return an error:
 
-To create a new client, call the `eventsourcingdb.NewClient` function and specify the URL of your EventSourcingDB instance as well as the API token:
-
-```golang
-client, err := eventsourcingdb.NewClient(
-  "http://localhost:3000",
-  "secret",
-)
-```
-
-### Veryfying the connection
-
-To verify the connection to EventSourcingDB, call the `client.Ping` function:
-
-```golang
+```go
 err := client.Ping()
-```
-
-### Writing events
-
-Before writing events, you probably want to create a source which represents your application. For that, call the `eventsourcingdb.NewSource` function and specify the name of your application:
-
-```golang
-source := eventsourcingdb.NewSource(
-  "tag:thenativeweb.io,2023:auth",
-)
-```
-
-Then you can start creating events by calling the `source.NewEvent` function and specify the subject of the event as well as the type of the event:
-
-```golang
-type UserRegistered struct {
-  Login    string `json:"login"`
-  Password string `json:"password"`
-}
-
-userRegistered := source.NewEvent(
-  "/user/23",
-  "io.thenativeweb.user.registered",
-  UserRegistered{
-    Login:    "janedoe",
-    Password: "secret",
-  },
-)
-```
-
-Finally, you can write the event by calling the `client.WriteEvents` function and passing the event. You may also write multiple events at once:
-
-```golang
-written, err := client.WriteEvents(
-  []event.Candidate{
-    userRegistered,
-  },
-)
-```
-
-In `written`, you will find the details of the events that were written.
-
-#### Using preconditions
-
-Optionally, you may specify preconditions which must be fulfilled for the events to be written. One option is to ensure that the subject is pristine, i.e. that no events have been written for it yet:
-
-```golang
-precondition := eventsourcingdb.IsSubjectPristine("/user/23")
-```
-
-Another option is to ensure that the subject is on a specific event ID:
-
-```golang
-precondition := eventsourcingdb.IsSubjectOnEventID("/user/23", "42")
-```
-
-Either way, hand over your preconditions as additional parameters to the `WriteEvents` function:
-
-```golang
-written, err := client.WriteEvents(
-  []event.Candidate{
-    userRegistered,
-  },
-  precondition,
-)
-```
-
-### Validating events with JSON schemas
-
-To validate events with JSON schemas, use the `client.RegisterEventSchema` function and specify the type of the event you want to create a schema for as well as the JSON schema:
-
-```golang
-err = client.RegisterEventSchema(
-  "io.thenativeweb.user.registered",
-  `{
-    "type": "object",
-    "properties": {
-      "login": { "type": "string" },
-      "password": { "type": "string" }
-    },
-    "required": [ "login", "password" ],
-    "additionalProperties": false
-  }`,
-)
-```
-
-### Reading events
-
-To read events, call the `client.ReadEvents` function and specify the subject of the events you want to read as well as whether you want to read recursively (`eventsourcingdb.ReadRecursively`) or non-recursively (`eventsourcingdb.ReadNonRecursively`):
-
-```golang
-results := client.ReadEvents(
-  context.TODO(),
-  "/user/23",
-  eventsourcingdb.ReadNonRecursively(),
-)
-```
-
-The return value is an iterator. Each item in this iterator has a result value and an error value. If the error value is `nil` the result value can be used safely:
-
-```golang
-for result, err := range results {
-  if err != nil {
-    // handle error
-  }
-
-  fmt.Prinln(result.Event.Id)
+if err != nil {
+  // ...
 }
 ```
 
-To access the event's data, you need to unmarshal the event's `Data` property:
+*Note that `Ping` does not require authentication, so the call may succeed even if the API token is invalid.*
 
-```golang
-userRegistered := &UserRegistered{}
-err := json.Unmarshal(result.Event.Data, userRegistered)
+If you want to verify the API token, call `VerifyAPIToken`. If the token is invalid, the function will return an error:
+
+```go
+err := client.VerifyAPIToken()
+if err != nil {
+  // ...
+}
+```
+
+### Using Testcontainers
+
+Call the `NewContainer` function, start the test container, defer stopping it, get a client, and run your test code:
+
+```go
+ctx := context.TODO()
+
+container := eventsourcingdb.NewContainer()
+container.Start(ctx)
+defer container.Stop(ctx)
+
+client, err := container.GetClient(ctx)
 if err != nil {
   // ...
 }
 
-fmt.Println(userRegistered.Login, userRegistered.Password)
+// ...
 ```
 
-#### Using read options
+To check if the test container is running, call the `IsRunning` function:
 
-Optionally, you may specify further options for reading events as additional parameters to the `client.ReadEvents` function.
-
-To change the order in which events are read, specify `eventsourcingdb.ReadChronologically` or `eventsourcingdb.ReadAntichronologically`:
-
-```golang
-results := client.ReadEvents(
-  context.TODO(),
-  "/user/23",
-  eventsourcingdb.ReadNonRecursively(),
-  eventsourcingdb.ReadChronologically(),
-)
+```go
+isRunning := container.IsRunning()
 ```
 
-You also may specify a lower or upper bound for the event ID, i.e. the event ID from which to start reading events or the event ID up to which to read events. For that, use the functions `eventsourcingdb.ReadFromLowerBoundID` and `eventsourcingdb.ReadUntilUpperBoundID` respectively:
+#### Configuring the Container Instance
 
-```golang
-results := client.ReadEvents(
-  context.TODO(),
-  "/user/23",
-  eventsourcingdb.ReadNonRecursively(),
-  eventsourcingdb.ReadFromLowerBoundID("42"),
-  eventsourcingdb.ReadUntilUpperBoundID("65"),
-)
+By default, `Container` uses the `latest` tag of the official EventSourcingDB Docker image. To change that, call the `WithImageTag` function:
+
+```go
+container := eventsourcingdb.NewContainer().
+  WithImageTag("1.0.0")
 ```
 
-Finally, you may also specify to read from the latest event of a given type by using `eventsourcingdb.ReadFromLatestEvent`. For that, you also have to provide the subject, the event type, and what to do if the event is missing (either `eventsourcingdb.IfEventIsMissingDuringReadReadNothing` or `eventsourcingdb.IfEventIsMissingDuringReadReadEverything`):
+Similarly, you can configure the port to use and the API token. Call the `WithPort` or the `WithAPIToken` function respectively:
 
-```golang
-results := client.ReadEvents(
-  context.TODO(),
-  "/user/23",
-  eventsourcingdb.ReadNonRecursively(),
-  eventsourcingdb.ReadFromLatestEvent(
-    "/user/23",
-    "io.thenativeweb.user.registered",
-    eventsourcingdb.ifEventIsMissingDuringReadReadEverything,
-  ),
-)
+```go
+container := eventsourcingdb.NewContainer().
+  .WithPort(4000)
+  .WithAPIToken("secret");
 ```
 
-### Observing events
+#### Configuring the Client Manually
 
-To observe events, call the `client.ObserveEvents` function and specify the subject of the events you want to observe as well as whether you want to observe recursively (`eventsourcingdb.ObserveRecursively`) or non-recursively (`eventsourcingdb.ObserveNonRecursively`):
+In case you need to set up the client yourself, use the following functions to get details on the container:
 
-```golang
-results := client.ObserveEvents(
-  context.TODO(),
-  "/user/23",
-  eventsourcingdb.ObserveNonRecursively(),
-)
-```
-
-The return value is an iterator. Each item in this iterator has a result value and an error value. If the error value is `nil` the result value can be used safely:
-
-```golang
-for result, err := range results {
-  if err != nil {
-    // handle error
-  }
-
-  fmt.Println(result.Event.Id)
-}
-```
-
-To access the event's data, you need to unmarshal the event's `Data` property:
-
-```golang
-userRegistered := &UserRegistered{}
-err := json.Unmarshal(result.Event.Data, userRegistered)
-if err != nil {
-  // ...
-}
-
-fmt.Println(userRegistered.Login, userRegistered.Password)
-```
-
-#### Using observe options
-
-Optionally, you may specify further options for observing events as additional parameters to the `client.ObserveEvents` function.
-
-You may specify a lower bound for the event ID, i.e. the event ID from which to start observing events. For that, use the function `eventsourcingdb.ObserveFromLowerBoundID`:
-
-```golang
-results := client.ObserveEvents(
-  context.TODO(),
-  "/user/23",
-  eventsourcingdb.ObserveNonRecursively(),
-  eventsourcingdb.ObserveFromLowerBoundID("42"),
-)
-```
-
-Additionally, you may also specify to observe from the latest event of a given type by using `eventsourcingdb.ObserveFromLatestEvent`. For that, you also have to provide the subject, the event type, and what to do if the event is missing (either `eventsourcingdb.IfEventIsMissingDuringObserveReadEverything` or `eventsourcingdb.IfEventIsMissingDuringObserveWaitForEvent`):
-
-```golang
-results := client.ObserveEvents(
-  context.TODO(),
-  "/user/23",
-  eventsourcingdb.ReadNonRecursively(),
-  eventsourcingdb.ReadFromLatestEvent(
-    "/user/23",
-    "io.thenativeweb.user.registered",
-    eventsourcingdb.IfEventIsMissingDuringObserveReadEverything,
-  ),
-)
-```
-
-### Reading subjects
-
-To read subjects, call the `client.ReadSubjects` function:
-
-```golang
-results := client.ReadSubjects(
-  context.TODO(),
-)
-```
-
-The return value is an iterator. Each item in this iterator has a result value and an error value. If the error value is `nil` the result value can be used safely:
-
-```golang
-for subject, err := range results {
-  if err != nil {
-    // handle error
-  }
-
-  fmt.Println(subject)
-}
-```
-
-Optionally, you may specify a base subject to read subjects from:
-
-```golang
-results := client.ReadSubjects(
-  context.TODO(),
-  eventsourcingdb.BaseSubject("/user"),
-)
-```
-
-### Reading event types
-
-To read subjects, call the `client.ReadEventTypes` function:
-
-```golang
-results := client.ReadEventTypes(
-  context.TODO(),
-)
-```
-
-The return value is an iterator. Each item in this iterator has a result value and an error value. If the error value is `nil` the result value can be used safely:
-
-```golang
-for eventType, err := range results {
-  if err != nil {
-    // handle error
-  }
-
-  fmt.Println(eventType)
-}
-```
-
-## Running quality assurance
-
-To run quality assurance for this module use the following command:
-
-```shell
-$ make
-```
+- `GetHost()` returns the host name.
+- `GetMappedPort()` returns the port.
+- `GetBaseURL()` returns the full URL of the container.
+- `GetAPIToken()` returns the API token.

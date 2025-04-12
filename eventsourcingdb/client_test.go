@@ -1,44 +1,54 @@
 package eventsourcingdb_test
 
 import (
-	"errors"
+	"context"
+	"fmt"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
 )
 
-func TestNewClient(t *testing.T) {
-	t.Run("returns an error if the baseURL is malformed.", func(t *testing.T) {
-		_, err := eventsourcingdb.NewClient("$%&/()", "api-token")
+func TestClient(t *testing.T) {
+	t.Run("Ping", func(t *testing.T) {
+		t.Run("does not return an error if the server is reachable", func(t *testing.T) {
+			ctx := context.Background()
 
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
-		assert.ErrorContains(t, err, "argument 'baseURL' is invalid:")
-	})
+			container := eventsourcingdb.NewContainer()
+			container.Start(ctx)
+			defer container.Stop(ctx)
 
-	t.Run("returns an error if the baseURL uses neither the HTTP scheme nor HTTPS scheme.", func(t *testing.T) {
-		_, err := eventsourcingdb.NewClient("telnet://foobar.invalid", "api-token")
+			client, err := container.GetClient(ctx)
+			require.NoError(t, err)
 
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
-		assert.ErrorContains(t, err, "argument 'baseURL' is invalid: must use HTTP or HTTPS")
-	})
+			err = client.Ping()
+			assert.NoError(t, err)
+		})
 
-	t.Run("returns no error if the baseURL uses the HTTP scheme.", func(t *testing.T) {
-		_, err := eventsourcingdb.NewClient("http://foobar.invalid", "api-token")
+		t.Run("returns an error if the server is not reachable", func(t *testing.T) {
+			ctx := context.Background()
 
-		assert.NoError(t, err)
-	})
+			container := eventsourcingdb.NewContainer()
+			container.Start(context.Background())
+			defer container.Stop(context.Background())
 
-	t.Run("returns no error if the baseURL uses the HTTPS scheme.", func(t *testing.T) {
-		_, err := eventsourcingdb.NewClient("https://foobar.invalid", "api-token")
+			port, err := container.GetMappedPort(ctx)
+			require.NoError(t, err)
 
-		assert.NoError(t, err)
-	})
+			baseURL, err := url.Parse(
+				fmt.Sprintf("http://non-existent-host:%d", port),
+			)
+			require.NoError(t, err)
 
-	t.Run("returns an error if the apiToken is empty.", func(t *testing.T) {
-		_, err := eventsourcingdb.NewClient("http://foobar.invalid", "")
+			apiToken := container.GetAPIToken()
 
-		assert.True(t, errors.Is(err, eventsourcingdb.ErrInvalidArgument))
-		assert.ErrorContains(t, err, "argument 'apiToken' is invalid: must not be empty")
+			client, err := eventsourcingdb.NewClient(baseURL, apiToken)
+			require.NoError(t, err)
+
+			err = client.Ping()
+			assert.Error(t, err)
+		})
 	})
 }
