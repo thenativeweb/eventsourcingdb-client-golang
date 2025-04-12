@@ -53,3 +53,54 @@ if err != nil {
   // ...
 }
 ```
+
+### Using Testcontainers
+
+Call the `NewContainer` function, start the test container, defer stopping it, get a client, and run your test code:
+
+```go
+ctx := context.TODO()
+
+container := eventsourcingdb.NewContainer()
+container.Start(ctx)
+defer container.Stop(ctx)
+
+client, err := container.GetClient(ctx)
+if err != nil {
+  // ...
+}
+
+// ...
+```
+
+To check if the test container is running, call the `IsRunning` function:
+
+```go
+isRunning := container.IsRunning()
+```
+
+#### Configuring the Container Instance
+
+By default, `Container` uses the `latest` tag of the official EventSourcingDB Docker image. To change that, call the `WithImageTag` function:
+
+```go
+container := eventsourcingdb.NewContainer().
+  WithImageTag("1.0.0")
+```
+
+Similarly, you can configure the port to use and the API token. Call the `WithPort` or the `WithAPIToken` function respectively:
+
+```go
+container := eventsourcingdb.NewContainer().
+  .WithPort(4000)
+  .WithAPIToken("secret");
+```
+
+#### Configuring the Client Manually
+
+In case you need to set up the client yourself, use the following functions to get details on the container:
+
+- `GetHost()` returns the host name.
+- `GetMappedPort()` returns the port.
+- `GetBaseURL()` returns the full URL of the container.
+- `GetAPIToken()` returns the API token.
