@@ -21,14 +21,14 @@ import (
 
 // ...
 
-baseUrl, err := url.Parse("http://localhost:3000")
+baseURL, err := url.Parse("http://localhost:3000")
 if err != nil {
   // ...
 }
 
 apiToken := "secret"
 
-client, err := eventsourcingdb.NewClient(baseUrl, apiToken)
+client, err := eventsourcingdb.NewClient(baseURL, apiToken)
 if err != nil {
   // ...
 }
@@ -243,6 +243,250 @@ for event, err := range client.ReadEvents(
   eventsourcingdb.ReadEventsOptions{
     Recursive:  false,
   },
+) {
+  // ...
+}
+
+// Somewhere else, cancel the context, which will cause
+// reading to end.
+cancel()
+```
+
+### Running EventQL Queries
+
+To run an EventQL query, call the `RunEventQLQuery` function and provide a context and the query as arguments. The function returns an iterator, which you can use e.g. inside a `for range` loop:
+
+```golang
+for row, err := range client.RunEventQLQuery(
+  context.TODO(),
+  "FROM e IN events PROJECT INTO e",
+) {
+  // ...
+}
+```
+
+*Note that each row returned by the iterator is of type `json.RawMessage` and matches the projection specified in your query.*
+
+#### Aborting a Query
+
+If you need to abort a query use `break` or `return` within the `for range` loop. However, this only works if there is currently an iteration going on.
+
+To abort the query independently of that, cancel the context you provided:
+
+```golang
+ctx, cancel := context.WithCancel(context.TODO())
+
+for row, err := range client.RunEventQLQuery(
+  ctx,
+  "FROM e IN events PROJECT INTO e",
+) {
+  // ...
+}
+
+// Somewhere else, cancel the context, which will cause
+// the query to end.
+cancel()
+```
+
+### Observing Events
+
+To observe all events of a subject, call the `ObserveEvents` function with a context, the subject and an options object. Set the `Recursive` option to `false`. This ensures that only events of the given subject are returned, not events of nested subjects.
+
+The function returns an iterator, which you can use e.g. inside a `for range` loop:
+
+```golang
+for event, err := range client.ObserveEvents(
+  context.TODO(),
+  "/books/42",
+  eventsourcingdb.ObserveEventsOptions{
+    Recursive: false,
+  },
+) {
+  // ...
+}
+```
+
+#### Observing From Subjects Recursively
+
+If you want to observe not only all the events of a subject, but also the events of all nested subjects, set the `Recursive` option to `true`:
+
+```golang
+for event, err := range client.ObserveEvents(
+  context.TODO(),
+  "/books/42",
+  eventsourcingdb.ObserveEventsOptions{
+    Recursive: true,
+  },
+) {
+  // ...
+}
+```
+
+This also allows you to observe *all* events ever written. To do so, provide `/` as the subject and set `Recursive` to `true`, since all subjects are nested under the root subject.
+
+#### Specifying Bounds
+
+Sometimes you do not want to observe all events, but only a range of events. For that, you can specify the `LowerBound` option.
+
+Specify the ID and whether to include or exclude it:
+
+```golang
+for event, err := range client.ObserveEvents(
+  context.TODO(),
+  "/books/42",
+  eventsourcingdb.ObserveEventsOptions{
+    Recursive:  false,
+    LowerBound: &eventsourcingdb.Bound{
+      ID:   "100",
+      Type: eventsourcingdb.BoundTypeInclusive,
+    },
+  },
+) {
+  // ...
+}
+```
+
+#### Starting From the Latest Event of a Given Type
+
+To observe starting from the latest event of a given type, provide the `FromLatestEvent` option and specify the subject, the type, and how to proceed if no such event exists.
+
+Possible options are `WaitForEventIfEventIsMissing`, which waits for an event of the given type to happen, or `ObserveEverythingIfEventIsMissing`, which effectively behaves as if `FromLatestEvent` was not specified:
+
+```golang
+for event, err := range client.ObserveEvents(
+  context.TODO(),
+  "/books/42",
+  eventsourcingdb.ObserveEventsOptions{
+    Recursive:  false,
+    FromLatestEvent: &eventsourcingdb.ObserveFromLatestEvent{
+      Subject:          "/books/42",
+      Type:             "io.eventsourcingdb.library.book-borrowed",
+      IfEventIsMissing: eventsourcingdb.ObserveEverythingIfEventIsMissing,
+    },
+  },
+) {
+  // ...
+}
+```
+
+*Note that `FromLatestEvent` and `LowerBound` can not be provided at the same time.*
+
+#### Aborting Observing
+
+If you need to abort observing use `break` or `return` within the `for range` loop. However, this only works if there is currently an iteration going on.
+
+To abort observing independently of that, cancel the context you provided:
+
+```golang
+ctx, cancel := context.WithCancel(context.TODO())
+
+for event, err := range client.ObserveEvents(
+  ctx,
+  "/books/42",
+  eventsourcingdb.ObserveEventsOptions{
+    Recursive:  false,
+  },
+) {
+  // ...
+}
+
+// Somewhere else, cancel the context, which will cause
+// observing to end.
+cancel()
+```
+
+### Registering an Event Schema
+
+To register an event schema, call the `RegisterEventSchema` function and hand over an event type and the desired schema:
+
+```golang
+client.RegisterEventSchema(
+  "io.eventsourcingdb.library.book-acquired",
+  map[string]any{
+    "type": "object",
+    "properties": map[string]any{
+      "title":  map[string]any{ "type": "string" },
+      "author": map[string]any{ "type": "string" },
+      "isbn":   map[string]any{ "type": "string" },
+    },
+    "required": []string{
+      "title",
+      "author",
+      "isbn",
+    },
+    "additionalProperties": false,
+  },
+)
+```
+
+### Listing Subjects
+
+To list all subjects, call the `ReadSubjects` function with a context and `/` as the base subject. The function returns an iterator, which you can use e.g. inside a `for range` loop:
+
+```golang
+for subject, err := range client.ReadSubjects(
+  context.TODO(),
+  "/",
+) {
+  // ...
+}
+```
+
+If you only want to list subjects within a specific branch, provide the desired base subject instead:
+
+```golang
+for subject, err := range client.ReadSubjects(
+  context.TODO(),
+  "/books",
+) {
+  // ...
+}
+```
+
+#### Aborting Listing
+
+If you need to abort listing use `break` or `return` within the `for range` loop. However, this only works if there is currently an iteration going on.
+
+To abort listing independently of that, cancel the context you provided:
+
+```golang
+ctx, cancel := context.WithCancel(context.TODO())
+
+for subject, err := range client.ReadSubjects(
+  ctx,
+  "/",
+) {
+  // ...
+}
+
+// Somewhere else, cancel the context, which will cause
+// reading to end.
+cancel()
+```
+
+### Listing Event Types
+
+To list all event types, call the `ReadEventTypes` function. The function returns an iterator, which you can use e.g. inside a `for range` loop:
+
+```golang
+for eventType, err := range client.ReadEventTypes(
+  context.TODO(),
+) {
+  // ...
+}
+```
+
+#### Aborting Listing
+
+If you need to abort listing use `break` or `return` within the `for range` loop. However, this only works if there is currently an iteration going on.
+
+To abort listing independently of that, cancel the context you provided:
+
+```golang
+ctx, cancel := context.WithCancel(context.TODO())
+
+for eventType, err := range client.ReadEventTypes(
+  context.TODO(),
 ) {
   // ...
 }
