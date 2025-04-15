@@ -122,7 +122,135 @@ writtenEvents, err := client.WriteEvents(
 
 *Note that according to the CloudEvents standard, event IDs must be of type string.*
 
+### Reading Events
 
+To read all events of a subject, call the `ReadEvents` function with a context, the subject and an options object. Set the `Recursive` option to `false`. This ensures that only events of the given subject are returned, not events of nested subjects.
+
+The function returns an iterator, which you can use e.g. inside a `for range` loop:
+
+```golang
+for event, err := range client.ReadEvents(
+  context.TODO(),
+  "/books/42",
+  eventsourcingdb.ReadEventsOptions{
+    Recursive: false,
+  },
+) {
+  // ...
+}
+```
+
+#### Reading From Subjects Recursively
+
+If you want to read not only all the events of a subject, but also the events of all nested subjects, set the `Recursive` option to `true`:
+
+```golang
+for event, err := range client.ReadEvents(
+  context.TODO(),
+  "/books/42",
+  eventsourcingdb.ReadEventsOptions{
+    Recursive: true,
+  },
+) {
+  // ...
+}
+```
+
+This also allows you to read *all* events ever written. To do so, provide `/` as the subject and set `Recursive` to `true`, since all subjects are nested under the root subject.
+
+#### Reading in Anti-Chronological Order
+
+By default, events are read in chronological order. To read in anti-chronological order, provide the `Order` option and set it using the `OrderAntichronological` function:
+
+```golang
+for event, err := range client.ReadEvents(
+  context.TODO(),
+  "/books/42",
+  eventsourcingdb.ReadEventsOptions{
+    Recursive: false,
+    Order:     eventsourcingdb.OrderAntichronological(),
+  },
+) {
+  // ...
+}
+```
+
+*Note that you can also use the `OrderChronological` function to explicitly enforce the default order.*
+
+#### Specifying Bounds
+
+Sometimes you do not want to read all events, but only a range of events. For that, you can specify the `LowerBound` and `UpperBound` options – either one of them or even both at the same time.
+
+Specify the ID and whether to include or exclude it, for both the lower and upper bound:
+
+```golang
+for event, err := range client.ReadEvents(
+  context.TODO(),
+  "/books/42",
+  eventsourcingdb.ReadEventsOptions{
+    Recursive:  false,
+    LowerBound: &eventsourcingdb.Bound{
+      ID:   "100",
+      Type: eventsourcingdb.BoundTypeInclusive,
+    },
+    UpperBound: &eventsourcingdb.Bound{
+      ID:   "200",
+      Type: eventsourcingdb.BoundTypeExclusive,
+    },
+  },
+) {
+  // ...
+}
+```
+
+#### Starting From the Latest Event of a Given Type
+
+To read starting from the latest event of a given type, provide the `FromLatestEvent` option and specify the subject, the type, and how to proceed if no such event exists.
+
+Possible options are `ReadNothingIfEventIsMissing`, which skips reading entirely, or `ReadEverythingIfEventIsMissing`, which effectively behaves as if `FromLatestEvent` was not specified:
+
+```golang
+for event, err := range client.ReadEvents(
+  context.TODO(),
+  "/books/42",
+  eventsourcingdb.ReadEventsOptions{
+    Recursive:  false,
+    FromLatestEvent: &eventsourcingdb.ReadFromLatestEvent{
+      Subject:          "/books/42",
+      Type:             "io.eventsourcingdb.library.book-borrowed",
+      IfEventIsMissing: eventsourcingdb.ReadEverythingIfEventIsMissing,
+    },
+  },
+) {
+  // ...
+}
+```
+
+*Note that `FromLatestEvent` and `LowerBound` can not be provided at the same time.*
+
+#### Aborting Reading
+
+If you need to abort reading use `break` or `return` within the `for range` loop. However, this only works if there is currently an iteration going on.
+
+To abort reading independently of that, cancel the context you provided:
+
+```golang
+ctx, cancel := context.WithCancel(context.TODO())
+
+for event, err := range client.ReadEvents(
+  ctx,
+  "/books/42",
+  eventsourcingdb.ReadEventsOptions{
+    Recursive:  false,
+  },
+) {
+  // ...
+}
+
+// Somewhere else, cancel the context, which will cause
+// reading to end.
+cancel()
+```
 
 ### Using Testcontainers
 
