@@ -122,6 +122,8 @@ writtenEvents, err := client.WriteEvents(
 
 *Note that according to the CloudEvents standard, event IDs must be of type string.*
 
+
+
 ### Using Testcontainers
 
 Call the `NewContainer` function, start the test container, defer stopping it, get a client, and run your test code:
@@ -168,7 +170,7 @@ container := eventsourcingdb.NewContainer().
 
 In case you need to set up the client yourself, use the following functions to get details on the container:
 
-- `GetHost()` returns the host name.
-- `GetMappedPort()` returns the port.
-- `GetBaseURL()` returns the full URL of the container.
-- `GetAPIToken()` returns the API token.
+- `GetHost()` returns the host name
+- `GetMappedPort()` returns the port
+- `GetBaseURL()` returns the full URL of the container
+- `GetAPIToken()` returns the API token
