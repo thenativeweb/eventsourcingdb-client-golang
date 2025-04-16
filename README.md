@@ -10,7 +10,7 @@ This client SDK includes support for [Testcontainers](https://testcontainers.com
 
 ## Getting Started
 
-Install the module:
+Install the client SDK:
 
 ```shell
 go get github.com/thenativeweb/eventsourcingdb-client-golang
