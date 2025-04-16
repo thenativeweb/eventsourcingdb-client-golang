@@ -10,6 +10,12 @@ This client SDK includes support for [Testcontainers](https://testcontainers.com
 
 ## Getting Started
 
+Install the module:
+
+```shell
+go get github.com/thenativeweb/eventsourcingdb-client-golang
+```
+
 Import the package and create an instance by providing the URL of your EventSourcingDB instance and the API token to use:
 
 ```go
