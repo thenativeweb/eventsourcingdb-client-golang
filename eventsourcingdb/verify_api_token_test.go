@@ -8,13 +8,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
 )
 
 func TestVerifyAPIToken(t *testing.T) {
 	t.Run("does not return an error if the token is valid", func(t *testing.T) {
 		ctx := context.Background()
 
-		container := eventsourcingdb.NewContainer()
+		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		require.NoError(t, err)
+
+		container := eventsourcingdb.NewContainer().WithImageTag(imageVersion)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -28,7 +32,10 @@ func TestVerifyAPIToken(t *testing.T) {
 	t.Run("returns an error if the token is invalid", func(t *testing.T) {
 		ctx := context.Background()
 
-		container := eventsourcingdb.NewContainer()
+		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		require.NoError(t, err)
+
+		container := eventsourcingdb.NewContainer().WithImageTag(imageVersion)
 		container.Start(context.Background())
 		defer container.Stop(context.Background())
 

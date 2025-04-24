@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
 )
 
 func TestObserveEvents(t *testing.T) {
@@ -19,7 +20,10 @@ func TestObserveEvents(t *testing.T) {
 	t.Run("observes no events if the database is empty", func(t *testing.T) {
 		ctx := context.Background()
 
-		container := eventsourcingdb.NewContainer()
+		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		require.NoError(t, err)
+
+		container := eventsourcingdb.NewContainer().WithImageTag(imageVersion)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -51,7 +55,10 @@ func TestObserveEvents(t *testing.T) {
 	t.Run("observes all events from the given subject", func(t *testing.T) {
 		ctx := context.Background()
 
-		container := eventsourcingdb.NewContainer()
+		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		require.NoError(t, err)
+
+		container := eventsourcingdb.NewContainer().WithImageTag(imageVersion)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -110,7 +117,10 @@ func TestObserveEvents(t *testing.T) {
 	t.Run("observes with lower bound", func(t *testing.T) {
 		ctx := context.Background()
 
-		container := eventsourcingdb.NewContainer()
+		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		require.NoError(t, err)
+
+		container := eventsourcingdb.NewContainer().WithImageTag(imageVersion)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -178,7 +188,10 @@ func TestObserveEvents(t *testing.T) {
 	t.Run("observes from latest event", func(t *testing.T) {
 		ctx := context.Background()
 
-		container := eventsourcingdb.NewContainer()
+		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		require.NoError(t, err)
+
+		container := eventsourcingdb.NewContainer().WithImageTag(imageVersion)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
