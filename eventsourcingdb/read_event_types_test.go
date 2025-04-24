@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
 )
 
 func TestReadEventTypes(t *testing.T) {
@@ -18,7 +19,10 @@ func TestReadEventTypes(t *testing.T) {
 	t.Run("reads no event types if the database is empty", func(t *testing.T) {
 		ctx := context.Background()
 
-		container := eventsourcingdb.NewContainer()
+		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		require.NoError(t, err)
+
+		container := eventsourcingdb.NewContainer().WithImageTag(imageVersion)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -38,7 +42,10 @@ func TestReadEventTypes(t *testing.T) {
 	t.Run("reads all event types", func(t *testing.T) {
 		ctx := context.Background()
 
-		container := eventsourcingdb.NewContainer()
+		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		require.NoError(t, err)
+
+		container := eventsourcingdb.NewContainer().WithImageTag(imageVersion)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -93,7 +100,10 @@ func TestReadEventTypes(t *testing.T) {
 	t.Run("supports reading event schemas", func(t *testing.T) {
 		ctx := context.Background()
 
-		container := eventsourcingdb.NewContainer()
+		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		require.NoError(t, err)
+
+		container := eventsourcingdb.NewContainer().WithImageTag(imageVersion)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
