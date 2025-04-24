@@ -28,7 +28,7 @@ func (c *Client) WriteEvents(events []EventCandidate, preconditions []Preconditi
 
 	type RequestBody struct {
 		Events        []RequestBodyEvent `json:"events"`
-		Preconditions []any              `json:"preconditions"`
+		Preconditions []any              `json:"preconditions,omitempty"`
 	}
 
 	var requestBody RequestBody

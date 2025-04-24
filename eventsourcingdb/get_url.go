@@ -9,9 +9,6 @@ func (c *Client) getURL(path string) (*url.URL, error) {
 	}
 
 	targetURL := c.baseURL.ResolveReference(urlPath)
-	if err != nil {
-		return nil, err
-	}
 
 	return targetURL, nil
 }
