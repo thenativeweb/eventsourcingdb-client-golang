@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
 )
 
 func TestReadSubjects(t *testing.T) {
@@ -17,7 +18,10 @@ func TestReadSubjects(t *testing.T) {
 	t.Run("reads no subjects if the database is empty", func(t *testing.T) {
 		ctx := context.Background()
 
-		container := eventsourcingdb.NewContainer()
+		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		require.NoError(t, err)
+
+		container := eventsourcingdb.NewContainer().WithImageTag(imageVersion)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -40,7 +44,10 @@ func TestReadSubjects(t *testing.T) {
 	t.Run("reads all subjects", func(t *testing.T) {
 		ctx := context.Background()
 
-		container := eventsourcingdb.NewContainer()
+		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		require.NoError(t, err)
+
+		container := eventsourcingdb.NewContainer().WithImageTag(imageVersion)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -94,7 +101,10 @@ func TestReadSubjects(t *testing.T) {
 	t.Run("reads all subjects from the base subject", func(t *testing.T) {
 		ctx := context.Background()
 
-		container := eventsourcingdb.NewContainer()
+		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		require.NoError(t, err)
+
+		container := eventsourcingdb.NewContainer().WithImageTag(imageVersion)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
