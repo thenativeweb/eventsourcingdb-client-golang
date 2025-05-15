@@ -111,6 +111,8 @@ func (c *Client) ObserveEvents(
 			}
 
 			switch line.Type {
+			case "heartbeat":
+				continue
 			case "event":
 				var event Event
 				err := json.Unmarshal(line.Payload, &event)
