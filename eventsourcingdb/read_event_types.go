@@ -84,7 +84,9 @@ func (c *Client) ReadEventTypes(
 					Schema:    streamEventType.Schema,
 				}
 
-				yield(eventType, nil)
+				if !yield(eventType, nil) {
+					return
+				}
 				continue
 			case "error":
 				var error internal.Error

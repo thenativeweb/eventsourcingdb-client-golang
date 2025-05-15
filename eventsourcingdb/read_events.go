@@ -131,7 +131,9 @@ func (c *Client) ReadEvents(
 					return
 				}
 
-				yield(event, nil)
+				if !yield(event, nil) {
+					return
+				}
 				continue
 			case "error":
 				var error internal.Error
