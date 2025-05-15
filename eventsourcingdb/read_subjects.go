@@ -84,7 +84,9 @@ func (c *Client) ReadSubjects(
 					return
 				}
 
-				yield(streamSubject.Subject, nil)
+				if !yield(streamSubject.Subject, nil) {
+					return
+				}
 				continue
 			case "error":
 				var error internal.Error

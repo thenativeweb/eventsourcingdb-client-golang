@@ -71,7 +71,9 @@ func (c *Client) RunEventQLQuery(
 			case "heartbeat":
 				continue
 			case "row":
-				yield(line.Payload, nil)
+				if !yield(line.Payload, nil) {
+					return
+				}
 				continue
 			case "error":
 				var error internal.Error

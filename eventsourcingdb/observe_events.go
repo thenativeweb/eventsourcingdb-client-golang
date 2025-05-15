@@ -121,7 +121,9 @@ func (c *Client) ObserveEvents(
 					return
 				}
 
-				yield(event, nil)
+				if !yield(event, nil) {
+					return
+				}
 				continue
 			case "error":
 				var error internal.Error
