@@ -53,6 +53,13 @@ func (c *Client) WriteEvents(events []EventCandidate, preconditions []Preconditi
 					"eventId": precondition.EventID(),
 				},
 			})
+		case isEventQLTruePrecondition:
+			requestBody.Preconditions = append(requestBody.Preconditions, map[string]any{
+				"type": "isEventQLTrue",
+				"payload": map[string]any{
+					"query": precondition.Query(),
+				},
+			})
 		default:
 			return nil, fmt.Errorf("unsupported predicate type: %T", precondition)
 		}
