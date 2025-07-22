@@ -128,6 +128,23 @@ writtenEvents, err := client.WriteEvents(
 
 *Note that according to the CloudEvents standard, event IDs must be of type string.*
 
+#### Using the `isEventQLTrue` precondition
+
+If you want to write events depending on an EventQL query, use the `NewIsEventQLTruePrecondition` function to create a precondition:
+
+```go
+writtenEvents, err := client.WriteEvents(
+  []eventsourcingdb.EventCandidate{
+    // ...
+  },
+  []eventsourcingdb.Precondition{
+    eventsourcingdb.NewIsEventQLTruePrecondition("FROM e IN events WHERE e.type == 'io.eventsourcingdb.library.book-borrowed' PROJECT INTO COUNT() < 10"),
+  },
+)
+```
+
+*Note that the query must return a single row with a single value, which is interpreted as a boolean.*
+
 ### Reading Events
 
 To read all events of a subject, call the `ReadEvents` function with a context, the subject and an options object. Set the `Recursive` option to `false`. This ensures that only events of the given subject are returned, not events of nested subjects.
