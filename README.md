@@ -128,7 +128,7 @@ writtenEvents, err := client.WriteEvents(
 
 *Note that according to the CloudEvents standard, event IDs must be of type string.*
 
-#### Using the `isEventQLTrue` precondition
+#### Using the `isEventQlTrue` precondition
 
 If you want to write events depending on an EventQL query, use the `NewIsEventQLTruePrecondition` function to create a precondition:
 

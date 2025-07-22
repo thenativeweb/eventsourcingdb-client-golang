@@ -205,7 +205,7 @@ func TestWriteEvents(t *testing.T) {
 		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200'")
 	})
 
-	t.Run("supports the isEventQLTrue precondition", func(t *testing.T) {
+	t.Run("supports the isEventQlTrue precondition", func(t *testing.T) {
 		ctx := context.Background()
 
 		imageVersion, err := internal.GetImageVersionFromDockerfile()
