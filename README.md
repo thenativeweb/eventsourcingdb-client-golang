@@ -519,6 +519,15 @@ for eventType, err := range client.ReadEventTypes(
 cancel()
 ```
 
+### Listing A Specific Event Type
+To list a specific event type, call the `ReadEventType` function with the event type as an argument. The function returns an the detailed event type, which includes the schema:
+
+```golang
+eventType, err := client.ReadEventType(
+  "io.eventsourcingdb.library.book-acquired",
+)
+```
+
 ### Using Testcontainers
 
 Call the `NewContainer` function, start the test container, defer stopping it, get a client, and run your test code:
