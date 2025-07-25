@@ -520,7 +520,7 @@ cancel()
 ```
 
 ### Listing A Specific Event Type
-To list a specific event type, call the `ReadEventType` function with the event type as an argument. The function returns an the detailed event type, which includes the schema:
+To list a specific event type, call the `ReadEventType` function with the event type as an argument. The function returns the detailed event type, which includes the schema:
 
 ```golang
 eventType, err := client.ReadEventType(
