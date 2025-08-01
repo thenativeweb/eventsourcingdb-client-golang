@@ -53,9 +53,9 @@ func (c *Client) WriteEvents(events []EventCandidate, preconditions []Preconditi
 					"eventId": precondition.EventID(),
 				},
 			})
-		case isEventQLTruePrecondition:
+		case isEventQLQueryTruePrecondition:
 			requestBody.Preconditions = append(requestBody.Preconditions, map[string]any{
-				"type": "isEventQlTrue",
+				"type": "isEventQlQueryTrue",
 				"payload": map[string]any{
 					"query": precondition.Query(),
 				},

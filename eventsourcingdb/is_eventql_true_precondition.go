@@ -1,17 +1,17 @@
 package eventsourcingdb
 
-type isEventQLTruePrecondition struct {
+type isEventQLQueryTruePrecondition struct {
 	query string
 }
 
-func (isEventQLTruePrecondition) discriminator() {}
+func (isEventQLQueryTruePrecondition) discriminator() {}
 
-func NewIsEventQLTruePrecondition(query string) Precondition {
-	return isEventQLTruePrecondition{
+func NewIsEventQLQueryTruePrecondition(query string) Precondition {
+	return isEventQLQueryTruePrecondition{
 		query,
 	}
 }
 
-func (p isEventQLTruePrecondition) Query() string {
+func (p isEventQLQueryTruePrecondition) Query() string {
 	return p.query
 }
