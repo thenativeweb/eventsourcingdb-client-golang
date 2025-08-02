@@ -128,9 +128,9 @@ writtenEvents, err := client.WriteEvents(
 
 *Note that according to the CloudEvents standard, event IDs must be of type string.*
 
-#### Using the `isEventQlTrue` precondition
+#### Using the `isEventQlQueryTrue` precondition
 
-If you want to write events depending on an EventQL query, use the `NewIsEventQLTruePrecondition` function to create a precondition:
+If you want to write events depending on an EventQL query, use the `NewIsEventQLQueryTruePrecondition` function to create a precondition:
 
 ```go
 writtenEvents, err := client.WriteEvents(
@@ -138,7 +138,7 @@ writtenEvents, err := client.WriteEvents(
     // ...
   },
   []eventsourcingdb.Precondition{
-    eventsourcingdb.NewIsEventQLTruePrecondition("FROM e IN events WHERE e.type == 'io.eventsourcingdb.library.book-borrowed' PROJECT INTO COUNT() < 10"),
+    eventsourcingdb.NewIsEventQLQueryTruePrecondition("FROM e IN events WHERE e.type == 'io.eventsourcingdb.library.book-borrowed' PROJECT INTO COUNT() < 10"),
   },
 )
 ```
