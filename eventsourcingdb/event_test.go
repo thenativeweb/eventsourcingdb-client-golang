@@ -227,7 +227,9 @@ func TestVerifySignature(t *testing.T) {
 
 		invalidSignature := *writtenEvent.Signature
 		invalidSignature = invalidSignature + "0123456789abcdef"
-		writtenEvent.Signature = &invalidSignature
+		tamperedSignature := *writtenEvent.Signature
+		tamperedSignature = tamperedSignature + "0123456789abcdef"
+		writtenEvent.Signature = &tamperedSignature
 
 		verificationKey, err := container.GetVerificationKey()
 		require.NoError(t, err)
