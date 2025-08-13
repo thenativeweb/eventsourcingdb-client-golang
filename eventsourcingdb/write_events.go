@@ -118,6 +118,7 @@ func (c *Client) WriteEvents(events []EventCandidate, preconditions []Preconditi
 			PredecessorHash: cloudEvent.PredecessorHash,
 			TraceParent:     cloudEvent.TraceParent,
 			TraceState:      cloudEvent.TraceState,
+			Signature:       cloudEvent.Signature,
 		}
 		writtenEvents = append(writtenEvents, writtenEvent)
 	}

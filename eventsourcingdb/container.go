@@ -1,7 +1,12 @@
 package eventsourcingdb
 
 import (
+	"bytes"
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"net/url"
@@ -17,6 +22,7 @@ type Container struct {
 	imageTag     string
 	internalPort int
 	apiToken     string
+	signingKey   *ed25519.PrivateKey
 	container    testcontainers.Container
 }
 
@@ -26,6 +32,7 @@ func NewContainer() *Container {
 		imageTag:     "latest",
 		internalPort: 3000,
 		apiToken:     "secret",
+		signingKey:   nil,
 	}
 }
 
@@ -39,22 +46,56 @@ func (c *Container) WithAPIToken(token string) *Container {
 	return c
 }
 
+func (c *Container) WithSigningKey() *Container {
+	_, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+	c.signingKey = &privateKey
+	return c
+}
+
 func (c *Container) WithPort(port int) *Container {
 	c.internalPort = port
 	return c
 }
 
 func (c *Container) Start(ctx context.Context) error {
+	files := []testcontainers.ContainerFile{}
+
+	cmd := []string{
+		"run",
+		"--api-token", c.apiToken,
+		"--data-directory-temporary",
+		"--http-enabled",
+		"--https-enabled=false",
+	}
+
+	if c.signingKey != nil {
+		signingKeyBytes, err := x509.MarshalPKCS8PrivateKey(*c.signingKey)
+		if err != nil {
+			return err
+		}
+
+		block := &pem.Block{Type: "PRIVATE KEY", Bytes: signingKeyBytes}
+		pemBytes := pem.EncodeToMemory(block)
+		reader := bytes.NewReader(pemBytes)
+
+		targetPath := "/etc/esdb/signing-key.pem"
+
+		files = append(files, testcontainers.ContainerFile{
+			Reader:            reader,
+			ContainerFilePath: targetPath,
+			FileMode:          0777,
+		})
+		cmd = append(cmd, "--signing-key-file", targetPath)
+	}
+
 	request := testcontainers.ContainerRequest{
 		Image:        fmt.Sprintf("%s:%s", c.imageName, c.imageTag),
 		ExposedPorts: []string{fmt.Sprintf("%d/tcp", c.internalPort)},
-		Cmd: []string{
-			"run",
-			"--api-token", c.apiToken,
-			"--data-directory-temporary",
-			"--http-enabled",
-			"--https-enabled=false",
-		},
+		Files:        files,
+		Cmd:          cmd,
 		WaitingFor: wait.
 			ForHTTP("/api/v1/ping").
 			WithPort(nat.Port(fmt.Sprintf("%d/tcp", c.internalPort))).
@@ -114,6 +155,27 @@ func (c *Container) GetBaseURL(ctx context.Context) (*url.URL, error) {
 
 func (c *Container) GetAPIToken() string {
 	return c.apiToken
+}
+
+func (c *Container) GetSigningKey() (*ed25519.PrivateKey, error) {
+	if c.signingKey == nil {
+		return nil, errors.New("signing key not set")
+	}
+
+	return c.signingKey, nil
+}
+
+func (c *Container) GetVerificationKey() (*ed25519.PublicKey, error) {
+	if c.signingKey == nil {
+		return nil, errors.New("signing key not set")
+	}
+
+	verificationKey, ok := c.signingKey.Public().(ed25519.PublicKey)
+	if !ok {
+		return nil, errors.New("failed to get verification key from signing key")
+	}
+
+	return &verificationKey, nil
 }
 
 func (c *Container) IsRunning() bool {

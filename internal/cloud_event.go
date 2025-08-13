@@ -15,4 +15,5 @@ type CloudEvent struct {
 	PredecessorHash string          `json:"predecessorhash"`
 	TraceParent     *string         `json:"traceparent"`
 	TraceState      *string         `json:"tracestate"`
+	Signature       *string         `json:"signature"`
 }
