@@ -3,7 +3,7 @@ module github.com/thenativeweb/eventsourcingdb-client-golang
 go 1.24.0
 
 require (
-	github.com/docker/go-connections v0.5.0
+	github.com/docker/go-connections v0.6.0
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.38.0
 )
