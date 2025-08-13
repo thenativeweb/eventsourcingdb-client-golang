@@ -603,6 +603,22 @@ container := eventsourcingdb.NewContainer().
   WithAPIToken("secret")
 ```
 
+If you want to sign events, call the `WithSigningKey` function. This generates a new signing and verification key pair inside the container:
+
+```go
+container := eventsourcingdb.NewContainer().
+  WithSigningKey()
+```
+
+You can retrieve the private key (for signing) and the public key (for verifying signatures) once the container has been started:
+
+```go
+signingKey, err := container.GetSigningKey()
+verificationKey, err := container.GetVerificationKey()
+```
+
+The `signingKey` can be used when configuring the container to sign outgoing events. The `verificationKey` can be passed to `VerifySignature` when verifying events read from the database.
+
 #### Configuring the Client Manually
 
 In case you need to set up the client yourself, use the following functions to get details on the container:
