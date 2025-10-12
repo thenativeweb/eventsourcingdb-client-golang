@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
 )
 
 func (c *Client) RegisterEventSchema(eventType string, schema map[string]any) error {
@@ -46,6 +48,11 @@ func (c *Client) RegisterEventSchema(eventType string, schema map[string]any) er
 		return err
 	}
 	defer response.Body.Close()
+
+	err = internal.ValidateServerHeader(response)
+	if err != nil {
+		return err
+	}
 
 	if response.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed to register event schema, got HTTP status code '%d', expected '%d'", response.StatusCode, http.StatusOK)

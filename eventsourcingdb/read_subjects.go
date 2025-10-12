@@ -57,6 +57,12 @@ func (c *Client) ReadSubjects(
 		}
 		defer response.Body.Close()
 
+		err = internal.ValidateServerHeader(response)
+		if err != nil {
+			yield("", err)
+			return
+		}
+
 		if response.StatusCode != http.StatusOK {
 			yield("", fmt.Errorf("failed to read subjects, got HTTP status code '%d', expected '%d'", response.StatusCode, http.StatusOK))
 			return

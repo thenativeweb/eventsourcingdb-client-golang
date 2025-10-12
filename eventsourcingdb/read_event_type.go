@@ -48,6 +48,11 @@ func (c *Client) ReadEventType(
 	}
 	defer response.Body.Close()
 
+	err = internal.ValidateServerHeader(response)
+	if err != nil {
+		return EventType{}, err
+	}
+
 	if response.StatusCode != http.StatusOK {
 		return EventType{}, fmt.Errorf("failed to read event type, got HTTP status code '%d', expected '%d'", response.StatusCode, http.StatusOK)
 	}
