@@ -104,6 +104,12 @@ func (c *Client) ReadEvents(
 		}
 		defer response.Body.Close()
 
+		err = internal.ValidateServerHeader(response)
+		if err != nil {
+			yield(Event{}, err)
+			return
+		}
+
 		if response.StatusCode != http.StatusOK {
 			yield(Event{}, fmt.Errorf("failed to read events, got HTTP status code '%d', expected '%d'", response.StatusCode, http.StatusOK))
 			return

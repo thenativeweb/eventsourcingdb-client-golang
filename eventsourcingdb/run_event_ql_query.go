@@ -56,6 +56,12 @@ func (c *Client) RunEventQLQuery(
 		}
 		defer response.Body.Close()
 
+		err = internal.ValidateServerHeader(response)
+		if err != nil {
+			yield(nil, err)
+			return
+		}
+
 		if response.StatusCode != http.StatusOK {
 			yield(nil, fmt.Errorf("failed to run EventQL query, got HTTP status code '%d', expected '%d'", response.StatusCode, http.StatusOK))
 			return
