@@ -88,6 +88,11 @@ func (c *Client) WriteEvents(events []EventCandidate, preconditions []Preconditi
 	}
 	defer response.Body.Close()
 
+	err = internal.ValidateServerHeader(response)
+	if err != nil {
+		return nil, err
+	}
+
 	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to write events, got HTTP status code '%d', expected '%d'", response.StatusCode, http.StatusOK)
 	}
