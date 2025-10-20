@@ -154,6 +154,73 @@ func TestWriteEvents(t *testing.T) {
 		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200'")
 	})
 
+	t.Run("supports the isSubjectPopulated precondition", func(t *testing.T) {
+		ctx := context.Background()
+
+		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		require.NoError(t, err)
+
+		container := eventsourcingdb.NewContainer().WithImageTag(imageVersion)
+		container.Start(ctx)
+		defer container.Stop(ctx)
+
+		client, err := container.GetClient(ctx)
+		require.NoError(t, err)
+
+		firstEvent := eventsourcingdb.EventCandidate{
+			Source:  "https://www.eventsourcingdb.io",
+			Subject: "/test",
+			Type:    "io.eventsourcingdb.test",
+			Data: EventData{
+				Value: 23,
+			},
+		}
+
+		secondEvent := eventsourcingdb.EventCandidate{
+			Source:  "https://www.eventsourcingdb.io",
+			Subject: "/test",
+			Type:    "io.eventsourcingdb.test",
+			Data: EventData{
+				Value: 42,
+			},
+		}
+
+		_, err = client.WriteEvents(
+			[]eventsourcingdb.EventCandidate{
+				secondEvent,
+			},
+			[]eventsourcingdb.Precondition{
+				eventsourcingdb.NewIsSubjectPopulatedPrecondition("/test"),
+			},
+		)
+		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200'")
+
+		_, err = client.WriteEvents(
+			[]eventsourcingdb.EventCandidate{
+				firstEvent,
+			},
+			nil,
+		)
+		require.NoError(t, err)
+
+		writtenEvents, err := client.WriteEvents(
+			[]eventsourcingdb.EventCandidate{
+				secondEvent,
+			},
+			[]eventsourcingdb.Precondition{
+				eventsourcingdb.NewIsSubjectPopulatedPrecondition("/test"),
+			},
+		)
+		assert.NoError(t, err)
+		assert.Len(t, writtenEvents, 1)
+		assert.Equal(t, "1", writtenEvents[0].ID)
+
+		var eventData EventData
+		err = json.Unmarshal(writtenEvents[0].Data, &eventData)
+		assert.NoError(t, err)
+		assert.Equal(t, 42, eventData.Value)
+	})
+
 	t.Run("supports the isSubjectOnEventId precondition", func(t *testing.T) {
 		ctx := context.Background()
 

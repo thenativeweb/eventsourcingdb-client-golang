@@ -111,6 +111,21 @@ writtenEvents, err := client.WriteEvents(
 )
 ```
 
+#### Using the `isSubjectPopulated` precondition
+
+If you only want to write events in case a subject (such as `/books/42`) already has at least one event, use the `NewIsSubjectPopulatedPrecondition` function to create a precondition and pass it in a slice as the second argument:
+
+```go
+writtenEvents, err := client.WriteEvents(
+  []eventsourcingdb.EventCandidate{
+    // ...
+  },
+  []eventsourcingdb.Precondition{
+    eventsourcingdb.NewIsSubjectPopulatedPrecondition("/books/42"),
+  },
+)
+```
+
 #### Using the `isSubjectOnEventId` precondition
 
 If you only want to write events in case the last event of a subject (such as `/books/42`) has a specific ID (e.g., `0`), use the `NewIsSubjectOnEventIDPrecondition` function to create a precondition and pass it in a slice as the second argument:
