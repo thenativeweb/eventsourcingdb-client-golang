@@ -45,6 +45,13 @@ func (c *Client) WriteEvents(events []EventCandidate, preconditions []Preconditi
 					"subject": precondition.Subject(),
 				},
 			})
+		case isSubjectPopulatedPrecondition:
+			requestBody.Preconditions = append(requestBody.Preconditions, map[string]any{
+				"type": "isSubjectPopulated",
+				"payload": map[string]any{
+					"subject": precondition.Subject(),
+				},
+			})
 		case isSubjectOnEventIDPrecondition:
 			requestBody.Preconditions = append(requestBody.Preconditions, map[string]any{
 				"type": "isSubjectOnEventId",
