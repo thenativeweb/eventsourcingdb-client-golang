@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -98,7 +97,7 @@ func (c *Container) Start(ctx context.Context) error {
 		Cmd:          cmd,
 		WaitingFor: wait.
 			ForHTTP("/api/v1/ping").
-			WithPort(nat.Port(fmt.Sprintf("%d/tcp", c.internalPort))).
+			WithPort(fmt.Sprintf("%d/tcp", c.internalPort)).
 			WithStartupTimeout(10 * time.Second),
 	}
 
@@ -126,12 +125,11 @@ func (c *Container) GetMappedPort(ctx context.Context) (int, error) {
 		return 0, errors.New("container must be running")
 	}
 
-	natPort := nat.Port(fmt.Sprintf("%d/tcp", c.internalPort))
-	port, err := c.container.MappedPort(ctx, natPort)
+	port, err := c.container.MappedPort(ctx, fmt.Sprintf("%d/tcp", c.internalPort))
 	if err != nil {
 		return 0, err
 	}
-	return port.Int(), nil
+	return int(port.Num()), nil
 }
 
 func (c *Container) GetBaseURL(ctx context.Context) (*url.URL, error) {
