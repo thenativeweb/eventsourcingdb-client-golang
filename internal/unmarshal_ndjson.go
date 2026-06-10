@@ -26,6 +26,12 @@ func UnmarshalNDJSON(ctx context.Context, r io.Reader) iter.Seq2[Line, error] {
 		// copy that scanner.Text() would create. It reads successive JSON
 		// values from the stream, transparently skipping the newlines that
 		// separate the NDJSON lines.
+		//
+		// This deliberately imposes no upper bound on the size of a single
+		// value. We rely on the fact that the client talks to a trusted,
+		// authenticated EventSourcingDB server that already bounds payload
+		// sizes on its side; a malformed or hostile server could otherwise
+		// make the decoder buffer an arbitrarily large value.
 		decoder := json.NewDecoder(r)
 
 		for {
