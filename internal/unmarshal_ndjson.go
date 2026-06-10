@@ -16,6 +16,11 @@ type Line struct {
 func UnmarshalNDJSON(ctx context.Context, r io.Reader) iter.Seq2[Line, error] {
 	return func(yield func(Line, error) bool) {
 		scanner := bufio.NewScanner(r)
+		// By default, bufio.Scanner has a maximum token size of 64KB.
+		// Since the event payload alone can reach 64KB, we increase the scanner's
+		// buffer size to accommodate the payload plus its metadata.
+		buf := make([]byte, 0, 100*1024)
+		scanner.Buffer(buf, 100*1024)
 
 		for scanner.Scan() {
 			select {

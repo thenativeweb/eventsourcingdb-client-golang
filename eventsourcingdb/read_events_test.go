@@ -3,6 +3,7 @@ package eventsourcingdb_test
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -99,6 +100,47 @@ func TestReadEvents(t *testing.T) {
 		}
 
 		assert.Len(t, eventsRead, 2)
+	})
+
+	t.Run("reads huge event", func(t *testing.T) {
+		ctx := context.Background()
+
+		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		require.NoError(t, err)
+
+		container := eventsourcingdb.NewContainer().WithImageTag(imageVersion)
+		container.Start(ctx)
+		defer container.Stop(ctx)
+
+		client, err := container.GetClient(ctx)
+		require.NoError(t, err)
+
+		firstEvent := eventsourcingdb.EventCandidate{
+			Source:  "https://www.eventsourcingdb.io",
+			Subject: "/test",
+			Type:    "io.eventsourcingdb.test",
+			Data: map[string]any{
+				"value": strings.Repeat("x", 64*1024),
+			},
+		}
+
+		_, err = client.WriteEvents(
+			[]eventsourcingdb.EventCandidate{
+				firstEvent,
+			},
+			nil,
+		)
+		require.NoError(t, err)
+
+		for _, err := range client.ReadEvents(
+			ctx,
+			"/test",
+			eventsourcingdb.ReadEventsOptions{
+				Recursive: false,
+			},
+		) {
+			assert.NoError(t, err)
+		}
 	})
 
 	t.Run("reads recursively", func(t *testing.T) {
