@@ -115,9 +115,12 @@ func TestReadEvents(t *testing.T) {
 		client, err := container.GetClient(ctx)
 		require.NoError(t, err)
 
-		// Use characters that require JSON escaping so the serialized line is
-		// significantly larger than the raw payload size.
-		hugeValue := strings.Repeat(`"\`, 32*1024)
+		// The server enforces a maximum payload size, so we cannot write the
+		// heavily escaped, beyond-100 KB case here; that is covered by the
+		// unit test against UnmarshalNDJSON. We use a payload large enough
+		// that the resulting NDJSON line exceeds the former 64 KB scanner
+		// default, and verify it is read back complete and unchanged.
+		hugeValue := strings.Repeat("x", 64*1024)
 
 		firstEvent := eventsourcingdb.EventCandidate{
 			Source:  "https://www.eventsourcingdb.io",
