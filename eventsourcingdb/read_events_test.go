@@ -3,6 +3,7 @@ package eventsourcingdb_test
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -99,6 +100,70 @@ func TestReadEvents(t *testing.T) {
 		}
 
 		assert.Len(t, eventsRead, 2)
+	})
+
+	t.Run("reads a huge event without truncating its payload", func(t *testing.T) {
+		ctx := context.Background()
+
+		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		require.NoError(t, err)
+
+		container := eventsourcingdb.NewContainer().WithImageTag(imageVersion)
+		container.Start(ctx)
+		defer container.Stop(ctx)
+
+		client, err := container.GetClient(ctx)
+		require.NoError(t, err)
+
+		// The server enforces a maximum payload size, so we cannot write the
+		// heavily escaped, beyond-100 KB case here; that is covered by the
+		// unit test against UnmarshalNDJSON. We use a payload large enough
+		// that the resulting NDJSON line exceeds the former 64 KB scanner
+		// default, and verify it is read back complete and unchanged.
+		hugeValue := strings.Repeat("x", 64*1024)
+
+		firstEvent := eventsourcingdb.EventCandidate{
+			Source:  "https://www.eventsourcingdb.io",
+			Subject: "/test",
+			Type:    "io.eventsourcingdb.test",
+			Data: map[string]any{
+				"value": hugeValue,
+			},
+		}
+
+		_, err = client.WriteEvents(
+			[]eventsourcingdb.EventCandidate{
+				firstEvent,
+			},
+			nil,
+		)
+		require.NoError(t, err)
+
+		eventsRead := []eventsourcingdb.Event{}
+
+		for event, err := range client.ReadEvents(
+			ctx,
+			"/test",
+			eventsourcingdb.ReadEventsOptions{
+				Recursive: false,
+			},
+		) {
+			require.NoError(t, err)
+			eventsRead = append(eventsRead, event)
+		}
+
+		require.Len(t, eventsRead, 1)
+
+		var data struct {
+			Value string `json:"value"`
+		}
+		err = json.Unmarshal(eventsRead[0].Data, &data)
+		require.NoError(t, err)
+
+		// Verify the payload is complete and identical to what was written,
+		// not just that reading succeeded.
+		assert.Len(t, data.Value, len(hugeValue))
+		assert.Equal(t, hugeValue, data.Value)
 	})
 
 	t.Run("reads recursively", func(t *testing.T) {
