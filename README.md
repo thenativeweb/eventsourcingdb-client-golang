@@ -6,14 +6,14 @@ EventSourcingDB enables you to build and operate event-driven applications with 
 
 For more information on EventSourcingDB, see its [official documentation](https://docs.eventsourcingdb.io/).
 
-This client SDK includes support for [Testcontainers](https://testcontainers.com/) to spin up EventSourcingDB instances in integration tests. For details, see [Using Testcontainers](#using-testcontainers).
+This client SDK includes support for [Testcontainers](https://testcontainers.com/) to spin up EventSourcingDB instances in integration tests. It lives in a package of its own, so applications that only use the client do not depend on Testcontainers. For details, see [Using Testcontainers](#using-testcontainers).
 
 ## Getting Started
 
 Install the client SDK:
 
 ```shell
-go get github.com/thenativeweb/eventsourcingdb-client-golang
+go get github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb
 ```
 
 Import the package and create an instance by providing the URL of your EventSourcingDB instance and the API token to use:
@@ -578,12 +578,22 @@ if err != nil {
 
 ### Using Testcontainers
 
+The test container lives in the `eventsourcingdbtest` package. Add it to your module, and import it in your tests:
+
+```shell
+go get github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdbtest
+```
+
+```go
+import "github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdbtest"
+```
+
 Call the `NewContainer` function, start the test container, defer stopping it, get a client, and run your test code:
 
 ```go
 ctx := context.TODO()
 
-container := eventsourcingdb.NewContainer()
+container := eventsourcingdbtest.NewContainer()
 container.Start(ctx)
 defer container.Stop(ctx)
 
@@ -606,14 +616,14 @@ isRunning := container.IsRunning()
 By default, `Container` uses the `latest` tag of the official EventSourcingDB Docker image. To change that, call the `WithImageTag` function:
 
 ```go
-container := eventsourcingdb.NewContainer().
+container := eventsourcingdbtest.NewContainer().
   WithImageTag("1.0.0")
 ```
 
 Similarly, you can configure the port to use and the API token. Call the `WithPort` or the `WithAPIToken` function respectively:
 
 ```go
-container := eventsourcingdb.NewContainer().
+container := eventsourcingdbtest.NewContainer().
   WithPort(4000).
   WithAPIToken("secret")
 ```
@@ -621,7 +631,7 @@ container := eventsourcingdb.NewContainer().
 If you want to sign events, call the `WithSigningKey` function. This generates a new signing and verification key pair inside the container:
 
 ```go
-container := eventsourcingdb.NewContainer().
+container := eventsourcingdbtest.NewContainer().
   WithSigningKey()
 ```
 
@@ -642,3 +652,5 @@ In case you need to set up the client yourself, use the following functions to g
 - `GetMappedPort()` returns the port
 - `GetBaseURL()` returns the full URL of the container
 - `GetAPIToken()` returns the API token
+
+*Note that up to version 1.5, the test container was part of the `eventsourcingdb` package. To upgrade, import `eventsourcingdbtest` and call `eventsourcingdbtest.NewContainer` instead of `eventsourcingdb.NewContainer`.*

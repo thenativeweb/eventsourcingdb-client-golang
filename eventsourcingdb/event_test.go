@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdbtest"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
 )
 
@@ -25,7 +26,7 @@ func TestVerifyHash(t *testing.T) {
 		imageVersion, err := internal.GetImageVersionFromDockerfile()
 		require.NoError(t, err)
 
-		container := eventsourcingdb.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
 		err = container.Start(ctx)
 		require.NoError(t, err)
 		defer container.Stop(ctx)
@@ -60,7 +61,7 @@ func TestVerifyHash(t *testing.T) {
 		imageVersion, err := internal.GetImageVersionFromDockerfile()
 		require.NoError(t, err)
 
-		container := eventsourcingdb.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
 		err = container.Start(ctx)
 		require.NoError(t, err)
 		defer container.Stop(ctx)
@@ -106,7 +107,7 @@ func TestVerifySignature(t *testing.T) {
 		imageVersion, err := internal.GetImageVersionFromDockerfile()
 		require.NoError(t, err)
 
-		container := eventsourcingdb.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
 
 		err = container.Start(ctx)
 		require.NoError(t, err)
@@ -147,7 +148,7 @@ func TestVerifySignature(t *testing.T) {
 		imageVersion, err := internal.GetImageVersionFromDockerfile()
 		require.NoError(t, err)
 
-		container := eventsourcingdb.NewContainer().
+		container := eventsourcingdbtest.NewContainer().
 			WithImageTag(imageVersion).
 			WithSigningKey()
 
@@ -195,7 +196,7 @@ func TestVerifySignature(t *testing.T) {
 		imageVersion, err := internal.GetImageVersionFromDockerfile()
 		require.NoError(t, err)
 
-		container := eventsourcingdb.NewContainer().
+		container := eventsourcingdbtest.NewContainer().
 			WithImageTag(imageVersion).
 			WithSigningKey()
 
@@ -242,7 +243,7 @@ func TestVerifySignature(t *testing.T) {
 		imageVersion, err := internal.GetImageVersionFromDockerfile()
 		require.NoError(t, err)
 
-		container := eventsourcingdb.NewContainer().
+		container := eventsourcingdbtest.NewContainer().
 			WithImageTag(imageVersion).
 			WithSigningKey()
 
