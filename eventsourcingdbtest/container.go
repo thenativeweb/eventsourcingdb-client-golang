@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/testcontainers/testcontainers-go"
@@ -69,6 +70,7 @@ func (c *Container) Start(ctx context.Context) error {
 		"--data-directory-temporary",
 		"--http-enabled",
 		"--https-enabled=false",
+		"--http-port", strconv.Itoa(c.internalPort),
 	}
 
 	if c.signingKey != nil {
