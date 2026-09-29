@@ -1,4 +1,4 @@
-package eventsourcingdb
+package eventsourcingdbtest
 
 import (
 	"bytes"
@@ -10,10 +10,12 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
 )
 
 type Container struct {
@@ -68,6 +70,7 @@ func (c *Container) Start(ctx context.Context) error {
 		"--data-directory-temporary",
 		"--http-enabled",
 		"--https-enabled=false",
+		"--http-port", strconv.Itoa(c.internalPort),
 	}
 
 	if c.signingKey != nil {
@@ -194,13 +197,13 @@ func (c *Container) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (c *Container) GetClient(ctx context.Context) (*Client, error) {
+func (c *Container) GetClient(ctx context.Context) (*eventsourcingdb.Client, error) {
 	baseURL, err := c.GetBaseURL(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := NewClient(baseURL, c.apiToken)
+	client, err := eventsourcingdb.NewClient(baseURL, c.apiToken)
 	if err != nil {
 		return nil, err
 	}
