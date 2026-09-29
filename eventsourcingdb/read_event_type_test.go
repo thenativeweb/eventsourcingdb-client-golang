@@ -23,7 +23,7 @@ func TestReadEventType(t *testing.T) {
 
 		_, err = client.ReadEventType("io.eventsourcingdb.test.nonexistent")
 		require.Error(t, err)
-		assert.Equal(t, "failed to read event type, got HTTP status code '404', expected '200'", err.Error())
+		assert.Equal(t, "failed to read event type, got HTTP status code '404', expected '200': event type 'io.eventsourcingdb.test.nonexistent' not found", err.Error())
 	})
 
 	t.Run("fails if the event type is malformed", func(t *testing.T) {
@@ -39,7 +39,7 @@ func TestReadEventType(t *testing.T) {
 
 		_, err = client.ReadEventType("io.eventsourcingdb.test.")
 		require.Error(t, err)
-		assert.Equal(t, "failed to read event type, got HTTP status code '400', expected '200'", err.Error())
+		assert.Equal(t, "failed to read event type, got HTTP status code '400', expected '200': invalid event type: 'io.eventsourcingdb.test.'", err.Error())
 	})
 
 	t.Run("reads an existing event type", func(t *testing.T) {

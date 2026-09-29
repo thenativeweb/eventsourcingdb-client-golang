@@ -3,7 +3,6 @@ package eventsourcingdb
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -54,7 +53,7 @@ func (c *Client) ReadEventType(
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return EventType{}, fmt.Errorf("failed to read event type, got HTTP status code '%d', expected '%d'", response.StatusCode, http.StatusOK)
+		return EventType{}, internal.NewStatusError("read event type", response)
 	}
 
 	var eventTypeResponse internal.StreamEventType

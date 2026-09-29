@@ -3,7 +3,6 @@ package eventsourcingdb
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -55,7 +54,7 @@ func (c *Client) RegisterEventSchema(eventType string, schema map[string]any) er
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to register event schema, got HTTP status code '%d', expected '%d'", response.StatusCode, http.StatusOK)
+		return internal.NewStatusError("register event schema", response)
 	}
 
 	return nil
