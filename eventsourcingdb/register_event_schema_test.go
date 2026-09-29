@@ -78,6 +78,6 @@ func TestRegisterEventSchema(t *testing.T) {
 			eventType,
 			schema,
 		)
-		assert.EqualError(t, err, "failed to register event schema, got HTTP status code '409', expected '200'")
+		assert.EqualError(t, err, "failed to register event schema, got HTTP status code '409', expected '200': schema conflict: schema already exists")
 	})
 }

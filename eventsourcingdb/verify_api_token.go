@@ -2,7 +2,6 @@ package eventsourcingdb
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
@@ -34,7 +33,7 @@ func (c *Client) VerifyAPIToken() error {
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to verify API token, got HTTP status code '%d', expected '%d'", response.StatusCode, http.StatusOK)
+		return internal.NewStatusError("verify API token", response)
 	}
 
 	type Result struct {

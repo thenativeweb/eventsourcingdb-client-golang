@@ -111,7 +111,7 @@ func (c *Client) ReadEvents(
 		}
 
 		if response.StatusCode != http.StatusOK {
-			yield(Event{}, fmt.Errorf("failed to read events, got HTTP status code '%d', expected '%d'", response.StatusCode, http.StatusOK))
+			yield(Event{}, internal.NewStatusError("read events", response))
 			return
 		}
 

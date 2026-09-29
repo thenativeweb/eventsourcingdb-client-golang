@@ -152,7 +152,7 @@ func TestWriteEvents(t *testing.T) {
 			},
 		)
 
-		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200'")
+		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200': state conflict: precondition failed")
 	})
 
 	t.Run("supports the isSubjectPopulated precondition", func(t *testing.T) {
@@ -194,7 +194,7 @@ func TestWriteEvents(t *testing.T) {
 				eventsourcingdb.NewIsSubjectPopulatedPrecondition("/test"),
 			},
 		)
-		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200'")
+		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200': state conflict: precondition failed")
 
 		_, err = client.WriteEvents(
 			[]eventsourcingdb.EventCandidate{
@@ -270,7 +270,7 @@ func TestWriteEvents(t *testing.T) {
 			},
 		)
 
-		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200'")
+		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200': state conflict: precondition failed")
 	})
 
 	t.Run("supports the isEventQlQueryTrue precondition", func(t *testing.T) {
@@ -321,7 +321,52 @@ func TestWriteEvents(t *testing.T) {
 			},
 		)
 
-		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200'")
+		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200': state conflict: precondition failed")
 	})
 
+	t.Run("reports the reason if an event does not match its schema", func(t *testing.T) {
+		ctx := context.Background()
+
+		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		require.NoError(t, err)
+
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container.Start(ctx)
+		defer container.Stop(ctx)
+
+		client, err := container.GetClient(ctx)
+		require.NoError(t, err)
+
+		err = client.RegisterEventSchema(
+			"io.eventsourcingdb.test",
+			map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"value": map[string]any{
+						"type": "number",
+					},
+				},
+				"required":             []string{"value"},
+				"additionalProperties": false,
+			},
+		)
+		require.NoError(t, err)
+
+		_, err = client.WriteEvents(
+			[]eventsourcingdb.EventCandidate{
+				{
+					Source:  "https://www.eventsourcingdb.io",
+					Subject: "/test",
+					Type:    "io.eventsourcingdb.test",
+					Data: map[string]any{
+						"value": 23,
+						"extra": true,
+					},
+				},
+			},
+			nil,
+		)
+
+		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200': schema conflict: event candidate does not match schema: additionalProperties 'extra' not allowed")
+	})
 }

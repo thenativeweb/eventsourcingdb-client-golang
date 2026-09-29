@@ -64,7 +64,7 @@ func (c *Client) ReadSubjects(
 		}
 
 		if response.StatusCode != http.StatusOK {
-			yield("", fmt.Errorf("failed to read subjects, got HTTP status code '%d', expected '%d'", response.StatusCode, http.StatusOK))
+			yield("", internal.NewStatusError("read subjects", response))
 			return
 		}
 

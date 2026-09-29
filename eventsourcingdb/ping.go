@@ -2,7 +2,6 @@ package eventsourcingdb
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
@@ -26,7 +25,7 @@ func (c *Client) Ping() error {
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to ping, got HTTP status code '%d', expected '%d'", response.StatusCode, http.StatusOK)
+		return internal.NewStatusError("ping", response)
 	}
 
 	type Result struct {

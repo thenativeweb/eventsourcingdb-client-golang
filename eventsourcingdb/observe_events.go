@@ -99,7 +99,7 @@ func (c *Client) ObserveEvents(
 		}
 
 		if response.StatusCode != http.StatusOK {
-			yield(Event{}, fmt.Errorf("failed to observe events, got HTTP status code '%d', expected '%d'", response.StatusCode, http.StatusOK))
+			yield(Event{}, internal.NewStatusError("observe events", response))
 			return
 		}
 

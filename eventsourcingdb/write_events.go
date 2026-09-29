@@ -101,7 +101,7 @@ func (c *Client) WriteEvents(events []EventCandidate, preconditions []Preconditi
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to write events, got HTTP status code '%d', expected '%d'", response.StatusCode, http.StatusOK)
+		return nil, internal.NewStatusError("write events", response)
 	}
 
 	var cloudEvents []internal.CloudEvent
