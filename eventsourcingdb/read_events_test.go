@@ -537,7 +537,7 @@ func TestReadEvents(t *testing.T) {
 				FromLatestEvent: &eventsourcingdb.ReadFromLatestEvent{
 					Subject:          "/test",
 					Type:             "io.eventsourcingdb.test.bar",
-					IfEventIsMissing: eventsourcingdb.ReadEverythingIfEventIsMissing,
+					IfEventIsMissing: eventsourcingdb.ReadIfEventIsMissingReadEverything,
 				},
 			},
 		) {

@@ -3,8 +3,8 @@ package eventsourcingdb
 type ObserveIfEventIsMissing string
 
 const (
-	WaitForEventIfEventIsMissing      ObserveIfEventIsMissing = "wait-for-event"
-	ObserveEverythingIfEventIsMissing ObserveIfEventIsMissing = "read-everything"
+	ObserveIfEventIsMissingWaitForEvent   ObserveIfEventIsMissing = "wait-for-event"
+	ObserveIfEventIsMissingReadEverything ObserveIfEventIsMissing = "read-everything"
 )
 
 type ObserveFromLatestEvent struct {
