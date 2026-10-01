@@ -290,6 +290,8 @@ for event, err := range client.ReadEvents(
 cancel()
 ```
 
+Reading then ends with the error of the context, `context.Canceled`, so that an aborted read can be told apart from a complete one.
+
 ### Running EventQL Queries
 
 To run an EventQL query, call the `RunEventQLQuery` function and provide a context and the query as arguments. The function returns an iterator, which you can use e.g. inside a `for range` loop:
@@ -325,6 +327,8 @@ for row, err := range client.RunEventQLQuery(
 // the query to end.
 cancel()
 ```
+
+The query then ends with the error of the context, `context.Canceled`, so that an aborted query can be told apart from a complete one.
 
 ### Observing Events
 
@@ -433,6 +437,8 @@ for event, err := range client.ObserveEvents(
 cancel()
 ```
 
+Observing then ends with the error of the context, `context.Canceled`. Since observing does not end on its own, this is how it usually ends.
+
 ### Registering an Event Schema
 
 To register an event schema, call the `RegisterEventSchema` function and hand over an event type and the desired schema:
@@ -502,6 +508,8 @@ for subject, err := range client.ReadSubjects(
 cancel()
 ```
 
+Reading then ends with the error of the context, `context.Canceled`, so that an aborted read can be told apart from a complete one.
+
 ### Listing Event Types
 
 To list all event types, call the `ReadEventTypes` function. The function returns an iterator, which you can use e.g. inside a `for range` loop:
@@ -533,6 +541,8 @@ for eventType, err := range client.ReadEventTypes(
 // reading to end.
 cancel()
 ```
+
+Reading then ends with the error of the context, `context.Canceled`, so that an aborted read can be told apart from a complete one.
 
 ### Listing a Specific Event Type
 

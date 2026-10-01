@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"iter"
@@ -34,7 +33,7 @@ func (c *Client) ReadEventTypes(
 
 		requestBodyReader := io.NopCloser(bytes.NewReader(requestBodyJSON))
 
-		request := &http.Request{
+		request := (&http.Request{
 			Method: http.MethodPost,
 			URL:    readEventTypesURL,
 			Header: http.Header{
@@ -42,7 +41,7 @@ func (c *Client) ReadEventTypes(
 				"Content-Type":  []string{"application/json"},
 			},
 			Body: requestBodyReader,
-		}
+		}).WithContext(ctx)
 
 		response, err := http.DefaultClient.Do(request)
 		if err != nil {
@@ -64,13 +63,6 @@ func (c *Client) ReadEventTypes(
 
 		for line, err := range internal.UnmarshalNDJSON(ctx, response.Body) {
 			if err != nil {
-				if errors.Is(err, context.Canceled) {
-					// The context was canceled, which means that the
-					// client is no longer interested in the events.
-					// This is not an error, so we don't yield an
-					// error.
-					return
-				}
 				yield(EventType{}, err)
 				return
 			}
