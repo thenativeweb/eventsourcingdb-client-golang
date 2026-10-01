@@ -46,7 +46,13 @@ func TestObserveEvents(t *testing.T) {
 				Recursive: true,
 			},
 		) {
-			assert.NoError(t, err)
+			// Observing ends only when the context does, so that is how
+			// every one of these loops ends.
+			if err != nil {
+				assert.ErrorIs(t, err, context.Canceled)
+				break
+			}
+
 			didObserveEvents = true
 		}
 
@@ -108,7 +114,13 @@ func TestObserveEvents(t *testing.T) {
 				Recursive: true,
 			},
 		) {
-			assert.NoError(t, err)
+			// Observing ends only when the context does, so that is how
+			// every one of these loops ends.
+			if err != nil {
+				assert.ErrorIs(t, err, context.Canceled)
+				break
+			}
+
 			eventsObserved = append(eventsObserved, event)
 		}
 
@@ -174,7 +186,13 @@ func TestObserveEvents(t *testing.T) {
 				},
 			},
 		) {
-			assert.NoError(t, err)
+			// Observing ends only when the context does, so that is how
+			// every one of these loops ends.
+			if err != nil {
+				assert.ErrorIs(t, err, context.Canceled)
+				break
+			}
+
 			eventsObserved = append(eventsObserved, event)
 		}
 
@@ -246,7 +264,13 @@ func TestObserveEvents(t *testing.T) {
 				},
 			},
 		) {
-			assert.NoError(t, err)
+			// Observing ends only when the context does, so that is how
+			// every one of these loops ends.
+			if err != nil {
+				assert.ErrorIs(t, err, context.Canceled)
+				break
+			}
+
 			eventsObserved = append(eventsObserved, event)
 		}
 

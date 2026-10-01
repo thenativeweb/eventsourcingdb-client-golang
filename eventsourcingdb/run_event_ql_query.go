@@ -39,7 +39,7 @@ func (c *Client) RunEventQLQuery(
 
 		requestBodyReader := io.NopCloser(bytes.NewReader(requestBodyJSON))
 
-		request := &http.Request{
+		request := (&http.Request{
 			Method: http.MethodPost,
 			URL:    runEventQLQueryURL,
 			Header: http.Header{
@@ -47,7 +47,7 @@ func (c *Client) RunEventQLQuery(
 				"Content-Type":  []string{"application/json"},
 			},
 			Body: requestBodyReader,
-		}
+		}).WithContext(ctx)
 
 		response, err := http.DefaultClient.Do(request)
 		if err != nil {
