@@ -245,7 +245,7 @@ for event, err := range client.ReadEvents(
 
 To read starting from the latest event of a given type, provide the `FromLatestEvent` option and specify the subject, the type, and how to proceed if no such event exists.
 
-Possible options are `ReadNothingIfEventIsMissing`, which skips reading entirely, or `ReadEverythingIfEventIsMissing`, which effectively behaves as if `FromLatestEvent` was not specified:
+Possible options are `ReadIfEventIsMissingReadNothing`, which skips reading entirely, or `ReadIfEventIsMissingReadEverything`, which effectively behaves as if `FromLatestEvent` was not specified:
 
 ```golang
 for event, err := range client.ReadEvents(
@@ -256,7 +256,7 @@ for event, err := range client.ReadEvents(
     FromLatestEvent: &eventsourcingdb.ReadFromLatestEvent{
       Subject:          "/books/42",
       Type:             "io.eventsourcingdb.library.book-borrowed",
-      IfEventIsMissing: eventsourcingdb.ReadEverythingIfEventIsMissing,
+      IfEventIsMissing: eventsourcingdb.ReadIfEventIsMissingReadEverything,
     },
   },
 ) {
@@ -388,7 +388,7 @@ for event, err := range client.ObserveEvents(
 
 To observe starting from the latest event of a given type, provide the `FromLatestEvent` option and specify the subject, the type, and how to proceed if no such event exists.
 
-Possible options are `WaitForEventIfEventIsMissing`, which waits for an event of the given type to happen, or `ObserveEverythingIfEventIsMissing`, which effectively behaves as if `FromLatestEvent` was not specified:
+Possible options are `ObserveIfEventIsMissingWaitForEvent`, which waits for an event of the given type to happen, or `ObserveIfEventIsMissingReadEverything`, which effectively behaves as if `FromLatestEvent` was not specified:
 
 ```golang
 for event, err := range client.ObserveEvents(
@@ -399,7 +399,7 @@ for event, err := range client.ObserveEvents(
     FromLatestEvent: &eventsourcingdb.ObserveFromLatestEvent{
       Subject:          "/books/42",
       Type:             "io.eventsourcingdb.library.book-borrowed",
-      IfEventIsMissing: eventsourcingdb.ObserveEverythingIfEventIsMissing,
+      IfEventIsMissing: eventsourcingdb.ObserveIfEventIsMissingReadEverything,
     },
   },
 ) {

@@ -15,8 +15,8 @@ func OrderAntichronological() *Order {
 type ReadIfEventIsMissing string
 
 const (
-	ReadNothingIfEventIsMissing    ReadIfEventIsMissing = "read-nothing"
-	ReadEverythingIfEventIsMissing ReadIfEventIsMissing = "read-everything"
+	ReadIfEventIsMissingReadNothing    ReadIfEventIsMissing = "read-nothing"
+	ReadIfEventIsMissingReadEverything ReadIfEventIsMissing = "read-everything"
 )
 
 type ReadFromLatestEvent struct {

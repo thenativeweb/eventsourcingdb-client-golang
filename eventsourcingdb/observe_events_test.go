@@ -242,7 +242,7 @@ func TestObserveEvents(t *testing.T) {
 				FromLatestEvent: &eventsourcingdb.ObserveFromLatestEvent{
 					Subject:          "/test",
 					Type:             "io.eventsourcingdb.test.bar",
-					IfEventIsMissing: eventsourcingdb.ObserveEverythingIfEventIsMissing,
+					IfEventIsMissing: eventsourcingdb.ObserveIfEventIsMissingReadEverything,
 				},
 			},
 		) {
