@@ -2,6 +2,7 @@ package eventsourcingdb_test
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -79,5 +80,6 @@ func TestRegisterEventSchema(t *testing.T) {
 			schema,
 		)
 		assert.EqualError(t, err, "failed to register event schema, got HTTP status code '409', expected '200': schema conflict: schema already exists")
+		assertDBAPIError(t, err, http.StatusConflict, "schema conflict: schema already exists")
 	})
 }

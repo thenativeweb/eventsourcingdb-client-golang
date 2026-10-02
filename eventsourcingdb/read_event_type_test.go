@@ -1,6 +1,7 @@
 package eventsourcingdb_test
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,6 +25,7 @@ func TestReadEventType(t *testing.T) {
 		_, err = client.ReadEventType("io.eventsourcingdb.test.nonexistent")
 		require.Error(t, err)
 		assert.Equal(t, "failed to read event type, got HTTP status code '404', expected '200': event type 'io.eventsourcingdb.test.nonexistent' not found", err.Error())
+		assertDBAPIError(t, err, http.StatusNotFound, "event type 'io.eventsourcingdb.test.nonexistent' not found")
 	})
 
 	t.Run("fails if the event type is malformed", func(t *testing.T) {
@@ -40,6 +42,7 @@ func TestReadEventType(t *testing.T) {
 		_, err = client.ReadEventType("io.eventsourcingdb.test.")
 		require.Error(t, err)
 		assert.Equal(t, "failed to read event type, got HTTP status code '400', expected '200': invalid event type: 'io.eventsourcingdb.test.'", err.Error())
+		assertDBAPIError(t, err, http.StatusBadRequest, "invalid event type: 'io.eventsourcingdb.test.'")
 	})
 
 	t.Run("reads an existing event type", func(t *testing.T) {

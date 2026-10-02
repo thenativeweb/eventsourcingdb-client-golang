@@ -91,14 +91,14 @@ func (c *Client) ObserveEvents(
 		}
 		defer response.Body.Close()
 
-		err = internal.ValidateServerHeader(response)
+		err = validateServerHeader(response)
 		if err != nil {
 			yield(Event{}, err)
 			return
 		}
 
 		if response.StatusCode != http.StatusOK {
-			yield(Event{}, internal.NewStatusError("observe events", response))
+			yield(Event{}, newDBAPIError("observe events", response))
 			return
 		}
 

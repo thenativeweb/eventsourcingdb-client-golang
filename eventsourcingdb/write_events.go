@@ -95,13 +95,13 @@ func (c *Client) WriteEvents(events []EventCandidate, preconditions []Preconditi
 	}
 	defer response.Body.Close()
 
-	err = internal.ValidateServerHeader(response)
+	err = validateServerHeader(response)
 	if err != nil {
 		return nil, err
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return nil, internal.NewStatusError("write events", response)
+		return nil, newDBAPIError("write events", response)
 	}
 
 	var cloudEvents []internal.CloudEvent

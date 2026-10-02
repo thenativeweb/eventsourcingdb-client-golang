@@ -50,14 +50,14 @@ func (c *Client) ReadEventTypes(
 		}
 		defer response.Body.Close()
 
-		err = internal.ValidateServerHeader(response)
+		err = validateServerHeader(response)
 		if err != nil {
 			yield(EventType{}, err)
 			return
 		}
 
 		if response.StatusCode != http.StatusOK {
-			yield(EventType{}, internal.NewStatusError("read event types", response))
+			yield(EventType{}, newDBAPIError("read event types", response))
 			return
 		}
 

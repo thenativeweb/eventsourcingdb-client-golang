@@ -27,13 +27,13 @@ func (c *Client) VerifyAPIToken() error {
 	}
 	defer response.Body.Close()
 
-	err = internal.ValidateServerHeader(response)
+	err = validateServerHeader(response)
 	if err != nil {
 		return err
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return internal.NewStatusError("verify API token", response)
+		return newDBAPIError("verify API token", response)
 	}
 
 	type Result struct {

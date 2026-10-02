@@ -103,14 +103,14 @@ func (c *Client) ReadEvents(
 		}
 		defer response.Body.Close()
 
-		err = internal.ValidateServerHeader(response)
+		err = validateServerHeader(response)
 		if err != nil {
 			yield(Event{}, err)
 			return
 		}
 
 		if response.StatusCode != http.StatusOK {
-			yield(Event{}, internal.NewStatusError("read events", response))
+			yield(Event{}, newDBAPIError("read events", response))
 			return
 		}
 

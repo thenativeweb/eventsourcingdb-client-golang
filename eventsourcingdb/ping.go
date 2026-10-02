@@ -19,13 +19,13 @@ func (c *Client) Ping() error {
 	}
 	defer response.Body.Close()
 
-	err = internal.ValidateServerHeader(response)
+	err = validateServerHeader(response)
 	if err != nil {
 		return err
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return internal.NewStatusError("ping", response)
+		return newDBAPIError("ping", response)
 	}
 
 	type Result struct {

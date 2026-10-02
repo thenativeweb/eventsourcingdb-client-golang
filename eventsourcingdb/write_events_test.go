@@ -3,6 +3,7 @@ package eventsourcingdb_test
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -153,6 +154,7 @@ func TestWriteEvents(t *testing.T) {
 		)
 
 		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200': state conflict: precondition failed")
+		assertDBAPIError(t, err, http.StatusConflict, "state conflict: precondition failed")
 	})
 
 	t.Run("supports the isSubjectPopulated precondition", func(t *testing.T) {
@@ -195,6 +197,7 @@ func TestWriteEvents(t *testing.T) {
 			},
 		)
 		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200': state conflict: precondition failed")
+		assertDBAPIError(t, err, http.StatusConflict, "state conflict: precondition failed")
 
 		_, err = client.WriteEvents(
 			[]eventsourcingdb.EventCandidate{
@@ -271,6 +274,7 @@ func TestWriteEvents(t *testing.T) {
 		)
 
 		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200': state conflict: precondition failed")
+		assertDBAPIError(t, err, http.StatusConflict, "state conflict: precondition failed")
 	})
 
 	t.Run("supports the isEventQlQueryTrue precondition", func(t *testing.T) {
@@ -322,6 +326,7 @@ func TestWriteEvents(t *testing.T) {
 		)
 
 		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200': state conflict: precondition failed")
+		assertDBAPIError(t, err, http.StatusConflict, "state conflict: precondition failed")
 	})
 
 	t.Run("reports the reason if an event does not match its schema", func(t *testing.T) {
@@ -368,5 +373,6 @@ func TestWriteEvents(t *testing.T) {
 		)
 
 		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200': schema conflict: event candidate does not match schema: additionalProperties 'extra' not allowed")
+		assertDBAPIError(t, err, http.StatusConflict, "schema conflict: event candidate does not match schema: additionalProperties 'extra' not allowed")
 	})
 }

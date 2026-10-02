@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
 )
 
 func (c *Client) RegisterEventSchema(eventType string, schema map[string]any) error {
@@ -48,13 +46,13 @@ func (c *Client) RegisterEventSchema(eventType string, schema map[string]any) er
 	}
 	defer response.Body.Close()
 
-	err = internal.ValidateServerHeader(response)
+	err = validateServerHeader(response)
 	if err != nil {
 		return err
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return internal.NewStatusError("register event schema", response)
+		return newDBAPIError("register event schema", response)
 	}
 
 	return nil

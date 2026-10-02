@@ -47,13 +47,13 @@ func (c *Client) ReadEventType(
 	}
 	defer response.Body.Close()
 
-	err = internal.ValidateServerHeader(response)
+	err = validateServerHeader(response)
 	if err != nil {
 		return EventType{}, err
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return EventType{}, internal.NewStatusError("read event type", response)
+		return EventType{}, newDBAPIError("read event type", response)
 	}
 
 	var eventTypeResponse internal.StreamEventType

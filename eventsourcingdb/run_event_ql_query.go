@@ -56,14 +56,14 @@ func (c *Client) RunEventQLQuery(
 		}
 		defer response.Body.Close()
 
-		err = internal.ValidateServerHeader(response)
+		err = validateServerHeader(response)
 		if err != nil {
 			yield(nil, err)
 			return
 		}
 
 		if response.StatusCode != http.StatusOK {
-			yield(nil, internal.NewStatusError("run EventQL query", response))
+			yield(nil, newDBAPIError("run EventQL query", response))
 			return
 		}
 
