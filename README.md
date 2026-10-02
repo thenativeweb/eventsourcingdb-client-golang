@@ -586,6 +586,42 @@ if err != nil {
 }
 ```
 
+### Handling Errors
+
+If the server answers a request with an unexpected HTTP status code, the client returns a `*DBAPIError`. It contains the `StatusCode` and the `Reason` the server gives, so you can tell failures apart without parsing the error message. Use `errors.As` to get it:
+
+```golang
+_, err := client.WriteEvents(
+  []eventsourcingdb.EventCandidate{
+    // ...
+  },
+  []eventsourcingdb.Precondition{
+    eventsourcingdb.NewIsSubjectPristinePrecondition("/books/42"),
+  },
+)
+
+var dbAPIError *eventsourcingdb.DBAPIError
+if errors.As(err, &dbAPIError) {
+  switch dbAPIError.StatusCode {
+  case http.StatusConflict:
+    // dbAPIError.Reason tells why, e.g. "state conflict: precondition failed".
+  case http.StatusUnauthorized:
+    // ...
+  }
+}
+```
+
+*Note that different failures may share a status code: a failed precondition and an event that does not match its schema are both answered with `409`, and only their reasons differ.*
+
+If the server is not an EventSourcingDB, e.g. because a proxy answers in its place, the client returns `ErrInvalidServerHeader`. Use `errors.Is` to check for it:
+
+```golang
+err := client.Ping()
+if errors.Is(err, eventsourcingdb.ErrInvalidServerHeader) {
+  // ...
+}
+```
+
 ### Using Testcontainers
 
 The test container lives in the `eventsourcingdbtest` package. Add it to your module, and import it in your tests:

@@ -56,14 +56,14 @@ func (c *Client) ReadSubjects(
 		}
 		defer response.Body.Close()
 
-		err = internal.ValidateServerHeader(response)
+		err = validateServerHeader(response)
 		if err != nil {
 			yield("", err)
 			return
 		}
 
 		if response.StatusCode != http.StatusOK {
-			yield("", internal.NewStatusError("read subjects", response))
+			yield("", newDBAPIError("read subjects", response))
 			return
 		}
 

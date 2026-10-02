@@ -3,6 +3,7 @@ package eventsourcingdb_test
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -49,6 +50,7 @@ func TestVerifyAPIToken(t *testing.T) {
 		require.NoError(t, err)
 
 		err = client.VerifyAPIToken()
-		assert.Error(t, err)
+		assert.EqualError(t, err, "failed to verify API token, got HTTP status code '401', expected '200': unauthorized")
+		assertDBAPIError(t, err, http.StatusUnauthorized, "unauthorized")
 	})
 }
