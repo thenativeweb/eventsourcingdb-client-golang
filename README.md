@@ -330,6 +330,23 @@ cancel()
 
 The query then ends with the error of the context, `context.Canceled`, so that an aborted query can be told apart from a complete one.
 
+#### Detecting a Stalled Connection
+
+While a query runs, the server sends a heartbeat every second whenever there is no row to send. If neither a row nor a heartbeat arrives for 30 seconds, e.g. because a proxy keeps the connection open but no longer passes anything on, the query ends with `ErrHeartbeatTimeout`, and the client closes the connection. Use `errors.Is` to check for it:
+
+```golang
+for row, err := range client.RunEventQLQuery(
+  context.TODO(),
+  "FROM e IN events PROJECT INTO e",
+) {
+  if errors.Is(err, eventsourcingdb.ErrHeartbeatTimeout) {
+    // ...
+  }
+
+  // ...
+}
+```
+
 ### Observing Events
 
 To observe all events of a subject, call the `ObserveEvents` function with a context, the subject and an options object. Set the `Recursive` option to `false`. This ensures that only events of the given subject are returned, not events of nested subjects.
@@ -438,6 +455,26 @@ cancel()
 ```
 
 Observing then ends with the error of the context, `context.Canceled`. Since observing does not end on its own, this is how it usually ends.
+
+#### Detecting a Stalled Connection
+
+While there are no new events, the server sends a heartbeat every second. If neither an event nor a heartbeat arrives for 30 seconds, e.g. because a proxy keeps the connection open but no longer passes anything on, observing ends with `ErrHeartbeatTimeout`, and the client closes the connection. Use `errors.Is` to check for it:
+
+```golang
+for event, err := range client.ObserveEvents(
+  context.TODO(),
+  "/books/42",
+  eventsourcingdb.ObserveEventsOptions{
+    Recursive: false,
+  },
+) {
+  if errors.Is(err, eventsourcingdb.ErrHeartbeatTimeout) {
+    // ...
+  }
+
+  // ...
+}
+```
 
 ### Registering an Event Schema
 
@@ -621,6 +658,8 @@ if errors.Is(err, eventsourcingdb.ErrInvalidServerHeader) {
   // ...
 }
 ```
+
+If observing events or running an EventQL query receives nothing for 30 seconds, not even a heartbeat, e.g. because a proxy keeps the connection open but no longer passes anything on, the client closes the connection, and observing or the query ends with `ErrHeartbeatTimeout`. Use `errors.Is` to check for it, too.
 
 ### Using Testcontainers
 
