@@ -74,6 +74,11 @@ func (c *Client) ObserveEvents(
 
 		requestBodyReader := io.NopCloser(bytes.NewReader(requestBodyJSON))
 
+		// Canceling this context closes the connection, which is how the
+		// stream ends if neither an event nor a heartbeat arrives in time.
+		ctx, cancel := context.WithCancelCause(ctx)
+		defer cancel(nil)
+
 		request := (&http.Request{
 			Method: http.MethodPost,
 			URL:    observeEventsURL,
@@ -102,7 +107,7 @@ func (c *Client) ObserveEvents(
 			return
 		}
 
-		for line, err := range internal.UnmarshalNDJSON(ctx, response.Body) {
+		for line, err := range unmarshalNDJSONWithHeartbeatTimeout(ctx, cancel, response.Body) {
 			if err != nil {
 				yield(Event{}, err)
 				return
