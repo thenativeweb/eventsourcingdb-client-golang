@@ -594,7 +594,7 @@ To abort listing independently of that, cancel the context you provided:
 ctx, cancel := context.WithCancel(context.TODO())
 
 for eventType, err := range client.ReadEventTypes(
-  context.TODO(),
+  ctx,
 ) {
   // ...
 }
