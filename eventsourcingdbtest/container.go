@@ -18,6 +18,14 @@ import (
 	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
 )
 
+// maxStartAttempts is how many containers Start starts at most, as it
+// replaces each container whose port Docker did not publish.
+const maxStartAttempts = 3
+
+// startContainer creates and starts a container. It is a variable only so
+// that tests can replace it.
+var startContainer = testcontainers.GenericContainer
+
 type Container struct {
 	imageName    string
 	imageTag     string
@@ -62,6 +70,50 @@ func (c *Container) WithPort(port int) *Container {
 }
 
 func (c *Container) Start(ctx context.Context) error {
+	port := fmt.Sprintf("%d/tcp", c.internalPort)
+
+	for attempt := 1; ; attempt++ {
+		// Each attempt needs a request of its own, as starting a container
+		// reads the files of its request to the end.
+		request, err := c.newRequest()
+		if err != nil {
+			return err
+		}
+
+		container, err := startContainer(ctx, request)
+		if err == nil {
+			c.container = container
+			return nil
+		}
+
+		// Docker Desktop sometimes fails to publish the port it chose for a
+		// container on the host, because something on the host took that port
+		// in the meantime. The container keeps running, but the database in it
+		// can never be reached, so it is replaced by a new one. Every other
+		// failure is returned at once. Either way, the container that failed
+		// to start is terminated, so that it is not left behind.
+		unpublished := isRunningWithoutPublishedPort(ctx, container, port)
+
+		terminateErr := testcontainers.TerminateContainer(container)
+		if terminateErr != nil {
+			return fmt.Errorf("%w, and failed to terminate container: %w", err, terminateErr)
+		}
+
+		if !unpublished {
+			return err
+		}
+		if attempt == maxStartAttempts {
+			return fmt.Errorf("failed to start container, Docker did not publish port %s in %d attempts: %w", port, maxStartAttempts, err)
+		}
+		if ctx.Err() != nil {
+			return fmt.Errorf("failed to start container, Docker did not publish port %s, and the context ended before another attempt: %w: %w", port, ctx.Err(), err)
+		}
+	}
+}
+
+// newRequest returns a request for a container with the database, as it is
+// configured.
+func (c *Container) newRequest() (testcontainers.GenericContainerRequest, error) {
 	files := []testcontainers.ContainerFile{}
 
 	cmd := []string{
@@ -76,7 +128,7 @@ func (c *Container) Start(ctx context.Context) error {
 	if c.signingKey != nil {
 		signingKeyBytes, err := x509.MarshalPKCS8PrivateKey(*c.signingKey)
 		if err != nil {
-			return err
+			return testcontainers.GenericContainerRequest{}, err
 		}
 
 		block := &pem.Block{Type: "PRIVATE KEY", Bytes: signingKeyBytes}
@@ -104,16 +156,31 @@ func (c *Container) Start(ctx context.Context) error {
 			WithStartupTimeout(10 * time.Second),
 	}
 
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	return testcontainers.GenericContainerRequest{
 		ContainerRequest: request,
 		Started:          true,
-	})
-	if err != nil {
-		return err
+	}, nil
+}
+
+// isRunningWithoutPublishedPort reports whether a container runs, but Docker
+// did not publish the given port of it on the host.
+func isRunningWithoutPublishedPort(ctx context.Context, container testcontainers.Container, port string) bool {
+	if container == nil {
+		return false
 	}
 
-	c.container = container
-	return nil
+	inspect, err := container.Inspect(ctx)
+	if err != nil || !inspect.State.Running {
+		return false
+	}
+
+	for containerPort, bindings := range inspect.NetworkSettings.Ports {
+		if containerPort.String() == port && len(bindings) > 0 {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (c *Container) GetHost(ctx context.Context) (string, error) {
