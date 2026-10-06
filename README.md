@@ -608,10 +608,11 @@ Reading then ends with the error of the context, `context.Canceled`, so that an 
 
 ### Listing a Specific Event Type
 
-To list a specific event type, call the `ReadEventType` function with the event type as an argument. The function returns the detailed event type, which includes the schema:
+To list a specific event type, call the `ReadEventType` function with a context and the event type as arguments. The function returns the detailed event type, which includes the schema:
 
 ```golang
 eventType, err := client.ReadEventType(
+  context.TODO(),
   "io.eventsourcingdb.library.book-acquired",
 )
 ```

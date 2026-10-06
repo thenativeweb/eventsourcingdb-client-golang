@@ -22,7 +22,7 @@ func TestReadEventType(t *testing.T) {
 		client, err := container.GetClient(t.Context())
 		require.NoError(t, err)
 
-		_, err = client.ReadEventType("io.eventsourcingdb.test.nonexistent")
+		_, err = client.ReadEventType(t.Context(), "io.eventsourcingdb.test.nonexistent")
 		require.Error(t, err)
 		assert.Equal(t, "failed to read event type, got HTTP status code '404', expected '200': event type 'io.eventsourcingdb.test.nonexistent' not found", err.Error())
 		assertDBAPIError(t, err, http.StatusNotFound, "event type 'io.eventsourcingdb.test.nonexistent' not found")
@@ -39,7 +39,7 @@ func TestReadEventType(t *testing.T) {
 		client, err := container.GetClient(t.Context())
 		require.NoError(t, err)
 
-		_, err = client.ReadEventType("io.eventsourcingdb.test.")
+		_, err = client.ReadEventType(t.Context(), "io.eventsourcingdb.test.")
 		require.Error(t, err)
 		assert.Equal(t, "failed to read event type, got HTTP status code '400', expected '200': invalid event type: 'io.eventsourcingdb.test.'", err.Error())
 		assertDBAPIError(t, err, http.StatusBadRequest, "invalid event type: 'io.eventsourcingdb.test.'")
@@ -62,7 +62,7 @@ func TestReadEventType(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		eventType, err := client.ReadEventType("io.eventsourcingdb.test.foo")
+		eventType, err := client.ReadEventType(t.Context(), "io.eventsourcingdb.test.foo")
 		require.NoError(t, err)
 
 		assert.Equal(t, "io.eventsourcingdb.test.foo", eventType.EventType)

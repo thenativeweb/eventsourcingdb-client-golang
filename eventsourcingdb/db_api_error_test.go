@@ -298,7 +298,7 @@ func requestsOf(client *eventsourcingdb.Client) []request {
 			name:   "ReadEventType",
 			action: "read event type",
 			send: func() error {
-				_, err := client.ReadEventType("io.eventsourcingdb.test")
+				_, err := client.ReadEventType(ctx, "io.eventsourcingdb.test")
 				return err
 			},
 		},

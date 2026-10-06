@@ -355,6 +355,10 @@ func requestsWithContextOf(client *eventsourcingdb.Client) map[string]func(conte
 		"RegisterEventSchema": func(ctx context.Context) error {
 			return client.RegisterEventSchema(ctx, "io.eventsourcingdb.test", map[string]any{"type": "object"})
 		},
+		"ReadEventType": func(ctx context.Context) error {
+			_, err := client.ReadEventType(ctx, "io.eventsourcingdb.test")
+			return err
+		},
 		"ReadEvents": func(ctx context.Context) error {
 			for _, err := range client.ReadEvents(ctx, "/test", eventsourcingdb.ReadEventsOptions{}) {
 				if err != nil {
