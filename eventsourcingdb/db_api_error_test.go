@@ -86,7 +86,7 @@ func TestDBAPIError(t *testing.T) {
 	t.Run("trims white space around the reason", func(t *testing.T) {
 		client := clientOfAServerThatAnswers(t, http.StatusConflict, "\n  state conflict: precondition failed \n")
 
-		_, err := client.WriteEvents(nil, nil)
+		_, err := client.WriteEvents(context.Background(), nil, nil)
 
 		assertDBAPIError(t, err, http.StatusConflict, "state conflict: precondition failed")
 		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200': state conflict: precondition failed")
@@ -95,7 +95,7 @@ func TestDBAPIError(t *testing.T) {
 	t.Run("leaves out the reason if the server gives none", func(t *testing.T) {
 		client := clientOfAServerThatAnswers(t, http.StatusBadGateway, "")
 
-		err := client.Ping()
+		err := client.Ping(context.Background())
 
 		assertDBAPIError(t, err, http.StatusBadGateway, "")
 		assert.EqualError(t, err, "failed to ping, got HTTP status code '502', expected '200'")
@@ -104,7 +104,7 @@ func TestDBAPIError(t *testing.T) {
 	t.Run("cuts a long reason short", func(t *testing.T) {
 		client := clientOfAServerThatAnswers(t, http.StatusBadGateway, strings.Repeat("x", 10_000))
 
-		err := client.Ping()
+		err := client.Ping(context.Background())
 
 		assertDBAPIError(t, err, http.StatusBadGateway, strings.Repeat("x", 4096))
 		assert.EqualError(t, err, "failed to ping, got HTTP status code '502', expected '200': "+strings.Repeat("x", 4096))
@@ -120,7 +120,7 @@ func TestDBAPIError(t *testing.T) {
 			_, _ = w.Write([]byte("bad gateway"))
 		}))
 
-		err := client.Ping()
+		err := client.Ping(context.Background())
 
 		assertDBAPIError(t, err, http.StatusBadGateway, "")
 		assert.ErrorIs(t, err, io.ErrUnexpectedEOF)
@@ -130,7 +130,7 @@ func TestDBAPIError(t *testing.T) {
 	t.Run("is found if it is wrapped", func(t *testing.T) {
 		client := clientOfAServerThatAnswers(t, http.StatusConflict, "state conflict: precondition failed")
 
-		_, err := client.WriteEvents(nil, nil)
+		_, err := client.WriteEvents(context.Background(), nil, nil)
 		wrapped := fmt.Errorf("failed to handle the command: %w", err)
 
 		assertDBAPIError(t, wrapped, http.StatusConflict, "state conflict: precondition failed")
@@ -209,18 +209,23 @@ func requestsOf(client *eventsourcingdb.Client) []request {
 		{
 			name:   "Ping",
 			action: "ping",
-			send:   client.Ping,
+			send: func() error {
+				return client.Ping(ctx)
+			},
 		},
 		{
 			name:   "VerifyAPIToken",
 			action: "verify API token",
-			send:   client.VerifyAPIToken,
+			send: func() error {
+				return client.VerifyAPIToken(ctx)
+			},
 		},
 		{
 			name:   "WriteEvents",
 			action: "write events",
 			send: func() error {
 				_, err := client.WriteEvents(
+					ctx,
 					[]eventsourcingdb.EventCandidate{
 						{
 							Source:  "https://www.eventsourcingdb.io",
@@ -274,7 +279,7 @@ func requestsOf(client *eventsourcingdb.Client) []request {
 			name:   "RegisterEventSchema",
 			action: "register event schema",
 			send: func() error {
-				return client.RegisterEventSchema("io.eventsourcingdb.test", map[string]any{"type": "object"})
+				return client.RegisterEventSchema(ctx, "io.eventsourcingdb.test", map[string]any{"type": "object"})
 			},
 		},
 		{
@@ -293,7 +298,7 @@ func requestsOf(client *eventsourcingdb.Client) []request {
 			name:   "ReadEventType",
 			action: "read event type",
 			send: func() error {
-				_, err := client.ReadEventType("io.eventsourcingdb.test")
+				_, err := client.ReadEventType(ctx, "io.eventsourcingdb.test")
 				return err
 			},
 		},

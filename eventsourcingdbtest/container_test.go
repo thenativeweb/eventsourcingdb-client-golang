@@ -33,7 +33,7 @@ func TestContainer(t *testing.T) {
 		client, err := container.GetClient(t.Context())
 		require.NoError(t, err)
 
-		err = client.Ping()
+		err = client.Ping(t.Context())
 		assert.NoError(t, err)
 
 		host, err := container.GetHost(t.Context())
@@ -73,7 +73,7 @@ func TestContainer(t *testing.T) {
 		client, err := container.GetClient(t.Context())
 		require.NoError(t, err)
 
-		err = client.VerifyAPIToken()
+		err = client.VerifyAPIToken(t.Context())
 		assert.NoError(t, err)
 	})
 
@@ -99,7 +99,7 @@ func TestContainer(t *testing.T) {
 		client, err := container.GetClient(t.Context())
 		require.NoError(t, err)
 
-		written, err := client.WriteEvents([]eventsourcingdb.EventCandidate{{
+		written, err := client.WriteEvents(t.Context(), []eventsourcingdb.EventCandidate{{
 			Source:  "https://www.eventsourcingdb.io",
 			Subject: "/test",
 			Type:    "io.eventsourcingdb.test",
@@ -178,7 +178,7 @@ func TestContainerStart(t *testing.T) {
 		client, err := container.GetClient(t.Context())
 		require.NoError(t, err)
 
-		written, err := client.WriteEvents([]eventsourcingdb.EventCandidate{{
+		written, err := client.WriteEvents(t.Context(), []eventsourcingdb.EventCandidate{{
 			Source:  "https://www.eventsourcingdb.io",
 			Subject: "/test",
 			Type:    "io.eventsourcingdb.test",

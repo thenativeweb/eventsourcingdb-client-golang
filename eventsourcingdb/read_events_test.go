@@ -79,6 +79,7 @@ func TestReadEvents(t *testing.T) {
 		}
 
 		_, err = client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				firstEvent,
 				secondEvent,
@@ -132,6 +133,7 @@ func TestReadEvents(t *testing.T) {
 		}
 
 		_, err = client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				firstEvent,
 			},
@@ -198,6 +200,7 @@ func TestReadEvents(t *testing.T) {
 		}
 
 		_, err = client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				firstEvent,
 				secondEvent,
@@ -254,6 +257,7 @@ func TestReadEvents(t *testing.T) {
 		}
 
 		_, err = client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				firstEvent,
 				secondEvent,
@@ -321,6 +325,7 @@ func TestReadEvents(t *testing.T) {
 		}
 
 		_, err = client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				firstEvent,
 				secondEvent,
@@ -388,6 +393,7 @@ func TestReadEvents(t *testing.T) {
 		}
 
 		_, err = client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				firstEvent,
 				secondEvent,
@@ -453,6 +459,7 @@ func TestReadEvents(t *testing.T) {
 		}
 
 		_, err = client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				firstEvent,
 				secondEvent,
@@ -518,6 +525,7 @@ func TestReadEvents(t *testing.T) {
 		}
 
 		_, err = client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				firstEvent,
 				secondEvent,

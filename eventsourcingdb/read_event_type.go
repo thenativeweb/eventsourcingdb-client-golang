@@ -2,6 +2,7 @@ package eventsourcingdb
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 )
 
 func (c *Client) ReadEventType(
+	ctx context.Context,
 	eventType string,
 ) (EventType, error) {
 	readEventTypeURL, err := c.getURL("/api/v1/read-event-type")
@@ -31,15 +33,12 @@ func (c *Client) ReadEventType(
 
 	requestBodyReader := io.NopCloser(bytes.NewReader(requestBodyJSON))
 
-	request := &http.Request{
-		Method: http.MethodPost,
-		URL:    readEventTypeURL,
-		Header: http.Header{
-			"Authorization": []string{"Bearer " + c.apiToken},
-			"Content-Type":  []string{"application/json"},
-		},
-		Body: requestBodyReader,
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, readEventTypeURL.String(), requestBodyReader)
+	if err != nil {
+		return EventType{}, err
 	}
+	request.Header.Set("Authorization", "Bearer "+c.apiToken)
+	request.Header.Set("Content-Type", "application/json")
 
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {

@@ -74,6 +74,7 @@ func TestRunEventQLQuery(t *testing.T) {
 		}
 
 		_, err = client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				firstEvent,
 				secondEvent,

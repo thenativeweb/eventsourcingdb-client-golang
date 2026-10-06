@@ -1,6 +1,7 @@
 package eventsourcingdb_test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -51,7 +52,7 @@ func TestErrInvalidServerHeader(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		}))
 
-		err := client.Ping()
+		err := client.Ping(context.Background())
 		wrapped := fmt.Errorf("failed to handle the command: %w", err)
 
 		assert.ErrorIs(t, wrapped, eventsourcingdb.ErrInvalidServerHeader)

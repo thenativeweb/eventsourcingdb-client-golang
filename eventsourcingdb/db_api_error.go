@@ -21,7 +21,7 @@ const maxReasonLength = 4096
 //
 // Use errors.As to get it:
 //
-//	_, err := client.WriteEvents(events, preconditions)
+//	_, err := client.WriteEvents(ctx, events, preconditions)
 //
 //	var dbAPIError *eventsourcingdb.DBAPIError
 //	if errors.As(err, &dbAPIError) && dbAPIError.StatusCode == http.StatusConflict {
