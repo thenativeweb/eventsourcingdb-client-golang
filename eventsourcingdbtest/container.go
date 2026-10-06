@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"reflect"
 	"strconv"
 	"time"
 
@@ -165,7 +166,7 @@ func (c *Container) newRequest() (testcontainers.GenericContainerRequest, error)
 // isRunningWithoutPublishedPort reports whether a container runs, but Docker
 // did not publish the given port of it on the host.
 func isRunningWithoutPublishedPort(ctx context.Context, container testcontainers.Container, port string) bool {
-	if container == nil {
+	if isNil(container) {
 		return false
 	}
 
@@ -181,6 +182,23 @@ func isRunningWithoutPublishedPort(ctx context.Context, container testcontainers
 	}
 
 	return true
+}
+
+// isNil reports whether a container is nil, also if it is a nil pointer or
+// another nil value of a concrete type, which is not nil as an interface. It
+// checks this as testcontainers.TerminateContainer does.
+func isNil(container testcontainers.Container) bool {
+	if container == nil {
+		return true
+	}
+
+	value := reflect.ValueOf(container)
+	switch value.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Map, reflect.Pointer, reflect.UnsafePointer, reflect.Interface, reflect.Slice:
+		return value.IsNil()
+	default:
+		return false
+	}
 }
 
 func (c *Container) GetHost(ctx context.Context) (string, error) {

@@ -314,6 +314,25 @@ func TestContainerStart(t *testing.T) {
 		assert.ErrorIs(t, err, errTerminate)
 		assert.False(t, container.IsRunning())
 	})
+
+	t.Run("returns at once, as it is, if a failed start hands out a nil container of a concrete type", func(t *testing.T) {
+		// A container is an interface, so a nil pointer to a concrete
+		// container is not nil as a container. There is nothing to inspect
+		// or to terminate, though.
+		errStart := errors.New("failed to create container")
+
+		attempts := replaceStart(t, func(ctx context.Context, attempt int, request testcontainers.GenericContainerRequest) (testcontainers.Container, error) {
+			return (*testcontainers.DockerContainer)(nil), errStart
+		})
+
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+
+		err := container.Start(t.Context())
+
+		assert.Equal(t, errStart, err)
+		assert.Len(t, attempts.containers, 1)
+		assert.False(t, container.IsRunning())
+	})
 }
 
 // attempts records what each attempt of Start to start a container returned.
