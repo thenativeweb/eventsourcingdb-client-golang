@@ -1,19 +1,25 @@
 package eventsourcingdb
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
 )
 
-func (c *Client) Ping() error {
+func (c *Client) Ping(ctx context.Context) error {
 	pingURL, err := c.getURL("/api/v1/ping")
 	if err != nil {
 		return err
 	}
 
-	response, err := http.Get(pingURL.String())
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, pingURL.String(), nil)
+	if err != nil {
+		return err
+	}
+
+	response, err := http.DefaultClient.Do(request)
 	if err != nil {
 		return err
 	}

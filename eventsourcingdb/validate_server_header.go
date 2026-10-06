@@ -13,7 +13,7 @@ import (
 // function of the client that sends a request returns it in that case. Use
 // errors.Is to check for it, which also finds it if it is wrapped:
 //
-//	err := client.Ping()
+//	err := client.Ping(ctx)
 //	if errors.Is(err, eventsourcingdb.ErrInvalidServerHeader) {
 //		// ...
 //	}

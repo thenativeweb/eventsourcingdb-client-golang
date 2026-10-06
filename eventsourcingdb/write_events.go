@@ -2,6 +2,7 @@ package eventsourcingdb
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,7 +12,7 @@ import (
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
 )
 
-func (c *Client) WriteEvents(events []EventCandidate, preconditions []Precondition) ([]Event, error) {
+func (c *Client) WriteEvents(ctx context.Context, events []EventCandidate, preconditions []Precondition) ([]Event, error) {
 	writeEventsURL, err := c.getURL("/api/v1/write-events")
 	if err != nil {
 		return nil, err
@@ -79,15 +80,12 @@ func (c *Client) WriteEvents(events []EventCandidate, preconditions []Preconditi
 
 	requestBodyReader := io.NopCloser(bytes.NewReader(requestBodyJSON))
 
-	request := &http.Request{
-		Method: http.MethodPost,
-		URL:    writeEventsURL,
-		Header: http.Header{
-			"Authorization": []string{"Bearer " + c.apiToken},
-			"Content-Type":  []string{"application/json"},
-		},
-		Body: requestBodyReader,
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, writeEventsURL.String(), requestBodyReader)
+	if err != nil {
+		return nil, err
 	}
+	request.Header.Set("Authorization", "Bearer "+c.apiToken)
+	request.Header.Set("Content-Type", "application/json")
 
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {

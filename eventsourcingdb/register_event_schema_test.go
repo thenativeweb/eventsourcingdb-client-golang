@@ -38,6 +38,7 @@ func TestRegisterEventSchema(t *testing.T) {
 		}
 
 		err = client.RegisterEventSchema(
+			ctx,
 			eventType,
 			schema,
 		)
@@ -70,12 +71,14 @@ func TestRegisterEventSchema(t *testing.T) {
 		}
 
 		err = client.RegisterEventSchema(
+			ctx,
 			eventType,
 			schema,
 		)
 		require.NoError(t, err)
 
 		err = client.RegisterEventSchema(
+			ctx,
 			eventType,
 			schema,
 		)

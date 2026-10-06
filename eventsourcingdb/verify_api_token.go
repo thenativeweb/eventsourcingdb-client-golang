@@ -1,25 +1,24 @@
 package eventsourcingdb
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
 	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
 )
 
-func (c *Client) VerifyAPIToken() error {
+func (c *Client) VerifyAPIToken(ctx context.Context) error {
 	verifyAPITokenURL, err := c.getURL("/api/v1/verify-api-token")
 	if err != nil {
 		return err
 	}
 
-	request := &http.Request{
-		Method: http.MethodPost,
-		URL:    verifyAPITokenURL,
-		Header: http.Header{
-			"Authorization": []string{"Bearer " + c.apiToken},
-		},
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, verifyAPITokenURL.String(), nil)
+	if err != nil {
+		return err
 	}
+	request.Header.Set("Authorization", "Bearer "+c.apiToken)
 
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {

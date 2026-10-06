@@ -41,6 +41,7 @@ func TestWriteEvents(t *testing.T) {
 		}
 
 		writtenEvents, err := client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				event,
 			},
@@ -83,6 +84,7 @@ func TestWriteEvents(t *testing.T) {
 		}
 
 		writtenEvents, err := client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				firstEvent,
 				secondEvent,
@@ -128,6 +130,7 @@ func TestWriteEvents(t *testing.T) {
 		}
 
 		_, err = client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				firstEvent,
 			},
@@ -145,6 +148,7 @@ func TestWriteEvents(t *testing.T) {
 		}
 
 		_, err = client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				secondEvent,
 			},
@@ -189,6 +193,7 @@ func TestWriteEvents(t *testing.T) {
 		}
 
 		_, err = client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				secondEvent,
 			},
@@ -200,6 +205,7 @@ func TestWriteEvents(t *testing.T) {
 		assertDBAPIError(t, err, http.StatusConflict, "state conflict: precondition failed")
 
 		_, err = client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				firstEvent,
 			},
@@ -208,6 +214,7 @@ func TestWriteEvents(t *testing.T) {
 		require.NoError(t, err)
 
 		writtenEvents, err := client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				secondEvent,
 			},
@@ -248,6 +255,7 @@ func TestWriteEvents(t *testing.T) {
 		}
 
 		_, err = client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				firstEvent,
 			},
@@ -265,6 +273,7 @@ func TestWriteEvents(t *testing.T) {
 		}
 
 		_, err = client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				secondEvent,
 			},
@@ -300,6 +309,7 @@ func TestWriteEvents(t *testing.T) {
 		}
 
 		_, err = client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				firstEvent,
 			},
@@ -317,6 +327,7 @@ func TestWriteEvents(t *testing.T) {
 		}
 
 		_, err = client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				secondEvent,
 			},
@@ -343,6 +354,7 @@ func TestWriteEvents(t *testing.T) {
 		require.NoError(t, err)
 
 		err = client.RegisterEventSchema(
+			ctx,
 			"io.eventsourcingdb.test",
 			map[string]any{
 				"type": "object",
@@ -358,6 +370,7 @@ func TestWriteEvents(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				{
 					Source:  "https://www.eventsourcingdb.io",

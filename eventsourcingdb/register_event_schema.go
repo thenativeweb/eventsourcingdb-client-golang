@@ -2,12 +2,13 @@ package eventsourcingdb
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 )
 
-func (c *Client) RegisterEventSchema(eventType string, schema map[string]any) error {
+func (c *Client) RegisterEventSchema(ctx context.Context, eventType string, schema map[string]any) error {
 	registerEventSchemaURL, err := c.getURL("/api/v1/register-event-schema")
 	if err != nil {
 		return err
@@ -30,15 +31,12 @@ func (c *Client) RegisterEventSchema(eventType string, schema map[string]any) er
 
 	requestBodyReader := io.NopCloser(bytes.NewReader(requestBodyJSON))
 
-	request := &http.Request{
-		Method: http.MethodPost,
-		URL:    registerEventSchemaURL,
-		Header: http.Header{
-			"Authorization": []string{"Bearer " + c.apiToken},
-			"Content-Type":  []string{"application/json"},
-		},
-		Body: requestBodyReader,
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, registerEventSchemaURL.String(), requestBodyReader)
+	if err != nil {
+		return err
 	}
+	request.Header.Set("Authorization", "Bearer "+c.apiToken)
+	request.Header.Set("Content-Type", "application/json")
 
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {

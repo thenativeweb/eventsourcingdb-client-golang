@@ -72,6 +72,7 @@ func TestReadEventTypes(t *testing.T) {
 		}
 
 		_, err = client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				firstEvent,
 				secondEvent,
@@ -124,6 +125,7 @@ func TestReadEventTypes(t *testing.T) {
 		}
 
 		err = client.RegisterEventSchema(
+			ctx,
 			eventType,
 			schema,
 		)

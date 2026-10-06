@@ -40,10 +40,10 @@ if err != nil {
 }
 ```
 
-Then call the `Ping` function to check whether the instance is reachable. If it is not, the function will return an error:
+Then call the `Ping` function with a context to check whether the instance is reachable. If it is not, the function will return an error:
 
 ```go
-err := client.Ping()
+err := client.Ping(context.TODO())
 if err != nil {
   // ...
 }
@@ -51,10 +51,10 @@ if err != nil {
 
 *Note that `Ping` does not require authentication, so the call may succeed even if the API token is invalid.*
 
-If you want to verify the API token, call `VerifyAPIToken`. If the token is invalid, the function will return an error:
+If you want to verify the API token, call `VerifyAPIToken` with a context. If the token is invalid, the function will return an error:
 
 ```go
-err := client.VerifyAPIToken()
+err := client.VerifyAPIToken(context.TODO())
 if err != nil {
   // ...
 }
@@ -62,7 +62,7 @@ if err != nil {
 
 ### Writing Events
 
-Call the `WriteEvents` function and hand over a slice with one or more events. You do not have to provide all event fields – some are automatically added by the server.
+Call the `WriteEvents` function and hand over a context and a slice with one or more events. You do not have to provide all event fields – some are automatically added by the server.
 
 Specify `Source`, `Subject`, `Type`, and `Data` according to the [CloudEvents](https://docs.eventsourcingdb.io/fundamentals/cloud-events/) format.
 
@@ -89,6 +89,7 @@ event := eventsourcingdb.EventCandidate{
 }
 
 writtenEvents, err := client.WriteEvents(
+  context.TODO(),
   []eventsourcingdb.EventCandidate{
     event,
   },
@@ -98,10 +99,11 @@ writtenEvents, err := client.WriteEvents(
 
 #### Using the `isSubjectPristine` precondition
 
-If you only want to write events in case a subject (such as `/books/42`) does not yet have any events, use the `NewIsSubjectPristinePrecondition` function to create a precondition and pass it in a slice as the second argument:
+If you only want to write events in case a subject (such as `/books/42`) does not yet have any events, use the `NewIsSubjectPristinePrecondition` function to create a precondition and pass it in a slice as the third argument:
 
 ```go
 writtenEvents, err := client.WriteEvents(
+  context.TODO(),
   []eventsourcingdb.EventCandidate{
     // ...
   },
@@ -113,10 +115,11 @@ writtenEvents, err := client.WriteEvents(
 
 #### Using the `isSubjectPopulated` precondition
 
-If you only want to write events in case a subject (such as `/books/42`) already has at least one event, use the `NewIsSubjectPopulatedPrecondition` function to create a precondition and pass it in a slice as the second argument:
+If you only want to write events in case a subject (such as `/books/42`) already has at least one event, use the `NewIsSubjectPopulatedPrecondition` function to create a precondition and pass it in a slice as the third argument:
 
 ```go
 writtenEvents, err := client.WriteEvents(
+  context.TODO(),
   []eventsourcingdb.EventCandidate{
     // ...
   },
@@ -128,10 +131,11 @@ writtenEvents, err := client.WriteEvents(
 
 #### Using the `isSubjectOnEventId` precondition
 
-If you only want to write events in case the last event of a subject (such as `/books/42`) has a specific ID (e.g., `0`), use the `NewIsSubjectOnEventIDPrecondition` function to create a precondition and pass it in a slice as the second argument:
+If you only want to write events in case the last event of a subject (such as `/books/42`) has a specific ID (e.g., `0`), use the `NewIsSubjectOnEventIDPrecondition` function to create a precondition and pass it in a slice as the third argument:
 
 ```go
 writtenEvents, err := client.WriteEvents(
+  context.TODO(),
   []eventsourcingdb.EventCandidate{
     // ...
   },
@@ -149,6 +153,7 @@ If you want to write events depending on an EventQL query, use the `NewIsEventQL
 
 ```go
 writtenEvents, err := client.WriteEvents(
+  context.TODO(),
   []eventsourcingdb.EventCandidate{
     // ...
   },
@@ -159,6 +164,25 @@ writtenEvents, err := client.WriteEvents(
 ```
 
 *Note that the query must return a single row with a single value, which is interpreted as a boolean.*
+
+#### Aborting Writing
+
+To abort writing, e.g. if the server does not answer in time, cancel the context you provided, or give it a deadline:
+
+```go
+ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+defer cancel()
+
+writtenEvents, err := client.WriteEvents(
+  ctx,
+  []eventsourcingdb.EventCandidate{
+    // ...
+  },
+  nil,
+)
+```
+
+Writing then ends with the error of the context, `context.Canceled` or `context.DeadlineExceeded`. If the context ends before the request is sent, no events are written. If it ends later, the server may have written them nevertheless, so the error does not tell whether they were written.
 
 ### Reading Events
 
@@ -478,10 +502,11 @@ for event, err := range client.ObserveEvents(
 
 ### Registering an Event Schema
 
-To register an event schema, call the `RegisterEventSchema` function and hand over an event type and the desired schema:
+To register an event schema, call the `RegisterEventSchema` function and hand over a context, an event type and the desired schema:
 
 ```golang
 client.RegisterEventSchema(
+  context.TODO(),
   "io.eventsourcingdb.library.book-acquired",
   map[string]any{
     "type": "object",
@@ -629,6 +654,7 @@ If the server answers a request with an unexpected HTTP status code, the client 
 
 ```golang
 _, err := client.WriteEvents(
+  context.TODO(),
   []eventsourcingdb.EventCandidate{
     // ...
   },
@@ -653,7 +679,7 @@ if errors.As(err, &dbAPIError) {
 If the server is not an EventSourcingDB, e.g. because a proxy answers in its place, the client returns `ErrInvalidServerHeader`. Use `errors.Is` to check for it:
 
 ```golang
-err := client.Ping()
+err := client.Ping(context.TODO())
 if errors.Is(err, eventsourcingdb.ErrInvalidServerHeader) {
   // ...
 }

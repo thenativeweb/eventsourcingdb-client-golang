@@ -27,7 +27,7 @@ func TestVerifyAPIToken(t *testing.T) {
 		client, err := container.GetClient(ctx)
 		require.NoError(t, err)
 
-		err = client.VerifyAPIToken()
+		err = client.VerifyAPIToken(ctx)
 		assert.NoError(t, err)
 	})
 
@@ -49,7 +49,7 @@ func TestVerifyAPIToken(t *testing.T) {
 		client, err := eventsourcingdb.NewClient(baseURL, invalidToken)
 		require.NoError(t, err)
 
-		err = client.VerifyAPIToken()
+		err = client.VerifyAPIToken(ctx)
 		assert.EqualError(t, err, "failed to verify API token, got HTTP status code '401', expected '200': unauthorized")
 		assertDBAPIError(t, err, http.StatusUnauthorized, "unauthorized")
 	})

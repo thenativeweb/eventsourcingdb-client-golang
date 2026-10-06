@@ -27,7 +27,7 @@ func TestPing(t *testing.T) {
 		client, err := container.GetClient(ctx)
 		require.NoError(t, err)
 
-		err = client.Ping()
+		err = client.Ping(ctx)
 		assert.NoError(t, err)
 	})
 
@@ -54,7 +54,7 @@ func TestPing(t *testing.T) {
 		client, err := eventsourcingdb.NewClient(baseURL, apiToken)
 		require.NoError(t, err)
 
-		err = client.Ping()
+		err = client.Ping(ctx)
 		assert.Error(t, err)
 	})
 }

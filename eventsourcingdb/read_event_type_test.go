@@ -56,7 +56,7 @@ func TestReadEventType(t *testing.T) {
 		client, err := container.GetClient(t.Context())
 		require.NoError(t, err)
 
-		err = client.RegisterEventSchema("io.eventsourcingdb.test.foo", map[string]any{
+		err = client.RegisterEventSchema(t.Context(), "io.eventsourcingdb.test.foo", map[string]any{
 			"type":       "object",
 			"properties": map[string]any{},
 		})

@@ -74,6 +74,7 @@ func TestReadSubjects(t *testing.T) {
 		}
 
 		_, err = client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				firstEvent,
 				secondEvent,
@@ -131,6 +132,7 @@ func TestReadSubjects(t *testing.T) {
 		}
 
 		_, err = client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{
 				firstEvent,
 				secondEvent,

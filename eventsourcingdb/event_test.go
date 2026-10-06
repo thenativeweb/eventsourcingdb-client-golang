@@ -44,6 +44,7 @@ func TestVerifyHash(t *testing.T) {
 		}
 
 		writtenEvents, err := client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{event},
 			nil,
 		)
@@ -79,6 +80,7 @@ func TestVerifyHash(t *testing.T) {
 		}
 
 		writtenEvents, err := client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{event},
 			nil,
 		)
@@ -126,6 +128,7 @@ func TestVerifySignature(t *testing.T) {
 		}
 
 		writtenEvents, err := client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{event},
 			nil,
 		)
@@ -169,6 +172,7 @@ func TestVerifySignature(t *testing.T) {
 		}
 
 		writtenEvents, err := client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{event},
 			nil,
 		)
@@ -217,6 +221,7 @@ func TestVerifySignature(t *testing.T) {
 		}
 
 		writtenEvents, err := client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{event},
 			nil,
 		)
@@ -264,6 +269,7 @@ func TestVerifySignature(t *testing.T) {
 		}
 
 		writtenEvents, err := client.WriteEvents(
+			ctx,
 			[]eventsourcingdb.EventCandidate{event},
 			nil,
 		)
