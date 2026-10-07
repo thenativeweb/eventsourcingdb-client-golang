@@ -23,8 +23,8 @@ func (c *Client) WriteEvents(ctx context.Context, events []EventCandidate, preco
 		Subject     string  `json:"subject"`
 		Type        string  `json:"type"`
 		Data        any     `json:"data"`
-		TraceParent *string `json:"traceParent,omitempty"`
-		TraceState  *string `json:"traceState,omitempty"`
+		TraceParent *string `json:"traceparent,omitempty"`
+		TraceState  *string `json:"tracestate,omitempty"`
 	}
 
 	type RequestBody struct {
