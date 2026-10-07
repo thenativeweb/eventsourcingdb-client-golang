@@ -52,6 +52,62 @@ func TestWriteEvents(t *testing.T) {
 		assert.Equal(t, "0", writtenEvents[0].ID)
 	})
 
+	t.Run("writes the trace context of an event", func(t *testing.T) {
+		ctx := context.Background()
+
+		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		require.NoError(t, err)
+
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container.Start(ctx)
+		defer container.Stop(ctx)
+
+		client, err := container.GetClient(ctx)
+		require.NoError(t, err)
+
+		traceParent := "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01"
+		traceState := "rojo=00f067aa0ba902b7"
+
+		event := eventsourcingdb.EventCandidate{
+			Source:  "https://www.eventsourcingdb.io",
+			Subject: "/test",
+			Type:    "io.eventsourcingdb.test",
+			Data: EventData{
+				Value: 42,
+			},
+			TraceParent: internal.Ptr(traceParent),
+			TraceState:  internal.Ptr(traceState),
+		}
+
+		writtenEvents, err := client.WriteEvents(
+			ctx,
+			[]eventsourcingdb.EventCandidate{
+				event,
+			},
+			nil,
+		)
+		require.NoError(t, err)
+		require.Len(t, writtenEvents, 1)
+		assert.Equal(t, &traceParent, writtenEvents[0].TraceParent)
+		assert.Equal(t, &traceState, writtenEvents[0].TraceState)
+
+		eventsRead := []eventsourcingdb.Event{}
+		for event, err := range client.ReadEvents(
+			ctx,
+			"/test",
+			eventsourcingdb.ReadEventsOptions{
+				Recursive: false,
+			},
+		) {
+			require.NoError(t, err)
+			eventsRead = append(eventsRead, event)
+		}
+
+		require.Len(t, eventsRead, 1)
+		assert.Equal(t, &traceParent, eventsRead[0].TraceParent)
+		assert.Equal(t, &traceState, eventsRead[0].TraceState)
+	})
+
 	t.Run("writes multiple events", func(t *testing.T) {
 		ctx := context.Background()
 
