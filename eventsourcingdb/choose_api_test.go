@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -395,6 +396,23 @@ func TestChoosingTheAPI(t *testing.T) {
 			}
 			assert.NoError(t, ctx.Err(), "the request waited until its context ended")
 		}
+	})
+
+	t.Run("leaves a client comparable, and a copy of it speaks the API it found out", func(t *testing.T) {
+		assert.True(t, reflect.TypeFor[eventsourcingdb.Client]().Comparable(), "a client is not comparable")
+
+		server := newProbedServer(t, answerAsV2)
+		client := server.client(t)
+
+		err := client.Ping(context.Background())
+		require.NoError(t, err)
+
+		copied := *client
+		err = copied.Ping(context.Background())
+		require.NoError(t, err)
+
+		assert.Equal(t, "v2", eventsourcingdb.APIOf(&copied))
+		assert.Equal(t, int32(1), server.probes.Load())
 	})
 
 	t.Run("asks nothing for a request whose context has already ended", func(t *testing.T) {

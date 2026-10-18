@@ -20,7 +20,10 @@ type Client struct {
 	apiToken     string
 	stallTimeout time.Duration
 	httpClient   *http.Client
-	apiChoice    apiChoice
+
+	// apiChoice is a pointer, so that a client stays comparable, and a copy
+	// of it shares what it found out about the server.
+	apiChoice *apiChoice
 }
 
 // ClientOption configures a client. Hand options to NewClient, e.g.
@@ -61,6 +64,7 @@ func NewClient(baseURL *url.URL, apiToken string, options ...ClientOption) (*Cli
 		baseURL:      baseURL,
 		apiToken:     apiToken,
 		stallTimeout: defaultStallTimeout,
+		apiChoice:    &apiChoice{},
 	}
 
 	for _, option := range options {
