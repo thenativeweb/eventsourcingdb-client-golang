@@ -14,13 +14,16 @@ func (c *Client) VerifyAPIToken(ctx context.Context) error {
 		return err
 	}
 
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, verifyAPITokenURL.String(), nil)
+	guard := c.guard(ctx)
+	defer guard.end()
+
+	request, err := http.NewRequestWithContext(guard.ctx, http.MethodPost, verifyAPITokenURL.String(), nil)
 	if err != nil {
 		return err
 	}
 	request.Header.Set("Authorization", "Bearer "+c.apiToken)
 
-	response, err := http.DefaultClient.Do(request)
+	response, err := c.send(guard, request)
 	if err != nil {
 		return err
 	}

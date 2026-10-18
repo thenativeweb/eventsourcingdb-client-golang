@@ -39,10 +39,8 @@ func (c *Client) RunEventQLQuery(
 
 		requestBodyReader := io.NopCloser(bytes.NewReader(requestBodyJSON))
 
-		// Canceling this context closes the connection, which is how the
-		// stream ends if neither a row nor a heartbeat arrives in time.
-		ctx, cancel := context.WithCancelCause(ctx)
-		defer cancel(nil)
+		guard := c.guard(ctx)
+		defer guard.end()
 
 		request := (&http.Request{
 			Method: http.MethodPost,
@@ -52,9 +50,9 @@ func (c *Client) RunEventQLQuery(
 				"Content-Type":  []string{"application/json"},
 			},
 			Body: requestBodyReader,
-		}).WithContext(ctx)
+		}).WithContext(guard.ctx)
 
-		response, err := http.DefaultClient.Do(request)
+		response, err := c.send(guard, request)
 		if err != nil {
 			yield(nil, err)
 			return
@@ -72,7 +70,7 @@ func (c *Client) RunEventQLQuery(
 			return
 		}
 
-		for line, err := range unmarshalNDJSONWithHeartbeatTimeout(ctx, cancel, response.Body) {
+		for line, err := range guard.lines(response.Body, true) {
 			if err != nil {
 				yield(nil, err)
 				return

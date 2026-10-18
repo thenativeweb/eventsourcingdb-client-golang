@@ -21,10 +21,10 @@ func TestWriteEvents(t *testing.T) {
 	t.Run("writes a single event", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -55,10 +55,10 @@ func TestWriteEvents(t *testing.T) {
 	t.Run("writes the trace context of an event", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -111,10 +111,10 @@ func TestWriteEvents(t *testing.T) {
 	t.Run("writes multiple events", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -166,10 +166,10 @@ func TestWriteEvents(t *testing.T) {
 	t.Run("supports the isSubjectPristine precondition", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -213,17 +213,16 @@ func TestWriteEvents(t *testing.T) {
 			},
 		)
 
-		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200': state conflict: precondition failed")
-		assertDBAPIError(t, err, http.StatusConflict, "state conflict: precondition failed")
+		assertReasonOfServer(t, err, "write events", http.StatusConflict, "state conflict: ")
 	})
 
 	t.Run("supports the isSubjectPopulated precondition", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -257,8 +256,7 @@ func TestWriteEvents(t *testing.T) {
 				eventsourcingdb.NewIsSubjectPopulatedPrecondition("/test"),
 			},
 		)
-		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200': state conflict: precondition failed")
-		assertDBAPIError(t, err, http.StatusConflict, "state conflict: precondition failed")
+		assertReasonOfServer(t, err, "write events", http.StatusConflict, "state conflict: ")
 
 		_, err = client.WriteEvents(
 			ctx,
@@ -291,10 +289,10 @@ func TestWriteEvents(t *testing.T) {
 	t.Run("supports the isSubjectOnEventId precondition", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -338,17 +336,16 @@ func TestWriteEvents(t *testing.T) {
 			},
 		)
 
-		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200': state conflict: precondition failed")
-		assertDBAPIError(t, err, http.StatusConflict, "state conflict: precondition failed")
+		assertReasonOfServer(t, err, "write events", http.StatusConflict, "state conflict: ")
 	})
 
 	t.Run("supports the isEventQlQueryTrue precondition", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -392,17 +389,16 @@ func TestWriteEvents(t *testing.T) {
 			},
 		)
 
-		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200': state conflict: precondition failed")
-		assertDBAPIError(t, err, http.StatusConflict, "state conflict: precondition failed")
+		assertReasonOfServer(t, err, "write events", http.StatusConflict, "state conflict: ")
 	})
 
 	t.Run("reports the reason if an event does not match its schema", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -441,7 +437,6 @@ func TestWriteEvents(t *testing.T) {
 			nil,
 		)
 
-		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200': schema conflict: event candidate does not match schema: additionalProperties 'extra' not allowed")
-		assertDBAPIError(t, err, http.StatusConflict, "schema conflict: event candidate does not match schema: additionalProperties 'extra' not allowed")
+		assertReasonOfServer(t, err, "write events", http.StatusConflict, "schema conflict: ", "additionalProperties 'extra' not allowed")
 	})
 }

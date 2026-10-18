@@ -33,14 +33,17 @@ func (c *Client) ReadEventType(
 
 	requestBodyReader := io.NopCloser(bytes.NewReader(requestBodyJSON))
 
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, readEventTypeURL.String(), requestBodyReader)
+	guard := c.guard(ctx)
+	defer guard.end()
+
+	request, err := http.NewRequestWithContext(guard.ctx, http.MethodPost, readEventTypeURL.String(), requestBodyReader)
 	if err != nil {
 		return EventType{}, err
 	}
 	request.Header.Set("Authorization", "Bearer "+c.apiToken)
 	request.Header.Set("Content-Type", "application/json")
 
-	response, err := http.DefaultClient.Do(request)
+	response, err := c.send(guard, request)
 	if err != nil {
 		return EventType{}, err
 	}

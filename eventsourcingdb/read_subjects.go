@@ -39,6 +39,9 @@ func (c *Client) ReadSubjects(
 
 		requestBodyReader := io.NopCloser(bytes.NewReader(requestBodyJSON))
 
+		guard := c.guard(ctx)
+		defer guard.end()
+
 		request := (&http.Request{
 			Method: http.MethodPost,
 			URL:    readSubjectsURL,
@@ -47,9 +50,9 @@ func (c *Client) ReadSubjects(
 				"Content-Type":  []string{"application/json"},
 			},
 			Body: requestBodyReader,
-		}).WithContext(ctx)
+		}).WithContext(guard.ctx)
 
-		response, err := http.DefaultClient.Do(request)
+		response, err := c.send(guard, request)
 		if err != nil {
 			yield("", err)
 			return
@@ -67,7 +70,7 @@ func (c *Client) ReadSubjects(
 			return
 		}
 
-		for line, err := range internal.UnmarshalNDJSON(ctx, response.Body) {
+		for line, err := range guard.lines(response.Body, false) {
 			if err != nil {
 				yield("", err)
 				return

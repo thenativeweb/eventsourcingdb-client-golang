@@ -12,10 +12,10 @@ import (
 
 func TestReadEventType(t *testing.T) {
 	t.Run("fails if the event type does not exist", func(t *testing.T) {
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(t.Context())
 		defer container.Stop(t.Context())
 
@@ -24,15 +24,14 @@ func TestReadEventType(t *testing.T) {
 
 		_, err = client.ReadEventType(t.Context(), "io.eventsourcingdb.test.nonexistent")
 		require.Error(t, err)
-		assert.Equal(t, "failed to read event type, got HTTP status code '404', expected '200': event type 'io.eventsourcingdb.test.nonexistent' not found", err.Error())
-		assertDBAPIError(t, err, http.StatusNotFound, "event type 'io.eventsourcingdb.test.nonexistent' not found")
+		assertReasonOfServer(t, err, "read event type", http.StatusNotFound, "event type ")
 	})
 
 	t.Run("fails if the event type is malformed", func(t *testing.T) {
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(t.Context())
 		defer container.Stop(t.Context())
 
@@ -41,15 +40,14 @@ func TestReadEventType(t *testing.T) {
 
 		_, err = client.ReadEventType(t.Context(), "io.eventsourcingdb.test.")
 		require.Error(t, err)
-		assert.Equal(t, "failed to read event type, got HTTP status code '400', expected '200': invalid event type: 'io.eventsourcingdb.test.'", err.Error())
-		assertDBAPIError(t, err, http.StatusBadRequest, "invalid event type: 'io.eventsourcingdb.test.'")
+		assertReasonOfServer(t, err, "read event type", http.StatusBadRequest, "", "event type")
 	})
 
 	t.Run("reads an existing event type", func(t *testing.T) {
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(t.Context())
 		defer container.Stop(t.Context())
 

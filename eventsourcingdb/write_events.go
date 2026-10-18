@@ -80,14 +80,17 @@ func (c *Client) WriteEvents(ctx context.Context, events []EventCandidate, preco
 
 	requestBodyReader := io.NopCloser(bytes.NewReader(requestBodyJSON))
 
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, writeEventsURL.String(), requestBodyReader)
+	guard := c.guard(ctx)
+	defer guard.end()
+
+	request, err := http.NewRequestWithContext(guard.ctx, http.MethodPost, writeEventsURL.String(), requestBodyReader)
 	if err != nil {
 		return nil, err
 	}
 	request.Header.Set("Authorization", "Bearer "+c.apiToken)
 	request.Header.Set("Content-Type", "application/json")
 
-	response, err := http.DefaultClient.Do(request)
+	response, err := c.send(guard, request)
 	if err != nil {
 		return nil, err
 	}

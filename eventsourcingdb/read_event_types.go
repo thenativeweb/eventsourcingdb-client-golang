@@ -33,6 +33,9 @@ func (c *Client) ReadEventTypes(
 
 		requestBodyReader := io.NopCloser(bytes.NewReader(requestBodyJSON))
 
+		guard := c.guard(ctx)
+		defer guard.end()
+
 		request := (&http.Request{
 			Method: http.MethodPost,
 			URL:    readEventTypesURL,
@@ -41,9 +44,9 @@ func (c *Client) ReadEventTypes(
 				"Content-Type":  []string{"application/json"},
 			},
 			Body: requestBodyReader,
-		}).WithContext(ctx)
+		}).WithContext(guard.ctx)
 
-		response, err := http.DefaultClient.Do(request)
+		response, err := c.send(guard, request)
 		if err != nil {
 			yield(EventType{}, err)
 			return
@@ -61,7 +64,7 @@ func (c *Client) ReadEventTypes(
 			return
 		}
 
-		for line, err := range internal.UnmarshalNDJSON(ctx, response.Body) {
+		for line, err := range guard.lines(response.Body, false) {
 			if err != nil {
 				yield(EventType{}, err)
 				return

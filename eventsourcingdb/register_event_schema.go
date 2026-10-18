@@ -31,14 +31,17 @@ func (c *Client) RegisterEventSchema(ctx context.Context, eventType string, sche
 
 	requestBodyReader := io.NopCloser(bytes.NewReader(requestBodyJSON))
 
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, registerEventSchemaURL.String(), requestBodyReader)
+	guard := c.guard(ctx)
+	defer guard.end()
+
+	request, err := http.NewRequestWithContext(guard.ctx, http.MethodPost, registerEventSchemaURL.String(), requestBodyReader)
 	if err != nil {
 		return err
 	}
 	request.Header.Set("Authorization", "Bearer "+c.apiToken)
 	request.Header.Set("Content-Type", "application/json")
 
-	response, err := http.DefaultClient.Do(request)
+	response, err := c.send(guard, request)
 	if err != nil {
 		return err
 	}
