@@ -18,7 +18,7 @@ const heartbeatLine = `{"type":"heartbeat","payload":{}}`
 // Otherwise it keeps believing it is live, while nothing arrives any more.
 func TestErrHeartbeatTimeout(t *testing.T) {
 	timeout := 250 * time.Millisecond
-	eventsourcingdb.SetHeartbeatTimeout(t, timeout)
+	withTimeout := eventsourcingdb.WithStallTimeout(timeout)
 
 	t.Run("every stream with heartbeats ends if nothing arrives after a heartbeat", func(t *testing.T) {
 		for _, stream := range streamsWithHeartbeats() {
@@ -32,14 +32,14 @@ func TestErrHeartbeatTimeout(t *testing.T) {
 						close(connectionClosed)
 					case <-time.After(5 * time.Second):
 					}
-				})
+				}, withTimeout)
 
 				started := time.Now()
 				_, err := stream.read(context.Background(), client, nil)
 				elapsed := time.Since(started)
 
 				assert.ErrorIs(t, err, eventsourcingdb.ErrHeartbeatTimeout)
-				assert.EqualError(t, err, "no event and no heartbeat arrived for 30 seconds")
+				assert.EqualError(t, err, "no event and no heartbeat arrived for 250ms")
 				assert.GreaterOrEqual(t, elapsed, timeout)
 				assert.Less(t, elapsed, 2*time.Second, "the heartbeat timeout did not end the stream")
 
@@ -62,7 +62,7 @@ func TestErrHeartbeatTimeout(t *testing.T) {
 						time.Sleep(timeout / 5)
 					}
 					send(stream.line)
-				})
+				}, withTimeout)
 
 				items, err := stream.read(context.Background(), client, nil)
 
@@ -82,7 +82,7 @@ func TestErrHeartbeatTimeout(t *testing.T) {
 						send(stream.line)
 						time.Sleep(timeout / 2)
 					}
-				})
+				}, withTimeout)
 
 				items, err := stream.read(context.Background(), client, nil)
 
@@ -98,7 +98,7 @@ func TestErrHeartbeatTimeout(t *testing.T) {
 				client := clientOfAServerThatStreams(t, func(ctx context.Context, send func(line string)) {
 					send(stream.line)
 					send(stream.line)
-				})
+				}, withTimeout)
 
 				items, err := stream.read(context.Background(), client, func() {
 					time.Sleep(2 * timeout)
@@ -120,7 +120,7 @@ func TestErrHeartbeatTimeout(t *testing.T) {
 					case <-ctx.Done():
 					case <-time.After(5 * time.Second):
 					}
-				})
+				}, withTimeout)
 
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
@@ -146,7 +146,7 @@ func TestErrHeartbeatTimeout(t *testing.T) {
 			case <-ctx.Done():
 			case <-time.After(5 * time.Second):
 			}
-		})
+		}, withTimeout)
 
 		var err error
 		for _, observeErr := range client.ObserveEvents(context.Background(), "/test", eventsourcingdb.ObserveEventsOptions{}) {
@@ -159,6 +159,30 @@ func TestErrHeartbeatTimeout(t *testing.T) {
 
 		assert.ErrorIs(t, wrapped, eventsourcingdb.ErrHeartbeatTimeout)
 	})
+
+	t.Run("is ErrHeartbeatTimeout itself with the default stall timeout, as before", func(t *testing.T) {
+		err := eventsourcingdb.HeartbeatTimeoutAfter(30 * time.Second)
+
+		assert.Same(t, eventsourcingdb.ErrHeartbeatTimeout, err)
+		assert.EqualError(t, err, "no event and no heartbeat arrived for 30 seconds")
+	})
+
+	t.Run("names any other stall timeout", func(t *testing.T) {
+		messages := map[time.Duration]string{
+			time.Second:             "no event and no heartbeat arrived for 1 second",
+			10 * time.Second:        "no event and no heartbeat arrived for 10 seconds",
+			time.Minute:             "no event and no heartbeat arrived for 60 seconds",
+			1500 * time.Millisecond: "no event and no heartbeat arrived for 1.5s",
+		}
+
+		for stallTimeout, message := range messages {
+			err := eventsourcingdb.HeartbeatTimeoutAfter(stallTimeout)
+
+			assert.ErrorIs(t, err, eventsourcingdb.ErrHeartbeatTimeout)
+			assert.NotErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
+			assert.EqualError(t, err, message)
+		}
+	})
 }
 
 // clientOfAServerThatStreams returns a client of a server that answers every
@@ -166,8 +190,9 @@ func TestErrHeartbeatTimeout(t *testing.T) {
 // hands to send, right away. The response ends when stream returns. The
 // context that stream gets ends when the client closes the connection, and
 // every stream that waits for it also has to give up after a few seconds, so
-// that a client that does not close the connection still ends.
-func clientOfAServerThatStreams(t *testing.T, stream func(ctx context.Context, send func(line string))) *eventsourcingdb.Client {
+// that a client that does not close the connection still ends. The client is
+// configured by the given options.
+func clientOfAServerThatStreams(t *testing.T, stream func(ctx context.Context, send func(line string)), options ...eventsourcingdb.ClientOption) *eventsourcingdb.Client {
 	t.Helper()
 
 	return clientOf(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -180,7 +205,7 @@ func clientOfAServerThatStreams(t *testing.T, stream func(ctx context.Context, s
 			_, _ = w.Write([]byte(line + "\n"))
 			w.(http.Flusher).Flush()
 		})
-	}))
+	}), options...)
 }
 
 type streamWithHeartbeats struct {

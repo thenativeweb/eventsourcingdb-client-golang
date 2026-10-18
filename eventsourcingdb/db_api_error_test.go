@@ -201,8 +201,9 @@ func clientOfAServerThatAnswers(t *testing.T, statusCode int, body string) *even
 	}))
 }
 
-// clientOf returns a client of a server that answers with the given handler.
-func clientOf(t *testing.T, handler http.Handler) *eventsourcingdb.Client {
+// clientOf returns a client of a server that answers with the given handler,
+// configured by the given options.
+func clientOf(t *testing.T, handler http.Handler, options ...eventsourcingdb.ClientOption) *eventsourcingdb.Client {
 	t.Helper()
 
 	server := httptest.NewServer(handler)
@@ -211,7 +212,7 @@ func clientOf(t *testing.T, handler http.Handler) *eventsourcingdb.Client {
 	baseURL, err := url.Parse(server.URL)
 	require.NoError(t, err)
 
-	client, err := eventsourcingdb.NewClient(baseURL, "secret")
+	client, err := eventsourcingdb.NewClient(baseURL, "secret", options...)
 	require.NoError(t, err)
 
 	return client

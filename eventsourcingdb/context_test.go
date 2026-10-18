@@ -296,8 +296,9 @@ func TestTheContext(t *testing.T) {
 // EventSourcingDB would, but stops: without a start of a stream, before it
 // answers at all, and with one, after sending it. It waits until the request
 // ends, until the test is over, or until five seconds have passed, so that a
-// client that ignores its context still ends.
-func clientOfAServerThatHangs(t *testing.T, start []byte) *eventsourcingdb.Client {
+// client that ignores its context still ends. The client is configured by the
+// given options.
+func clientOfAServerThatHangs(t *testing.T, start []byte, options ...eventsourcingdb.ClientOption) *eventsourcingdb.Client {
 	t.Helper()
 
 	released := make(chan struct{})
@@ -325,7 +326,7 @@ func clientOfAServerThatHangs(t *testing.T, start []byte) *eventsourcingdb.Clien
 	baseURL, err := url.Parse(server.URL)
 	require.NoError(t, err)
 
-	client, err := eventsourcingdb.NewClient(baseURL, "secret")
+	client, err := eventsourcingdb.NewClient(baseURL, "secret", options...)
 	require.NoError(t, err)
 
 	return client

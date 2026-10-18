@@ -42,6 +42,21 @@ if err != nil {
 
 *Note that the client sends its requests with an HTTP client of its own, which starts from a copy of `http.DefaultTransport`. Changing `http.DefaultClient`, e.g. setting its `Timeout`, does not affect it.*
 
+A request fails if nothing arrives from the server for 30 seconds, e.g. because the server can not be reached, or because a proxy keeps the connection open but no longer passes anything on (see [Handling Errors](#handling-errors)). To change this stall timeout, pass the `WithStallTimeout` option to `NewClient`:
+
+```go
+client, err := eventsourcingdb.NewClient(
+  baseURL,
+  apiToken,
+  eventsourcingdb.WithStallTimeout(10*time.Second),
+)
+if err != nil {
+  // ...
+}
+```
+
+The clock starts when a request is sent, so it covers connecting and waiting for the response, and starts again with every byte that arrives. It does not limit how long a request takes in total: a stream that keeps receiving events or heartbeats never ends because of it, and the time you spend on an item of a stream does not count. The stall timeout must be greater than zero, and since the server sends a heartbeat every second while observing events and running EventQL queries, it should be several seconds at least. To limit a single request further, give its context a deadline.
+
 Then call the `Ping` function with a context to check whether the instance is reachable. If it is not, the function will return an error:
 
 ```go
@@ -358,7 +373,7 @@ The query then ends with the error of the context, `context.Canceled`, so that a
 
 #### Detecting a Stalled Connection
 
-While a query runs, the server sends a heartbeat every second whenever there is no row to send. If neither a row nor a heartbeat arrives for 30 seconds, e.g. because a proxy keeps the connection open but no longer passes anything on, the query ends with `ErrHeartbeatTimeout`, and the client closes the connection. Use `errors.Is` to check for it:
+While a query runs, the server sends a heartbeat every second whenever there is no row to send. If neither a row nor a heartbeat arrives for the stall timeout, 30 seconds by default, e.g. because a proxy keeps the connection open but no longer passes anything on, the query ends with `ErrHeartbeatTimeout`, and the client closes the connection. If the server has not begun to answer by then, the query ends with `ErrConnectionStalled` instead, as every other request does (see [Handling Errors](#handling-errors)). Use `errors.Is` to check for it:
 
 ```golang
 for row, err := range client.RunEventQLQuery(
@@ -484,7 +499,7 @@ Observing then ends with the error of the context, `context.Canceled`. Since obs
 
 #### Detecting a Stalled Connection
 
-While there are no new events, the server sends a heartbeat every second. If neither an event nor a heartbeat arrives for 30 seconds, e.g. because a proxy keeps the connection open but no longer passes anything on, observing ends with `ErrHeartbeatTimeout`, and the client closes the connection. Use `errors.Is` to check for it:
+While there are no new events, the server sends a heartbeat every second. If neither an event nor a heartbeat arrives for the stall timeout, 30 seconds by default, e.g. because a proxy keeps the connection open but no longer passes anything on, observing ends with `ErrHeartbeatTimeout`, and the client closes the connection. If the server has not begun to answer by then, observing ends with `ErrConnectionStalled` instead, as every other request does (see [Handling Errors](#handling-errors)). Use `errors.Is` to check for it:
 
 ```golang
 for event, err := range client.ObserveEvents(
@@ -699,7 +714,27 @@ if errors.Is(err, eventsourcingdb.ErrInvalidServerHeader) {
 }
 ```
 
-If observing events or running an EventQL query receives nothing for 30 seconds, not even a heartbeat, e.g. because a proxy keeps the connection open but no longer passes anything on, the client closes the connection, and observing or the query ends with `ErrHeartbeatTimeout`. Use `errors.Is` to check for it, too.
+If nothing arrives from the server for the stall timeout, 30 seconds by default (see [Getting Started](#getting-started)), e.g. because the server can not be reached, or because a proxy keeps the connection open but no longer passes anything on, the client closes the connection, and the request ends with `ErrConnectionStalled`. Its message names the stall timeout. Use `errors.Is` to check for it:
+
+```golang
+_, err := client.WriteEvents(
+  context.TODO(),
+  []eventsourcingdb.EventCandidate{
+    // ...
+  },
+  nil,
+)
+
+if errors.Is(err, eventsourcingdb.ErrConnectionStalled) {
+  // ...
+}
+```
+
+*Note that the server may have written the events of a write that stalls nevertheless, as with a context that ends while the request runs.*
+
+Since a stalled connection is a timeout, `errors.Is` also finds `context.DeadlineExceeded` in the error, as it does for a timeout of an `http.Client`. To tell a stall from a deadline of your context, check for `ErrConnectionStalled`, or check whether your context has ended.
+
+If observing events or running an EventQL query receives nothing for the stall timeout once the server has begun to answer, not even a heartbeat, observing or the query ends with `ErrHeartbeatTimeout` instead. With the default stall timeout, this is `ErrHeartbeatTimeout` itself, and with any other one, an error that wraps it and names the stall timeout. Use `errors.Is` to check for it, too.
 
 ### Using Testcontainers
 

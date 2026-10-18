@@ -1,19 +1,21 @@
 package eventsourcingdb
 
 import (
-	"testing"
+	"net/http"
 	"time"
 )
 
-// SetHeartbeatTimeout shortens the heartbeat timeout until the test t ends,
-// so that it does not have to wait for 30 seconds.
-func SetHeartbeatTimeout(t *testing.T, timeout time.Duration) {
-	t.Helper()
+// HeartbeatTimeoutAfter returns the error with which a stream with heartbeats
+// ends if nothing arrives for the given stall timeout, so that tests need not
+// wait for 30 seconds to see it.
+var HeartbeatTimeoutAfter = heartbeatTimeoutAfter
 
-	original := heartbeatTimeout
-	heartbeatTimeout = timeout
+// StallTimeoutOf returns the stall timeout of a client.
+func StallTimeoutOf(client *Client) time.Duration {
+	return client.stallTimeout
+}
 
-	t.Cleanup(func() {
-		heartbeatTimeout = original
-	})
+// HTTPClientOf returns the HTTP client that a client sends its requests with.
+func HTTPClientOf(client *Client) *http.Client {
+	return client.httpClient
 }

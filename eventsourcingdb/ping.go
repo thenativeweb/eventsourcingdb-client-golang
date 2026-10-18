@@ -14,12 +14,15 @@ func (c *Client) Ping(ctx context.Context) error {
 		return err
 	}
 
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, pingURL.String(), nil)
+	guard := c.guard(ctx)
+	defer guard.end()
+
+	request, err := http.NewRequestWithContext(guard.ctx, http.MethodGet, pingURL.String(), nil)
 	if err != nil {
 		return err
 	}
 
-	response, err := c.httpClient.Do(request)
+	response, err := c.send(guard, request)
 	if err != nil {
 		return err
 	}
