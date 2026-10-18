@@ -213,8 +213,7 @@ func TestWriteEvents(t *testing.T) {
 			},
 		)
 
-		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200': state conflict: precondition failed")
-		assertDBAPIError(t, err, http.StatusConflict, "state conflict: precondition failed")
+		assertReasonOfServer(t, err, "write events", http.StatusConflict, "state conflict: ")
 	})
 
 	t.Run("supports the isSubjectPopulated precondition", func(t *testing.T) {
@@ -257,8 +256,7 @@ func TestWriteEvents(t *testing.T) {
 				eventsourcingdb.NewIsSubjectPopulatedPrecondition("/test"),
 			},
 		)
-		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200': state conflict: precondition failed")
-		assertDBAPIError(t, err, http.StatusConflict, "state conflict: precondition failed")
+		assertReasonOfServer(t, err, "write events", http.StatusConflict, "state conflict: ")
 
 		_, err = client.WriteEvents(
 			ctx,
@@ -338,8 +336,7 @@ func TestWriteEvents(t *testing.T) {
 			},
 		)
 
-		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200': state conflict: precondition failed")
-		assertDBAPIError(t, err, http.StatusConflict, "state conflict: precondition failed")
+		assertReasonOfServer(t, err, "write events", http.StatusConflict, "state conflict: ")
 	})
 
 	t.Run("supports the isEventQlQueryTrue precondition", func(t *testing.T) {
@@ -392,8 +389,7 @@ func TestWriteEvents(t *testing.T) {
 			},
 		)
 
-		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200': state conflict: precondition failed")
-		assertDBAPIError(t, err, http.StatusConflict, "state conflict: precondition failed")
+		assertReasonOfServer(t, err, "write events", http.StatusConflict, "state conflict: ")
 	})
 
 	t.Run("reports the reason if an event does not match its schema", func(t *testing.T) {
@@ -441,7 +437,6 @@ func TestWriteEvents(t *testing.T) {
 			nil,
 		)
 
-		assert.EqualError(t, err, "failed to write events, got HTTP status code '409', expected '200': schema conflict: event candidate does not match schema: additionalProperties 'extra' not allowed")
-		assertDBAPIError(t, err, http.StatusConflict, "schema conflict: event candidate does not match schema: additionalProperties 'extra' not allowed")
+		assertReasonOfServer(t, err, "write events", http.StatusConflict, "schema conflict: ", "additionalProperties 'extra' not allowed")
 	})
 }

@@ -164,6 +164,30 @@ func assertDBAPIError(t *testing.T, err error, statusCode int, reason string) {
 	assert.Equal(t, reason, dbAPIError.Reason)
 }
 
+// assertReasonOfServer asserts that errors.As finds a DBAPIError in err, with
+// the given status code, and with a reason that the message of err names after
+// the action. It does not assert the wording of the reason, which the server
+// may change between its versions, as it did in 1.3, but only that the reason
+// starts with the given prefix and contains each of the given parts.
+func assertReasonOfServer(t *testing.T, err error, action string, statusCode int, prefix string, parts ...string) {
+	t.Helper()
+
+	var dbAPIError *eventsourcingdb.DBAPIError
+	if !assert.ErrorAs(t, err, &dbAPIError) {
+		return
+	}
+
+	assert.Equal(t, action, dbAPIError.Action)
+	assert.Equal(t, statusCode, dbAPIError.StatusCode)
+	assert.NotEmpty(t, dbAPIError.Reason)
+	assert.True(t, strings.HasPrefix(dbAPIError.Reason, prefix), "the reason %q does not start with %q", dbAPIError.Reason, prefix)
+	for _, part := range parts {
+		assert.Contains(t, dbAPIError.Reason, part)
+	}
+	assert.NoError(t, dbAPIError.Err)
+	assert.EqualError(t, err, fmt.Sprintf("failed to %s, got HTTP status code '%d', expected '200': %s", action, statusCode, dbAPIError.Reason))
+}
+
 // clientOfAServerThatAnswers returns a client of a server that presents
 // itself as EventSourcingDB, and answers every request with the given status
 // code and body.
