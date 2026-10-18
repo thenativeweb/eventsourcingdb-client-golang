@@ -619,11 +619,11 @@ eventType, err := client.ReadEventType(
 
 ### Verifying an Event's Hash
 
-To verify the integrity of an event, call the `VerifyHash` function on the event instance. This recomputes the event's hash locally and compares it to the hash stored in the event. If the hashes differ, the function returns an error:
+To verify the integrity of an event, call the `VerifyHash` function on the event instance. This recomputes the event's hash locally and compares it to the hash stored in the event. If the hashes differ, the function returns `ErrHashVerificationFailed`. Use `errors.Is` to check for it:
 
 ```golang
 err := event.VerifyHash()
-if err != nil {
+if errors.Is(err, eventsourcingdb.ErrHashVerificationFailed) {
   // ...
 }
 ```
@@ -634,7 +634,7 @@ if err != nil {
 
 To verify the authenticity of an event, call the `VerifySignature` function on the event instance. This requires the public key that matches the private key used for signing on the server.
 
-The function first verifies the event's hash, and then checks the signature. If any verification step fails, it returns an error:
+The function first verifies the event's hash, and then checks the signature. If any verification step fails, it returns an error: `ErrHashVerificationFailed` if the hash does not match, and `ErrSignatureVerificationFailed` if the signature does not match. Use `errors.Is` to check for them:
 
 ```golang
 import "crypto/ed25519"
@@ -644,7 +644,7 @@ import "crypto/ed25519"
 verificationKey := /* public key as ed25519.PublicKey */
 
 err := event.VerifySignature(verificationKey)
-if err != nil {
+if errors.Is(err, eventsourcingdb.ErrSignatureVerificationFailed) {
   // ...
 }
 ```

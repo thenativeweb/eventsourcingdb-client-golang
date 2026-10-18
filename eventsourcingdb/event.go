@@ -11,6 +11,29 @@ import (
 	"time"
 )
 
+// ErrHashVerificationFailed reports that the hash of an event does not match
+// the event, so the event was changed after the server wrote it. VerifyHash
+// and VerifySignature return it in that case. Use errors.Is to check for it,
+// which also finds it if it is wrapped:
+//
+//	err := event.VerifyHash()
+//	if errors.Is(err, eventsourcingdb.ErrHashVerificationFailed) {
+//		// ...
+//	}
+var ErrHashVerificationFailed = errors.New("hash verification failed")
+
+// ErrSignatureVerificationFailed reports that the signature of an event does
+// not match its hash and the verification key, so the event was either not
+// signed with the signing key that belongs to the verification key, or changed
+// after it was signed. VerifySignature returns it in that case. Use errors.Is
+// to check for it, which also finds it if it is wrapped:
+//
+//	err := event.VerifySignature(verificationKey)
+//	if errors.Is(err, eventsourcingdb.ErrSignatureVerificationFailed) {
+//		// ...
+//	}
+var ErrSignatureVerificationFailed = errors.New("signature verification failed")
+
 type Event struct {
 	SpecVersion     string
 	ID              string
@@ -49,7 +72,7 @@ func (event Event) VerifyHash() error {
 	finalHashHex := fmt.Sprintf("%x", finalHash)
 
 	if finalHashHex != event.Hash {
-		return errors.New("hash verification failed")
+		return ErrHashVerificationFailed
 	}
 	return nil
 }
@@ -80,7 +103,7 @@ func (event Event) VerifySignature(verificationKey ed25519.PublicKey) error {
 
 	isSignatureValid := ed25519.Verify(verificationKey, hashBytes, signatureBytes)
 	if !isSignatureValid {
-		return errors.New("signature verification failed")
+		return ErrSignatureVerificationFailed
 	}
 	return nil
 }

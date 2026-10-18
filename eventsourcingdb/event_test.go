@@ -94,7 +94,8 @@ func TestVerifyHash(t *testing.T) {
 		writtenEvent.Hash = invalidHashHex
 
 		err = writtenEvent.VerifyHash()
-		assert.Error(t, err)
+		assert.ErrorIs(t, err, eventsourcingdb.ErrHashVerificationFailed)
+		assert.EqualError(t, err, "hash verification failed")
 	})
 }
 
@@ -191,7 +192,8 @@ func TestVerifySignature(t *testing.T) {
 		require.NoError(t, err)
 
 		err = writtenEvent.VerifySignature(*verificationKey)
-		assert.Error(t, err)
+		assert.ErrorIs(t, err, eventsourcingdb.ErrHashVerificationFailed)
+		assert.NotErrorIs(t, err, eventsourcingdb.ErrSignatureVerificationFailed)
 	})
 
 	t.Run("returns an error if the signature verification fails", func(t *testing.T) {
@@ -239,7 +241,51 @@ func TestVerifySignature(t *testing.T) {
 		require.NoError(t, err)
 
 		err = writtenEvent.VerifySignature(*verificationKey)
-		assert.Error(t, err)
+		assert.ErrorIs(t, err, eventsourcingdb.ErrSignatureVerificationFailed)
+		assert.EqualError(t, err, "signature verification failed")
+	})
+
+	t.Run("returns an error if the signature belongs to another key", func(t *testing.T) {
+		ctx := context.Background()
+
+		imageTag, err := internal.GetImageTag()
+		require.NoError(t, err)
+
+		container := eventsourcingdbtest.NewContainer().
+			WithImageTag(imageTag).
+			WithSigningKey()
+
+		err = container.Start(ctx)
+		require.NoError(t, err)
+		defer container.Stop(ctx)
+
+		client, err := container.GetClient(ctx)
+		require.NoError(t, err)
+
+		writtenEvents, err := client.WriteEvents(
+			ctx,
+			[]eventsourcingdb.EventCandidate{
+				{
+					Source:  "https://www.eventsourcingdb.io",
+					Subject: "/test",
+					Type:    "io.eventsourcingdb.test",
+					Data: EventData{
+						Value: 23,
+					},
+				},
+			},
+			nil,
+		)
+		require.NoError(t, err)
+		require.Len(t, writtenEvents, 1)
+
+		otherVerificationKey, _, err := ed25519.GenerateKey(rand.Reader)
+		require.NoError(t, err)
+
+		err = writtenEvents[0].VerifySignature(otherVerificationKey)
+		wrapped := fmt.Errorf("failed to handle the event: %w", err)
+
+		assert.ErrorIs(t, wrapped, eventsourcingdb.ErrSignatureVerificationFailed)
 	})
 
 	t.Run("verifies the signature", func(t *testing.T) {
