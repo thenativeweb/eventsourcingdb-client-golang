@@ -628,13 +628,24 @@ if errors.Is(err, eventsourcingdb.ErrHashVerificationFailed) {
 }
 ```
 
+The hash of an event tells which version of the hash it is. EventSourcingDB writes version 2 since version 1.3, which starts with `esdb:hash:v2:` and also covers the `TraceParent` and the `TraceState` of an event. Events written before keep their hash of version 1, which has no prefix. `VerifyHash` supports both, so you can verify every event of a store.
+
+If the hash is of a version the client does not know yet, e.g. one that starts with `esdb:hash:v3:`, `VerifyHash` can not tell whether it matches. It then returns an error that wraps `ErrUnsupportedHashVersion` and names the version, e.g. `unsupported hash version 'v3'`. This does not mean that the event was changed, but that you need a newer version of the client to verify it. Use `errors.Is` to check for it:
+
+```golang
+err := event.VerifyHash()
+if errors.Is(err, eventsourcingdb.ErrUnsupportedHashVersion) {
+  // ...
+}
+```
+
 *Note that this only verifies the hash. If you also want to verify the signature, you can skip this step and call `VerifySignature` directly, which performs a hash verification internally.*
 
 ### Verifying an Event's Signature
 
 To verify the authenticity of an event, call the `VerifySignature` function on the event instance. This requires the public key that matches the private key used for signing on the server.
 
-The function first verifies the event's hash, and then checks the signature. If any verification step fails, it returns an error: `ErrHashVerificationFailed` if the hash does not match, and `ErrSignatureVerificationFailed` if the signature does not match. Use `errors.Is` to check for them:
+The function first verifies the event's hash, and then checks the signature. If any verification step fails, it returns an error: `ErrHashVerificationFailed` if the hash does not match, `ErrUnsupportedHashVersion` if the hash is of a version the client does not know, and `ErrSignatureVerificationFailed` if the signature does not match. Use `errors.Is` to check for them:
 
 ```golang
 import "crypto/ed25519"

@@ -332,3 +332,91 @@ func TestVerifySignature(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+// A caller has to be able to verify every event the server hands out, whether
+// it wrote, read, or observed it, with whichever version of the hash the
+// server writes. The data of an event has to be hashed as the server sent it,
+// so these events have data that JSON escapes, and a trace context, which the
+// hash of version 2 covers.
+func TestVerifyEventsOfTheServer(t *testing.T) {
+	ctx := context.Background()
+
+	imageTag, err := internal.GetImageTag()
+	require.NoError(t, err)
+
+	container := eventsourcingdbtest.NewContainer().
+		WithImageTag(imageTag).
+		WithSigningKey()
+
+	err = container.Start(ctx)
+	require.NoError(t, err)
+	defer container.Stop(ctx)
+
+	client, err := container.GetClient(ctx)
+	require.NoError(t, err)
+
+	verificationKey, err := container.GetVerificationKey()
+	require.NoError(t, err)
+
+	candidates := []eventsourcingdb.EventCandidate{
+		{
+			Source:  "https://library.eventsourcingdb.io",
+			Subject: "/books/42",
+			Type:    "io.eventsourcingdb.library.book-acquired",
+			Data: map[string]any{
+				"title":  "2001 – A Space Odyssey",
+				"author": "Arthur C. Clarke",
+				"note":   `<a & b> "quoted"`,
+				"pages":  296,
+			},
+		},
+		{
+			Source:      "https://library.eventsourcingdb.io",
+			Subject:     "/books/42",
+			Type:        "io.eventsourcingdb.library.book-borrowed",
+			Data:        map[string]any{"borrowedBy": "/readers/23"},
+			TraceParent: internal.Ptr("00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01"),
+			TraceState:  internal.Ptr("rojo=00f067aa0ba902b7,congo=t61rcWkgMzE"),
+		},
+	}
+
+	writtenEvents, err := client.WriteEvents(ctx, candidates, nil)
+	require.NoError(t, err)
+
+	var readEvents []eventsourcingdb.Event
+	for event, err := range client.ReadEvents(ctx, "/books/42", eventsourcingdb.ReadEventsOptions{}) {
+		require.NoError(t, err)
+		readEvents = append(readEvents, event)
+	}
+
+	observeCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	var observedEvents []eventsourcingdb.Event
+	for event, err := range client.ObserveEvents(observeCtx, "/books/42", eventsourcingdb.ObserveEventsOptions{}) {
+		require.NoError(t, err)
+		observedEvents = append(observedEvents, event)
+		if len(observedEvents) == len(candidates) {
+			break
+		}
+	}
+
+	eventsBy := map[string][]eventsourcingdb.Event{
+		"written":  writtenEvents,
+		"read":     readEvents,
+		"observed": observedEvents,
+	}
+
+	for how, events := range eventsBy {
+		t.Run(how, func(t *testing.T) {
+			require.Len(t, events, len(candidates))
+
+			for _, event := range events {
+				require.NotNil(t, event.Signature)
+
+				assert.NoError(t, event.VerifyHash())
+				assert.NoError(t, event.VerifySignature(*verificationKey))
+			}
+		})
+	}
+}
