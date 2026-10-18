@@ -2,11 +2,11 @@ package eventsourcingdb_test
 
 import (
 	"context"
-	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdbtest"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
@@ -82,7 +82,6 @@ func TestRegisterEventSchema(t *testing.T) {
 			eventType,
 			schema,
 		)
-		assert.EqualError(t, err, "failed to register event schema, got HTTP status code '409', expected '200': schema conflict: schema already exists")
-		assertDBAPIError(t, err, http.StatusConflict, "schema conflict: schema already exists")
+		assertCodeOfServer(t, err, "register event schema", eventsourcingdb.CodeEventSchemaAlreadyRegistered)
 	})
 }

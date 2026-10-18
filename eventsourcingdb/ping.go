@@ -34,7 +34,7 @@ func (c *Client) Ping(ctx context.Context) error {
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return newDBAPIError("ping", response)
+		return newV1DBAPIError(actionPing, response)
 	}
 
 	type Result struct {

@@ -55,7 +55,7 @@ func (c *Client) ReadEventType(
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return EventType{}, newDBAPIError("read event type", response)
+		return EventType{}, newV1DBAPIError(actionReadEventType, response)
 	}
 
 	var eventTypeResponse internal.StreamEventType

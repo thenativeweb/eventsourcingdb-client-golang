@@ -60,7 +60,7 @@ func (c *Client) ReadEventTypes(
 		}
 
 		if response.StatusCode != http.StatusOK {
-			yield(EventType{}, newDBAPIError("read event types", response))
+			yield(EventType{}, newV1DBAPIError(actionReadEventTypes, response))
 			return
 		}
 
@@ -90,14 +90,7 @@ func (c *Client) ReadEventTypes(
 				}
 				continue
 			case "error":
-				var error internal.Error
-				err := json.Unmarshal(line.Payload, &error)
-				if err != nil {
-					yield(EventType{}, err)
-					return
-				}
-
-				yield(EventType{}, fmt.Errorf("failed to read subjects, got error: %s", error.Error))
+				yield(EventType{}, newV1StreamError(actionReadEventTypes, line.Payload))
 				return
 			default:
 				yield(EventType{}, fmt.Errorf("failed to handle unsupported line type: %s", line.Type))

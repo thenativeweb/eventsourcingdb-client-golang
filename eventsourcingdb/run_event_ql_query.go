@@ -8,8 +8,6 @@ import (
 	"io"
 	"iter"
 	"net/http"
-
-	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 func (c *Client) RunEventQLQuery(
@@ -66,7 +64,7 @@ func (c *Client) RunEventQLQuery(
 		}
 
 		if response.StatusCode != http.StatusOK {
-			yield(nil, newDBAPIError("run EventQL query", response))
+			yield(nil, newV1DBAPIError(actionRunEventQLQuery, response))
 			return
 		}
 
@@ -85,14 +83,7 @@ func (c *Client) RunEventQLQuery(
 				}
 				continue
 			case "error":
-				var error internal.Error
-				err := json.Unmarshal(line.Payload, &error)
-				if err != nil {
-					yield(nil, err)
-					return
-				}
-
-				yield(nil, fmt.Errorf("failed to run EventQL query, got error: %s", error.Error))
+				yield(nil, newV1StreamError(actionRunEventQLQuery, line.Payload))
 				return
 			default:
 				yield(nil, fmt.Errorf("failed to handle unsupported line type: %s", line.Type))

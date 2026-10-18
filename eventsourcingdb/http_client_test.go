@@ -26,7 +26,7 @@ func TestTheHTTPClient(t *testing.T) {
 
 				// The server answered, so the request did not go through
 				// http.DefaultClient, which fails every request.
-				assertDBAPIError(t, err, http.StatusServiceUnavailable, "service unavailable")
+				assertDBAPIError(t, err, http.StatusServiceUnavailable, "", "service unavailable")
 				assert.NotErrorIs(t, err, errDefaultClientUsed)
 			})
 		}

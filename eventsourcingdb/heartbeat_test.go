@@ -125,10 +125,11 @@ func clientOfAServerThatStreams(t *testing.T, stream func(ctx context.Context, s
 	}), options...)
 }
 
-type streamWithHeartbeats struct {
-	name string
-	line string
-	read func(ctx context.Context, client *eventsourcingdb.Client, handle func()) (int, error)
+type stream struct {
+	name   string
+	action string
+	line   string
+	read   func(ctx context.Context, client *eventsourcingdb.Client, handle func()) (int, error)
 }
 
 // streamsWithHeartbeats returns every function of the client that reads a
@@ -136,11 +137,12 @@ type streamWithHeartbeats struct {
 // carries one item of that stream. read reads until the stream ends, calls
 // handle for every item if it is given, and returns how many items there were
 // and the error the stream ends with.
-func streamsWithHeartbeats() []streamWithHeartbeats {
-	return []streamWithHeartbeats{
+func streamsWithHeartbeats() []stream {
+	return []stream{
 		{
-			name: "ObserveEvents",
-			line: `{"type":"event","payload":{"specversion":"1.0","id":"0","time":"2026-10-01T12:00:00Z","source":"https://www.eventsourcingdb.io","subject":"/test","type":"io.eventsourcingdb.test","datacontenttype":"application/json","data":{},"hash":"","predecessorhash":""}}`,
+			name:   "ObserveEvents",
+			action: "observe events",
+			line:   `{"type":"event","payload":{"specversion":"1.0","id":"0","time":"2026-10-01T12:00:00Z","source":"https://www.eventsourcingdb.io","subject":"/test","type":"io.eventsourcingdb.test","datacontenttype":"application/json","data":{},"hash":"","predecessorhash":""}}`,
 			read: func(ctx context.Context, client *eventsourcingdb.Client, handle func()) (int, error) {
 				items := 0
 				for _, err := range client.ObserveEvents(ctx, "/test", eventsourcingdb.ObserveEventsOptions{}) {
@@ -157,8 +159,9 @@ func streamsWithHeartbeats() []streamWithHeartbeats {
 			},
 		},
 		{
-			name: "RunEventQLQuery",
-			line: `{"type":"row","payload":{"value":23}}`,
+			name:   "RunEventQLQuery",
+			action: "run EventQL query",
+			line:   `{"type":"row","payload":{"value":23}}`,
 			read: func(ctx context.Context, client *eventsourcingdb.Client, handle func()) (int, error) {
 				items := 0
 				for _, err := range client.RunEventQLQuery(ctx, "FROM e IN events PROJECT INTO e") {

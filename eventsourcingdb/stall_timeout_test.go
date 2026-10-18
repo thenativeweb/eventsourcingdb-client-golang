@@ -62,7 +62,7 @@ func TestErrConnectionStalled(t *testing.T) {
 		}
 	})
 
-	t.Run("a request ends if the reason of an unexpected status stops in the middle", func(t *testing.T) {
+	t.Run("a request ends if the description of a status other than 200 stops in the middle", func(t *testing.T) {
 		client := clientOf(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Server", "EventSourcingDB/test")
 			w.Header().Set("Content-Length", "100")
@@ -80,9 +80,9 @@ func TestErrConnectionStalled(t *testing.T) {
 
 		var dbAPIError *eventsourcingdb.DBAPIError
 		require.ErrorAs(t, err, &dbAPIError)
-		assert.Equal(t, http.StatusServiceUnavailable, dbAPIError.StatusCode)
+		assert.Equal(t, http.StatusServiceUnavailable, dbAPIError.Status)
 		assert.ErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
-		assert.EqualError(t, err, "failed to ping, got HTTP status code '503', expected '200', and failed to read the reason: connection stalled, nothing arrived from the server for 250ms")
+		assert.EqualError(t, err, "failed to ping, got HTTP status code '503', expected '200', and failed to read the description: connection stalled, nothing arrived from the server for 250ms")
 	})
 
 	t.Run("every byte keeps a request alive", func(t *testing.T) {
@@ -287,18 +287,19 @@ func TestWithStallTimeout(t *testing.T) {
 
 // streams returns every function of the client that reads a stream, with and
 // without heartbeats.
-func streams() []streamWithHeartbeats {
+func streams() []stream {
 	return append(streamsWithHeartbeats(), streamsWithoutHeartbeats()...)
 }
 
 // streamsWithoutHeartbeats returns every function of the client that reads a
 // stream on which the server sends no heartbeats, as streamsWithHeartbeats
 // does for those with heartbeats.
-func streamsWithoutHeartbeats() []streamWithHeartbeats {
-	return []streamWithHeartbeats{
+func streamsWithoutHeartbeats() []stream {
+	return []stream{
 		{
-			name: "ReadEvents",
-			line: `{"type":"event","payload":{"specversion":"1.0","id":"0","time":"2026-10-01T12:00:00Z","source":"https://www.eventsourcingdb.io","subject":"/test","type":"io.eventsourcingdb.test","datacontenttype":"application/json","data":{},"hash":"","predecessorhash":""}}`,
+			name:   "ReadEvents",
+			action: "read events",
+			line:   `{"type":"event","payload":{"specversion":"1.0","id":"0","time":"2026-10-01T12:00:00Z","source":"https://www.eventsourcingdb.io","subject":"/test","type":"io.eventsourcingdb.test","datacontenttype":"application/json","data":{},"hash":"","predecessorhash":""}}`,
 			read: func(ctx context.Context, client *eventsourcingdb.Client, handle func()) (int, error) {
 				items := 0
 				for _, err := range client.ReadEvents(ctx, "/test", eventsourcingdb.ReadEventsOptions{}) {
@@ -315,8 +316,9 @@ func streamsWithoutHeartbeats() []streamWithHeartbeats {
 			},
 		},
 		{
-			name: "ReadSubjects",
-			line: `{"type":"subject","payload":{"subject":"/test"}}`,
+			name:   "ReadSubjects",
+			action: "read subjects",
+			line:   `{"type":"subject","payload":{"subject":"/test"}}`,
 			read: func(ctx context.Context, client *eventsourcingdb.Client, handle func()) (int, error) {
 				items := 0
 				for _, err := range client.ReadSubjects(ctx, "/", eventsourcingdb.ReadSubjectsOptions{Recursive: true}) {
@@ -333,8 +335,9 @@ func streamsWithoutHeartbeats() []streamWithHeartbeats {
 			},
 		},
 		{
-			name: "ReadEventTypes",
-			line: `{"type":"eventType","payload":{"eventType":"io.eventsourcingdb.test","isPhantom":false}}`,
+			name:   "ReadEventTypes",
+			action: "read event types",
+			line:   `{"type":"eventType","payload":{"eventType":"io.eventsourcingdb.test","isPhantom":false}}`,
 			read: func(ctx context.Context, client *eventsourcingdb.Client, handle func()) (int, error) {
 				items := 0
 				for _, err := range client.ReadEventTypes(ctx) {

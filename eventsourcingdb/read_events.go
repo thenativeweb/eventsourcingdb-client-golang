@@ -8,8 +8,6 @@ import (
 	"io"
 	"iter"
 	"net/http"
-
-	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 func (c *Client) ReadEvents(
@@ -113,7 +111,7 @@ func (c *Client) ReadEvents(
 		}
 
 		if response.StatusCode != http.StatusOK {
-			yield(Event{}, newDBAPIError("read events", response))
+			yield(Event{}, newV1DBAPIError(actionReadEvents, response))
 			return
 		}
 
@@ -137,14 +135,7 @@ func (c *Client) ReadEvents(
 				}
 				continue
 			case "error":
-				var error internal.Error
-				err := json.Unmarshal(line.Payload, &error)
-				if err != nil {
-					yield(Event{}, err)
-					return
-				}
-
-				yield(Event{}, fmt.Errorf("failed to read events, got error: %s", error.Error))
+				yield(Event{}, newV1StreamError(actionReadEvents, line.Payload))
 				return
 			default:
 				yield(Event{}, fmt.Errorf("failed to handle unsupported line type: %s", line.Type))

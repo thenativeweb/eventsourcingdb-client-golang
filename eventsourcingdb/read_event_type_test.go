@@ -1,11 +1,11 @@
 package eventsourcingdb_test
 
 import (
-	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdbtest"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
@@ -24,7 +24,7 @@ func TestReadEventType(t *testing.T) {
 
 		_, err = client.ReadEventType(t.Context(), "io.eventsourcingdb.test.nonexistent")
 		require.Error(t, err)
-		assertReasonOfServer(t, err, "read event type", http.StatusNotFound, "event type ")
+		assertCodeOfServer(t, err, "read event type", eventsourcingdb.CodeEventTypeUnknown)
 	})
 
 	t.Run("fails if the event type is malformed", func(t *testing.T) {
@@ -40,7 +40,8 @@ func TestReadEventType(t *testing.T) {
 
 		_, err = client.ReadEventType(t.Context(), "io.eventsourcingdb.test.")
 		require.Error(t, err)
-		assertReasonOfServer(t, err, "read event type", http.StatusBadRequest, "", "event type")
+		assertCodeOfServer(t, err, "read event type", "")
+		assert.ErrorContains(t, err, "event type")
 	})
 
 	t.Run("reads an existing event type", func(t *testing.T) {

@@ -53,7 +53,7 @@ func (c *Client) RegisterEventSchema(ctx context.Context, eventType string, sche
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return newDBAPIError("register event schema", response)
+		return newV1DBAPIError(actionRegisterEventSchema, response)
 	}
 
 	return nil

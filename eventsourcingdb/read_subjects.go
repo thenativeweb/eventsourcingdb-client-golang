@@ -69,7 +69,7 @@ func (c *Client) ReadSubjects(
 		}
 
 		if response.StatusCode != http.StatusOK {
-			yield("", newDBAPIError("read subjects", response))
+			yield("", newV1DBAPIError(actionReadSubjects, response))
 			return
 		}
 
@@ -104,14 +104,7 @@ func (c *Client) ReadSubjects(
 				}
 				continue
 			case "error":
-				var error internal.Error
-				err := json.Unmarshal(line.Payload, &error)
-				if err != nil {
-					yield("", err)
-					return
-				}
-
-				yield("", fmt.Errorf("failed to read subjects, got error: %s", error.Error))
+				yield("", newV1StreamError(actionReadSubjects, line.Payload))
 				return
 			default:
 				yield("", fmt.Errorf("failed to handle unsupported line type: %s", line.Type))

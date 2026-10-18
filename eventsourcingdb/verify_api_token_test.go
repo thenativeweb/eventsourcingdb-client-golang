@@ -51,6 +51,6 @@ func TestVerifyAPIToken(t *testing.T) {
 
 		err = client.VerifyAPIToken(ctx)
 		assert.EqualError(t, err, "failed to verify API token, got HTTP status code '401', expected '200': unauthorized")
-		assertDBAPIError(t, err, http.StatusUnauthorized, "unauthorized")
+		assertDBAPIError(t, err, http.StatusUnauthorized, "", "unauthorized")
 	})
 }

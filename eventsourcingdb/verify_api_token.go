@@ -35,7 +35,7 @@ func (c *Client) VerifyAPIToken(ctx context.Context) error {
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return newDBAPIError("verify API token", response)
+		return newV1DBAPIError(actionVerifyAPIToken, response)
 	}
 
 	type Result struct {

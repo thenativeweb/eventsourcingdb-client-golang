@@ -102,7 +102,7 @@ func (c *Client) WriteEvents(ctx context.Context, events []EventCandidate, preco
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return nil, newDBAPIError("write events", response)
+		return nil, newV1DBAPIError(actionWriteEvents, response)
 	}
 
 	var cloudEvents []internal.CloudEvent
