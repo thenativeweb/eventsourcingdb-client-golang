@@ -8,6 +8,8 @@ For more information on EventSourcingDB, see its [official documentation](https:
 
 This client SDK includes support for [Testcontainers](https://testcontainers.com/) to spin up EventSourcingDB instances in integration tests. It lives in a package of its own, so applications that only use the client do not depend on Testcontainers. For details, see [Using Testcontainers](#using-testcontainers).
 
+If you upgrade from version 1 of this client SDK, see [Upgrading From Version 1](#upgrading-from-version-1).
+
 ## Getting Started
 
 Install the client SDK:
@@ -41,6 +43,10 @@ if err != nil {
 ```
 
 *Note that the client sends its requests with an HTTP client of its own, which starts from a copy of `http.DefaultTransport`. Changing `http.DefaultClient`, e.g. setting its `Timeout`, does not affect it.*
+
+The client works with servers that offer the v2 API of EventSourcingDB, and with servers that offer the v1 API only. Creating a client sends no request. On its first request, the client asks the server whether it offers the v2 API, and remembers the answer: it speaks the v2 API if the server offers it, and the v1 API otherwise. If the server gives no clear answer, e.g. because it can not be reached, that first request fails with the error, and the next request asks again.
+
+*Note that with the v2 API, the client reads with the HTTP method `QUERY` ([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008)). If a proxy runs in front of the database, it has to let `QUERY` through. The client does not fall back to `POST`.*
 
 A request fails if nothing arrives from the server for 30 seconds, e.g. because the server can not be reached, or because a proxy keeps the connection open but no longer passes anything on (see [Handling Errors](#handling-errors)). To change this stall timeout, pass the `WithStallTimeout` option to `NewClient`:
 
@@ -199,7 +205,7 @@ writtenEvents, err := client.WriteEvents(
 )
 ```
 
-Writing then ends with the error of the context, `context.Canceled` or `context.DeadlineExceeded`. If the context ends before the request is sent, no events are written. If it ends later, the server may have written them nevertheless, so the error does not tell whether they were written.
+Writing then ends with the error of the context, `context.Canceled` or `context.DeadlineExceeded`. If the context ends before the client has connected to the server, no events are written. If it ends later, the server may have written them nevertheless, so the error wraps the error of the context with `ErrOutcomeUnknown` (see [Handling Errors](#handling-errors)).
 
 ### Reading Events
 
@@ -373,14 +379,14 @@ The query then ends with the error of the context, `context.Canceled`, so that a
 
 #### Detecting a Stalled Connection
 
-While a query runs, the server sends a heartbeat every second whenever there is no row to send. If neither a row nor a heartbeat arrives for the stall timeout, 30 seconds by default, e.g. because a proxy keeps the connection open but no longer passes anything on, the query ends with `ErrHeartbeatTimeout`, and the client closes the connection. If the server has not begun to answer by then, the query ends with `ErrConnectionStalled` instead, as every other request does (see [Handling Errors](#handling-errors)). Use `errors.Is` to check for it:
+While a query runs, the server sends a heartbeat every second whenever there is no row to send. If neither a row nor a heartbeat arrives for the stall timeout, 30 seconds by default, e.g. because a proxy keeps the connection open but no longer passes anything on, the query ends with `ErrConnectionStalled`, as every other request does, and the client closes the connection (see [Handling Errors](#handling-errors)). Use `errors.Is` to check for it:
 
 ```golang
 for row, err := range client.RunEventQLQuery(
   context.TODO(),
   "FROM e IN events PROJECT INTO e",
 ) {
-  if errors.Is(err, eventsourcingdb.ErrHeartbeatTimeout) {
+  if errors.Is(err, eventsourcingdb.ErrConnectionStalled) {
     // ...
   }
 
@@ -495,11 +501,11 @@ for event, err := range client.ObserveEvents(
 cancel()
 ```
 
-Observing then ends with the error of the context, `context.Canceled`. Since observing does not end on its own, this is how it usually ends.
+Observing then ends with the error of the context, `context.Canceled`. Since observing does not end on its own, this is how it usually ends. If the server ends the stream nevertheless, e.g. after a failure it does not report, observing ends with an error that says that the stream broke off, since you may have missed events. A server that shuts down reports that as a `DBAPIError` with the code `CodeServerShuttingDown`.
 
 #### Detecting a Stalled Connection
 
-While there are no new events, the server sends a heartbeat every second. If neither an event nor a heartbeat arrives for the stall timeout, 30 seconds by default, e.g. because a proxy keeps the connection open but no longer passes anything on, observing ends with `ErrHeartbeatTimeout`, and the client closes the connection. If the server has not begun to answer by then, observing ends with `ErrConnectionStalled` instead, as every other request does (see [Handling Errors](#handling-errors)). Use `errors.Is` to check for it:
+While there are no new events, the server sends a heartbeat every second. If neither an event nor a heartbeat arrives for the stall timeout, 30 seconds by default, e.g. because a proxy keeps the connection open but no longer passes anything on, observing ends with `ErrConnectionStalled`, as every other request does, and the client closes the connection (see [Handling Errors](#handling-errors)). Use `errors.Is` to check for it:
 
 ```golang
 for event, err := range client.ObserveEvents(
@@ -509,7 +515,7 @@ for event, err := range client.ObserveEvents(
     Recursive: false,
   },
 ) {
-  if errors.Is(err, eventsourcingdb.ErrHeartbeatTimeout) {
+  if errors.Is(err, eventsourcingdb.ErrConnectionStalled) {
     // ...
   }
 
@@ -542,25 +548,33 @@ client.RegisterEventSchema(
 )
 ```
 
+If a schema is already registered for the event type, the function returns a `DBAPIError` with the code `CodeEventSchemaAlreadyRegistered`, and if events of that type were written before that do not match the schema, one with the code `CodeEventSchemaViolated`. As with writing events, an error that leaves open whether the schema was registered wraps its cause with `ErrOutcomeUnknown` (see [Handling Errors](#handling-errors)).
+
 ### Listing Subjects
 
-To list all subjects, call the `ReadSubjects` function with a context and `/` as the base subject. The function returns an iterator, which you can use e.g. inside a `for range` loop:
+To list subjects, call the `ReadSubjects` function with a context, a subject and an options object. Set the `Recursive` option to `true` to list the subject together with all subjects nested below it, or to `false` to list the subject alone, if it exists. There is no default, so set it either way. To list all subjects, provide `/` and set `Recursive` to `true`. The function returns an iterator, which you can use e.g. inside a `for range` loop:
 
 ```golang
 for subject, err := range client.ReadSubjects(
   context.TODO(),
   "/",
+  eventsourcingdb.ReadSubjectsOptions{
+    Recursive: true,
+  },
 ) {
   // ...
 }
 ```
 
-If you only want to list subjects within a specific branch, provide the desired base subject instead:
+If you only want to list subjects within a specific branch, provide the subject of that branch instead:
 
 ```golang
 for subject, err := range client.ReadSubjects(
   context.TODO(),
   "/books",
+  eventsourcingdb.ReadSubjectsOptions{
+    Recursive: true,
+  },
 ) {
   // ...
 }
@@ -578,6 +592,9 @@ ctx, cancel := context.WithCancel(context.TODO())
 for subject, err := range client.ReadSubjects(
   ctx,
   "/",
+  eventsourcingdb.ReadSubjectsOptions{
+    Recursive: true,
+  },
 ) {
   // ...
 }
@@ -591,7 +608,7 @@ Reading then ends with the error of the context, `context.Canceled`, so that an 
 
 ### Listing Event Types
 
-To list all event types, call the `ReadEventTypes` function. The function returns an iterator, which you can use e.g. inside a `for range` loop:
+To list all event types, call the `ReadEventTypes` function. The function returns an iterator, which you can use e.g. inside a `for range` loop. Each `EventType` has the name of the event type as `Type`, tells with `HasEvents` whether events of that type were written, and has the registered schema as `Schema`, or `nil` if there is none:
 
 ```golang
 for eventType, err := range client.ReadEventTypes(
@@ -633,6 +650,8 @@ eventType, err := client.ReadEventType(
   "io.eventsourcingdb.library.book-acquired",
 )
 ```
+
+If the database knows nothing of the event type, neither events nor a schema, the function returns a `DBAPIError` with the code `CodeEventTypeUnknown`.
 
 ### Verifying an Event's Hash
 
@@ -679,7 +698,16 @@ if errors.Is(err, eventsourcingdb.ErrSignatureVerificationFailed) {
 
 ### Handling Errors
 
-If the server answers a request with an unexpected HTTP status code, the client returns a `*DBAPIError`. It contains the `StatusCode` and the `Reason` the server gives, so you can tell failures apart without parsing the error message. Use `errors.As` to get it:
+Every error that the server reports is a `*DBAPIError`, so you can tell failures apart without parsing the error message. Use `errors.As` to get it. It has these fields:
+
+- `Code` identifies the error with the URL of the page that documents it, exactly as the server sends it, e.g. `https://docs.eventsourcingdb.io/errors/precondition-violated`. The constants that start with `Code` name every code there is, e.g. `CodePreconditionViolated`. `Code` is empty for an error without a code, e.g. a token that the server does not accept.
+- `Description` describes the error, as the server words it.
+- `Details` locates the error and names the value at fault, as the JSON object the server sends with a code, e.g. `{"precondition":0}`, or `nil`.
+- `Status` is the HTTP status of the answer. It is `200` for an error that the server reports in the body of its answer, e.g. within a stream, and e.g. `401` for a token that it does not accept.
+- `RetryAfter` is how long the server asks to wait before sending the request again, for status `429`, as its `Retry-After` header says. The client never sends a request again on its own.
+- `Action` names what the client tried to do, e.g. `write events`.
+
+Tell failures apart by their code rather than by their status:
 
 ```golang
 _, err := client.WriteEvents(
@@ -694,27 +722,22 @@ _, err := client.WriteEvents(
 
 var dbAPIError *eventsourcingdb.DBAPIError
 if errors.As(err, &dbAPIError) {
-  switch dbAPIError.StatusCode {
-  case http.StatusConflict:
-    // dbAPIError.Reason tells why, e.g. "state conflict: precondition failed".
-  case http.StatusUnauthorized:
+  switch dbAPIError.Code {
+  case eventsourcingdb.CodePreconditionViolated:
+    // dbAPIError.Description tells which precondition does not hold.
+  case eventsourcingdb.CodeEventSchemaViolated:
     // ...
+  }
+
+  if dbAPIError.Status == http.StatusTooManyRequests {
+    // Wait for dbAPIError.RetryAfter before trying again.
   }
 }
 ```
 
-*Note that different failures may share a status code: a failed precondition and an event that does not match its schema are both answered with `409`, and only their reasons differ.*
+*Note that a server with the v1 API only sends no codes. The client gives those of its errors that clearly match an error of the v2 API the code of that error, e.g. `CodePreconditionViolated` for a precondition that does not hold, and leaves the code of every other one empty.*
 
-If the server is not an EventSourcingDB, e.g. because a proxy answers in its place, the client returns `ErrInvalidServerHeader`. Use `errors.Is` to check for it:
-
-```golang
-err := client.Ping(context.TODO())
-if errors.Is(err, eventsourcingdb.ErrInvalidServerHeader) {
-  // ...
-}
-```
-
-If nothing arrives from the server for the stall timeout, 30 seconds by default (see [Getting Started](#getting-started)), e.g. because the server can not be reached, or because a proxy keeps the connection open but no longer passes anything on, the client closes the connection, and the request ends with `ErrConnectionStalled`. Its message names the stall timeout. Use `errors.Is` to check for it:
+If writing events or registering an event schema fails in a way that leaves open whether the server stored it nevertheless, the error wraps its cause with `ErrOutcomeUnknown`. This is the case, e.g., if the connection stalls or breaks after the client has connected, if your context ends after that, if a stream breaks off, or if the server fails unexpectedly. Every other error of a write means that the server certainly did not store anything: either the client could not connect to it at all, or the server refused the write, e.g. because a precondition does not hold. Use `errors.Is` to check for it, which also finds the cause, as does `errors.As`:
 
 ```golang
 _, err := client.WriteEvents(
@@ -725,16 +748,44 @@ _, err := client.WriteEvents(
   nil,
 )
 
-if errors.Is(err, eventsourcingdb.ErrConnectionStalled) {
+if errors.Is(err, eventsourcingdb.ErrOutcomeUnknown) {
+  // Read the events to find out whether they were written, or write them
+  // again with a precondition that does not hold if they were.
+}
+```
+
+If a stream that ends on its own breaks off before it is complete, or if the server ends observing events, which never ends on its own, the stream ends with an error that says that it broke off, since the items it handed out may not be all of them.
+
+If the server is not an EventSourcingDB, e.g. because a proxy answers in its place, the client returns `ErrInvalidServerHeader`. Use `errors.Is` to check for it:
+
+```golang
+err := client.Ping(context.TODO())
+if errors.Is(err, eventsourcingdb.ErrInvalidServerHeader) {
   // ...
 }
 ```
 
-*Note that the server may have written the events of a write that stalls nevertheless, as with a context that ends while the request runs.*
+If nothing arrives from the server for the stall timeout, 30 seconds by default (see [Getting Started](#getting-started)), e.g. because the server can not be reached, or because a proxy keeps the connection open but no longer passes anything on, the client closes the connection, and the request ends with `ErrConnectionStalled`. This applies to every request, also to streams once the server has begun to answer, on which heartbeats count as something that arrives. Its message names the stall timeout. Use `errors.Is` to check for it:
+
+```golang
+for event, err := range client.ObserveEvents(
+  context.TODO(),
+  "/books/42",
+  eventsourcingdb.ObserveEventsOptions{
+    Recursive: false,
+  },
+) {
+  if errors.Is(err, eventsourcingdb.ErrConnectionStalled) {
+    // ...
+  }
+
+  // ...
+}
+```
+
+*Note that a write that stalls wraps `ErrConnectionStalled` with `ErrOutcomeUnknown`, since the server may have stored it nevertheless.*
 
 Since a stalled connection is a timeout, `errors.Is` also finds `context.DeadlineExceeded` in the error, as it does for a timeout of an `http.Client`. To tell a stall from a deadline of your context, check for `ErrConnectionStalled`, or check whether your context has ended.
-
-If observing events or running an EventQL query receives nothing for the stall timeout once the server has begun to answer, not even a heartbeat, observing or the query ends with `ErrHeartbeatTimeout` instead. With the default stall timeout, this is `ErrHeartbeatTimeout` itself, and with any other one, an error that wraps it and names the stall timeout. Use `errors.Is` to check for it, too.
 
 ### Using Testcontainers
 
@@ -814,3 +865,16 @@ In case you need to set up the client yourself, use the following functions to g
 - `GetAPIToken()` returns the API token
 
 *Note that up to version 1.5, the test container was part of the `eventsourcingdb` package. To upgrade, import `eventsourcingdbtest` and call `eventsourcingdbtest.NewContainer` instead of `eventsourcingdb.NewContainer`.*
+
+## Upgrading From Version 1
+
+Version 2 of the client SDK speaks the v2 API of EventSourcingDB with servers that offer it, and the v1 API with all others (see [Getting Started](#getting-started)). Upgrading takes these changes:
+
+- **The module path ends with `/v2`.** Import `github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb` instead of `github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb`, and `github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdbtest` instead of `github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdbtest`.
+- **`ErrHeartbeatTimeout` is gone.** A stream that stalls once the server has begun to answer ends with `ErrConnectionStalled`, as every other request that stalls. Replace `errors.Is(err, eventsourcingdb.ErrHeartbeatTimeout)` with `errors.Is(err, eventsourcingdb.ErrConnectionStalled)`.
+- **An event type names its type `Type`, and tells with `HasEvents` whether it has events.** `eventType.EventType` is now `eventType.Type`, and `eventType.IsPhantom` is now `!eventType.HasEvents`.
+- **`ReadSubjects` takes options with a `Recursive` option, which you have to set.** `client.ReadSubjects(ctx, "/books")` is now `client.ReadSubjects(ctx, "/books", eventsourcingdb.ReadSubjectsOptions{Recursive: true})`, which lists what it listed before. With `Recursive: false`, it lists the subject alone.
+- **`DBAPIError` has a `Status` and a `Description`, and reports every error of the server.** `dbAPIError.StatusCode` is now `dbAPIError.Status`, and `dbAPIError.Reason` is now `dbAPIError.Description`. The error message says `failed to read the description` where it said `failed to read the reason`. An error within a stream, e.g. of an EventQL query, used to be a plain error, and is a `DBAPIError` with status `200` now. With a server that offers the v2 API, an error that the server reports about the request itself has status `200` and a code, e.g. a precondition that does not hold, rather than status `409`. Check `dbAPIError.Code == eventsourcingdb.CodePreconditionViolated` instead of `dbAPIError.StatusCode == http.StatusConflict`, which works with both APIs.
+- **A write that may have been stored wraps its error with `ErrOutcomeUnknown`.** `WriteEvents` and `RegisterEventSchema` used to return the cause as it was, e.g. `ErrConnectionStalled` or `context.DeadlineExceeded`. They now return an error that wraps it, so `errors.Is` and `errors.As` still find the cause, but the message starts with `outcome unknown, `.
+- **Observing events fails if the server ends the stream.** `ObserveEvents` used to end without an error if the server closed the stream, and ends with an error that says that the stream broke off now.
+- **With a server that offers the v2 API, reads use the HTTP method `QUERY`.** A proxy in front of the database has to let it through. There is no fallback to `POST`.
