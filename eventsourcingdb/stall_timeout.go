@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptrace"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
@@ -94,10 +95,14 @@ func describeDuration(duration time.Duration) string {
 // The guard ends the request by ending its context with errStalled as the
 // cause, which closes the connection. Whatever fails then fails because of
 // that, so failure reports the stall instead.
+//
+// The guard also tells whether a connection to the server was established,
+// so that a write that fails can tell whether the server may have stored it.
 type stallGuard struct {
 	ctx          context.Context
 	cancel       context.CancelCauseFunc
 	stallTimeout time.Duration
+	connected    atomic.Bool
 
 	mu      sync.Mutex
 	timer   *time.Timer
@@ -129,6 +134,9 @@ func (c *Client) guard(ctx context.Context) *stallGuard {
 			if err == nil {
 				guard.received()
 			}
+		},
+		GotConn: func(httptrace.GotConnInfo) {
+			guard.connected.Store(true)
 		},
 		GotFirstResponseByte: guard.received,
 	})
@@ -224,6 +232,12 @@ func (b *guardedBody) Read(p []byte) (int, error) {
 
 func (b *guardedBody) Close() error {
 	return b.body.Close()
+}
+
+// isConnected tells whether a connection to the server was established for
+// the request, so that it may have been sent.
+func (g *stallGuard) isConnected() bool {
+	return g.connected.Load()
 }
 
 // guardedLines reads the lines of a stream that a stall guard watches, and

@@ -83,6 +83,15 @@ func (a v1API) writeEvents(ctx context.Context, body writeEventsRequestBody) ([]
 	guard := a.client.guard(ctx)
 	defer guard.end()
 
+	writtenEvents, err := a.sendWriteEvents(guard, body)
+	if err != nil {
+		return nil, failureOfWrite(guard, err, v1RefusesWrite, eventsMayHaveBeenWritten)
+	}
+
+	return writtenEvents, nil
+}
+
+func (a v1API) sendWriteEvents(guard *stallGuard, body writeEventsRequestBody) ([]Event, error) {
 	response, err := a.open(guard, actionWriteEvents, http.MethodPost, "/api/v1/write-events", body, true)
 	if err != nil {
 		return nil, err
@@ -137,11 +146,20 @@ func (a v1API) registerEventSchema(ctx context.Context, eventType string, schema
 		Schema:    schema,
 	}, true)
 	if err != nil {
-		return err
+		return failureOfWrite(guard, err, v1RefusesWrite, eventSchemaMayHaveBeenRegistered)
 	}
 	defer response.Body.Close()
 
 	return nil
+}
+
+// v1RefusesWrite tells whether a server with the v1 API refused a write with
+// the given error, so that it certainly did not store it: with a status of
+// 4xx, 503 or 507.
+func v1RefusesWrite(dbAPIError *DBAPIError) bool {
+	status := dbAPIError.Status
+
+	return (status >= 400 && status < 500) || status == http.StatusServiceUnavailable || status == http.StatusInsufficientStorage
 }
 
 func (a v1API) readEventType(ctx context.Context, eventType string) (EventType, error) {

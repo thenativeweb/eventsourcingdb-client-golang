@@ -329,6 +329,25 @@ func countItems[T any](items func(yield func(T, error) bool), handle func()) (in
 	return count, nil
 }
 
+// assertErrorOfRequest asserts that the request of the client with the given
+// name, as requestsOf names them, failed with the given message, which a write
+// wraps with ErrOutcomeUnknown, as it may have been stored.
+func assertErrorOfRequest(t *testing.T, name string, err error, message string) {
+	t.Helper()
+
+	switch name {
+	case "WriteEvents":
+		assert.ErrorIs(t, err, eventsourcingdb.ErrOutcomeUnknown)
+		assert.EqualError(t, err, "outcome unknown, the events may have been written nevertheless: "+message)
+	case "RegisterEventSchema":
+		assert.ErrorIs(t, err, eventsourcingdb.ErrOutcomeUnknown)
+		assert.EqualError(t, err, "outcome unknown, the event schema may have been registered nevertheless: "+message)
+	default:
+		assert.NotErrorIs(t, err, eventsourcingdb.ErrOutcomeUnknown)
+		assert.EqualError(t, err, message)
+	}
+}
+
 // assertEndedCleanly asserts that a stream that the server ended on its own
 // ended as it should: without an error, except for a stream of the v2 API
 // that never ends, which reports that it broke off.

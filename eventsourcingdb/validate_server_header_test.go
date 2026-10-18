@@ -25,7 +25,7 @@ func TestErrInvalidServerHeader(t *testing.T) {
 						err := request.send()
 
 						assert.ErrorIs(t, err, eventsourcingdb.ErrInvalidServerHeader)
-						assert.EqualError(t, err, "server must be EventSourcingDB")
+						assertErrorOfRequest(t, request.name, err, "server must be EventSourcingDB")
 					})
 				}
 			})
@@ -44,7 +44,7 @@ func TestErrInvalidServerHeader(t *testing.T) {
 						var dbAPIError *eventsourcingdb.DBAPIError
 						assert.ErrorIs(t, err, eventsourcingdb.ErrInvalidServerHeader)
 						assert.NotErrorAs(t, err, &dbAPIError)
-						assert.EqualError(t, err, "server must be EventSourcingDB")
+						assertErrorOfRequest(t, request.name, err, "server must be EventSourcingDB")
 					})
 				}
 			})

@@ -179,7 +179,7 @@ func TestTheAPIs(t *testing.T) {
 
 			err := client.RegisterEventSchema(context.Background(), "io.eventsourcingdb.test", map[string]any{"type": "object"})
 
-			assert.EqualError(t, err, "failed to register event schema, the stream ended without the event that confirms it")
+			assertErrorOfRequest(t, "RegisterEventSchema", err, "failed to register event schema, the stream ended without the event that confirms it")
 		})
 
 		t.Run("reads an event type with and without a schema", func(t *testing.T) {

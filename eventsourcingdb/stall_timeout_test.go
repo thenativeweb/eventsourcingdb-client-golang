@@ -34,7 +34,7 @@ func TestErrConnectionStalled(t *testing.T) {
 						elapsed := time.Since(started)
 
 						assert.ErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
-						assert.EqualError(t, err, "connection stalled, nothing arrived from the server for 250ms")
+						assertErrorOfRequest(t, name, err, "connection stalled, nothing arrived from the server for 250ms")
 						assert.GreaterOrEqual(t, elapsed, timeout)
 						assert.Less(t, elapsed, 2*time.Second, "the stall timeout did not end the request")
 					})
@@ -58,7 +58,7 @@ func TestErrConnectionStalled(t *testing.T) {
 						elapsed := time.Since(started)
 
 						assert.ErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
-						assert.EqualError(t, err, "connection stalled, nothing arrived from the server for 250ms")
+						assertErrorOfRequest(t, name, err, "connection stalled, nothing arrived from the server for 250ms")
 						assert.GreaterOrEqual(t, elapsed, timeout)
 						assert.Less(t, elapsed, 2*time.Second, "the stall timeout did not end the request")
 					})

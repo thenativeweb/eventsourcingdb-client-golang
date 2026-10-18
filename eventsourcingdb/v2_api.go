@@ -170,6 +170,15 @@ func (a v2API) writeEvents(ctx context.Context, body writeEventsRequestBody) ([]
 	guard := a.client.guard(ctx)
 	defer guard.end()
 
+	writtenEvents, err := a.sendWriteEvents(guard, body)
+	if err != nil {
+		return nil, failureOfWrite(guard, err, v2RefusesWrite, eventsMayHaveBeenWritten)
+	}
+
+	return writtenEvents, nil
+}
+
+func (a v2API) sendWriteEvents(guard *stallGuard, body writeEventsRequestBody) ([]Event, error) {
 	response, err := a.open(guard, actionWriteEvents, http.MethodPost, "/api/v2/data/write-events", body, true)
 	if err != nil {
 		return nil, err
@@ -202,6 +211,27 @@ func (a v2API) registerEventSchema(ctx context.Context, eventType string, schema
 	guard := a.client.guard(ctx)
 	defer guard.end()
 
+	err := a.sendRegisterEventSchema(guard, eventType, schema)
+
+	return failureOfWrite(guard, err, v2RefusesWrite, eventSchemaMayHaveBeenRegistered)
+}
+
+// v2RefusesWrite tells whether a server with the v2 API refused a write with
+// the given error, so that it certainly did not store it: with any error item
+// but one that says that storing failed, or with a status of 400, 401, 408,
+// 413, 429 or 503.
+func v2RefusesWrite(dbAPIError *DBAPIError) bool {
+	switch dbAPIError.Status {
+	case http.StatusOK:
+		return dbAPIError.Code != CodeStoreFailed
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusRequestTimeout, http.StatusRequestEntityTooLarge, http.StatusTooManyRequests, http.StatusServiceUnavailable:
+		return true
+	default:
+		return false
+	}
+}
+
+func (a v2API) sendRegisterEventSchema(guard *stallGuard, eventType string, schema map[string]any) error {
 	type RequestBody struct {
 		Type   string         `json:"type"`
 		Schema map[string]any `json:"schema"`
