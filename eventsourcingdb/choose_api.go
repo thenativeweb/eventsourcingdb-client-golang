@@ -66,21 +66,32 @@ func (c *Client) chooseAPI(ctx context.Context, action string) (api, error) {
 // 404 or 405 that it does not, since a server without the v2 API answers
 // unknown paths of the v2 API so. Every other outcome is no answer, and is
 // returned as an error.
+//
+// A status of 404 or 405 means the v1 API also if it does not come from
+// EventSourcingDB, so that a server with the v1 API only keeps working behind
+// a proxy that passes on nothing but its paths, and answers every other path
+// itself. Every request that follows checks that the server is EventSourcingDB
+// anyway.
 func (c *Client) probeAPI(ctx context.Context) (apiVersion, error) {
 	guard := c.guard(ctx)
 	defer guard.end()
 
-	response, err := c.request(guard, http.MethodGet, pathOfV2Ping, nil, false)
+	response, err := c.requestOfAnyServer(guard, http.MethodGet, pathOfV2Ping, nil, false)
 	if err != nil {
 		return apiVersionUnknown, err
 	}
 	defer response.Body.Close()
 
-	switch response.StatusCode {
-	case http.StatusOK:
-	case http.StatusNotFound, http.StatusMethodNotAllowed:
+	if response.StatusCode == http.StatusNotFound || response.StatusCode == http.StatusMethodNotAllowed {
 		return apiVersionV1, nil
-	default:
+	}
+
+	err = validateServerHeader(response)
+	if err != nil {
+		return apiVersionUnknown, err
+	}
+
+	if response.StatusCode != http.StatusOK {
 		return apiVersionUnknown, newDBAPIError("", response)
 	}
 

@@ -18,6 +18,23 @@ const methodQuery = "QUERY"
 // response once its header has arrived, unless the response does not come
 // from EventSourcingDB. The caller has to close its body.
 func (c *Client) request(guard *stallGuard, method string, path string, body any, authorize bool) (*http.Response, error) {
+	response, err := c.requestOfAnyServer(guard, method, path, body, authorize)
+	if err != nil {
+		return nil, err
+	}
+
+	err = validateServerHeader(response)
+	if err != nil {
+		response.Body.Close()
+		return nil, err
+	}
+
+	return response, nil
+}
+
+// requestOfAnyServer sends a request as request does, but returns the
+// response whether it comes from EventSourcingDB or not.
+func (c *Client) requestOfAnyServer(guard *stallGuard, method string, path string, body any, authorize bool) (*http.Response, error) {
 	urlPath, err := url.Parse(path)
 	if err != nil {
 		return nil, err
@@ -45,16 +62,5 @@ func (c *Client) request(guard *stallGuard, method string, path string, body any
 		request.Header.Set("Content-Type", "application/json")
 	}
 
-	response, err := c.send(guard, request)
-	if err != nil {
-		return nil, err
-	}
-
-	err = validateServerHeader(response)
-	if err != nil {
-		response.Body.Close()
-		return nil, err
-	}
-
-	return response, nil
+	return c.send(guard, request)
 }

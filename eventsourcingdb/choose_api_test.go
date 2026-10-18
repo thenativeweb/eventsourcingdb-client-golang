@@ -55,6 +55,12 @@ func TestChoosingTheAPI(t *testing.T) {
 			{name: "status 404", answer: answerAsV1, api: "v1", pingURL: "GET /api/v1/ping"},
 			{name: "status 405", answer: answerWithStatus(http.StatusMethodNotAllowed), api: "v1", pingURL: "GET /api/v1/ping"},
 			{name: "status 404 without a body", answer: answerWithStatus(http.StatusNotFound), api: "v1", pingURL: "GET /api/v1/ping"},
+
+			// A server with the v1 API only behind a proxy that passes on
+			// nothing but the paths of the v1 API, and answers every other
+			// path itself.
+			{name: "status 404, but not from EventSourcingDB", answer: answerFromProxy(http.StatusNotFound), api: "v1", pingURL: "GET /api/v1/ping"},
+			{name: "status 405, but not from EventSourcingDB", answer: answerFromProxy(http.StatusMethodNotAllowed), api: "v1", pingURL: "GET /api/v1/ping"},
 		}
 
 		for _, answer := range answers {
@@ -146,14 +152,11 @@ func TestChoosingTheAPI(t *testing.T) {
 				},
 			},
 			{
-				name: "status 404, but not from EventSourcingDB",
-				answer: func(w http.ResponseWriter, r *http.Request) bool {
-					w.Header().Set("Server", "nginx/1.29.0")
-					http.NotFound(w, r)
-					return false
-				},
+				name:   "status 502, but not from EventSourcingDB",
+				answer: answerFromProxy(http.StatusBadGateway),
 				check: func(t *testing.T, err error) {
 					assert.ErrorIs(t, err, eventsourcingdb.ErrInvalidServerHeader)
+					assert.EqualError(t, err, "server must be EventSourcingDB")
 				},
 			},
 			{
@@ -413,6 +416,19 @@ func answerWithStatus(status int) probeAnswer {
 		w.Header().Set("Server", "EventSourcingDB/test")
 		w.WriteHeader(status)
 		_, _ = w.Write([]byte("failed"))
+
+		return false
+	}
+}
+
+// answerFromProxy answers as a proxy in front of the database that does not
+// pass on the request, with the given status, and with a Server header of its
+// own.
+func answerFromProxy(status int) probeAnswer {
+	return func(w http.ResponseWriter, r *http.Request) bool {
+		w.Header().Set("Server", "nginx/1.29.0")
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte("<html></html>"))
 
 		return false
 	}
