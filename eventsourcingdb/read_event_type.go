@@ -65,8 +65,8 @@ func (c *Client) ReadEventType(
 	}
 
 	return EventType{
-		EventType: eventTypeResponse.EventType,
-		IsPhantom: eventTypeResponse.IsPhantom,
+		Type:      eventTypeResponse.EventType,
+		HasEvents: !eventTypeResponse.IsPhantom,
 		Schema:    eventTypeResponse.Schema,
 	}, nil
 }

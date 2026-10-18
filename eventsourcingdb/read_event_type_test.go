@@ -63,8 +63,8 @@ func TestReadEventType(t *testing.T) {
 		eventType, err := client.ReadEventType(t.Context(), "io.eventsourcingdb.test.foo")
 		require.NoError(t, err)
 
-		assert.Equal(t, "io.eventsourcingdb.test.foo", eventType.EventType)
-		assert.True(t, eventType.IsPhantom)
+		assert.Equal(t, "io.eventsourcingdb.test.foo", eventType.Type)
+		assert.False(t, eventType.HasEvents)
 		assert.Equal(t, &map[string]any{
 			"type":       "object",
 			"properties": map[string]any{},

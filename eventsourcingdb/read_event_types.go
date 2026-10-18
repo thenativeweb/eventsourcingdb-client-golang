@@ -80,8 +80,8 @@ func (c *Client) ReadEventTypes(
 				}
 
 				eventType := EventType{
-					EventType: streamEventType.EventType,
-					IsPhantom: streamEventType.IsPhantom,
+					Type:      streamEventType.EventType,
+					HasEvents: !streamEventType.IsPhantom,
 					Schema:    streamEventType.Schema,
 				}
 

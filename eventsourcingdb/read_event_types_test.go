@@ -90,12 +90,12 @@ func TestReadEventTypes(t *testing.T) {
 
 		assert.Len(t, eventTypesRead, 2)
 		assert.Equal(t, eventTypesRead[0], eventsourcingdb.EventType{
-			EventType: "io.eventsourcingdb.test.bar",
-			IsPhantom: false,
+			Type:      "io.eventsourcingdb.test.bar",
+			HasEvents: true,
 		})
 		assert.Equal(t, eventTypesRead[1], eventsourcingdb.EventType{
-			EventType: "io.eventsourcingdb.test.foo",
-			IsPhantom: false,
+			Type:      "io.eventsourcingdb.test.foo",
+			HasEvents: true,
 		})
 	})
 
@@ -139,8 +139,8 @@ func TestReadEventTypes(t *testing.T) {
 		}
 
 		assert.Len(t, eventTypesRead, 1)
-		assert.Equal(t, "io.eventsourcingdb.test", eventTypesRead[0].EventType)
-		assert.True(t, eventTypesRead[0].IsPhantom)
+		assert.Equal(t, "io.eventsourcingdb.test", eventTypesRead[0].Type)
+		assert.False(t, eventTypesRead[0].HasEvents)
 		assert.NotNil(t, eventTypesRead[0].Schema)
 
 		expectedJSON, err := json.Marshal(map[string]any{
