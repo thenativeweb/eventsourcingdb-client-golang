@@ -783,7 +783,7 @@ for event, err := range client.ObserveEvents(
 }
 ```
 
-*Note that a write that stalls wraps `ErrConnectionStalled` with `ErrOutcomeUnknown`, since the server may have stored it nevertheless.*
+*Note that a write that stalls once the client has connected to the server wraps `ErrConnectionStalled` with `ErrOutcomeUnknown`, since the server may have stored it nevertheless. A write that stalls before that, e.g. while the client connects, or while it asks the server which API it offers on its first request, returns `ErrConnectionStalled` itself, since the server certainly did not store it.*
 
 Since a stalled connection is a timeout, `errors.Is` also finds `context.DeadlineExceeded` in the error, as it does for a timeout of an `http.Client`. To tell a stall from a deadline of your context, check for `ErrConnectionStalled`, or check whether your context has ended.
 
