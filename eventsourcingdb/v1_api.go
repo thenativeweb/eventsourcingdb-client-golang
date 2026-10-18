@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"iter"
 	"net/http"
 	"time"
@@ -329,31 +328,6 @@ func (a v1API) readEventTypes(ctx context.Context) iter.Seq2[EventType, error] {
 			return yield(eventTypeOfV1(streamEventType), nil)
 		})
 	}
-}
-
-// yieldEventOf hands the event that a line or an item of a stream carries to
-// yield, and returns whether to go on reading. A line or item of any other
-// type ends the stream with an error.
-func yieldEventOf(lineType string, payload json.RawMessage, yield func(Event, error) bool) bool {
-	if lineType != "event" {
-		yield(Event{}, errUnsupportedLineType(lineType))
-		return false
-	}
-
-	var event Event
-	err := json.Unmarshal(payload, &event)
-	if err != nil {
-		yield(Event{}, err)
-		return false
-	}
-
-	return yield(event, nil)
-}
-
-// errUnsupportedLineType reports a line or an item of a stream of a type that
-// the stream does not have.
-func errUnsupportedLineType(lineType string) error {
-	return fmt.Errorf("failed to handle unsupported line type: %s", lineType)
 }
 
 // eventTypeOfV1 returns an event type as the v1 API sends it as an EventType,
