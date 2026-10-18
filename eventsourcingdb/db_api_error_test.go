@@ -287,20 +287,32 @@ func TestCodesOfV1Errors(t *testing.T) {
 	}
 
 	v1Errors := []v1Error{
+		// The texts of EventSourcingDB 1.2, e.g. with what follows the part
+		// that tells the failure apart.
 		{request: "WriteEvents", status: http.StatusConflict, description: "state conflict: precondition failed", code: eventsourcingdb.CodePreconditionViolated},
+		{request: "WriteEvents", status: http.StatusConflict, description: "state conflict: exceeded max store capacity", code: eventsourcingdb.CodeCapacityExceeded},
 		{request: "WriteEvents", status: http.StatusConflict, description: "schema conflict: event candidate does not match schema: additionalProperties 'extra' not allowed", code: eventsourcingdb.CodeEventSchemaViolated},
 		{request: "RegisterEventSchema", status: http.StatusConflict, description: "schema conflict: schema already exists", code: eventsourcingdb.CodeEventSchemaAlreadyRegistered},
+		{request: "RegisterEventSchema", status: http.StatusConflict, description: "schema conflict: event with ID 0: missing properties: 'title'", code: eventsourcingdb.CodeEventSchemaViolated},
+		{request: "ReadEvents", status: http.StatusConflict, description: "state conflict: fromLatestEvent results in an event ID greater than upperBound ID", code: eventsourcingdb.CodeRangeUnsatisfiable},
 		{request: "ReadEventType", status: http.StatusNotFound, description: "event type 'io.eventsourcingdb.test' not found", code: eventsourcingdb.CodeEventTypeUnknown},
 		{request: "WriteEvents", status: http.StatusInsufficientStorage, description: "insufficient storage", code: eventsourcingdb.CodeLicenseInvalid},
 
-		// Every other failure keeps an empty code.
-		{request: "WriteEvents", status: http.StatusConflict, description: "conflict", code: ""},
+		// Every other failure keeps an empty code, also if it shares the
+		// status and the start of its text with one that has a code.
+		{request: "WriteEvents", status: http.StatusConflict, description: "state conflict", code: ""},
+		{request: "WriteEvents", status: http.StatusConflict, description: "state conflict: something else", code: ""},
+		{request: "WriteEvents", status: http.StatusConflict, description: "schema conflict: something else", code: ""},
 		{request: "WriteEvents", status: http.StatusBadRequest, description: "state conflict: precondition failed", code: ""},
-		{request: "RegisterEventSchema", status: http.StatusConflict, description: "schema conflict: event with ID 0: additionalProperties 'extra' not allowed", code: ""},
+		{request: "WriteEvents", status: http.StatusConflict, description: "schema conflict: schema already exists", code: ""},
+		{request: "RegisterEventSchema", status: http.StatusConflict, description: "schema conflict: event candidate does not match schema", code: ""},
+		{request: "RegisterEventSchema", status: http.StatusConflict, description: "state conflict: precondition failed", code: ""},
 		{request: "RegisterEventSchema", status: http.StatusInsufficientStorage, description: "insufficient storage", code: ""},
-		{request: "ReadEventType", status: http.StatusBadRequest, description: "malformed event type", code: ""},
+		{request: "ReadEvents", status: http.StatusConflict, description: "state conflict: precondition failed", code: ""},
+		{request: "ObserveEvents", status: http.StatusConflict, description: "state conflict: fromLatestEvent results in an event ID greater than upperBound ID", code: ""},
+		{request: "ReadEventType", status: http.StatusBadRequest, description: "invalid event type: 'io.eventsourcingdb.test.'", code: ""},
 		{request: "ReadEvents", status: http.StatusNotFound, description: "not found", code: ""},
-		{request: "ReadEvents", status: http.StatusConflict, description: "state conflict: fromLatestEvent results in an event ID greater than upperBound ID", code: ""},
+		{request: "ReadEvents", status: http.StatusInsufficientStorage, description: "insufficient storage", code: ""},
 	}
 
 	// Every request reports a store in read-only mode with the same text.

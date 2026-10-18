@@ -34,24 +34,39 @@ func newV1StreamError(action string, payload json.RawMessage) error {
 	}
 }
 
+// v1Code gives a failure of the v1 API the code of the v2 API that it clearly
+// matches: a failure of the given action, or of any action if it is empty,
+// with the given status, and with a description that starts with the given
+// text, as EventSourcingDB 1.2 words it.
+type v1Code struct {
+	action      string
+	status      int
+	description string
+	code        string
+}
+
+// v1Codes are the failures of the v1 API that clearly match an error of the
+// v2 API. Every other one keeps an empty code.
+var v1Codes = []v1Code{
+	{action: actionWriteEvents, status: http.StatusConflict, description: "state conflict: precondition failed", code: CodePreconditionViolated},
+	{action: actionWriteEvents, status: http.StatusConflict, description: "state conflict: exceeded max store capacity", code: CodeCapacityExceeded},
+	{action: actionWriteEvents, status: http.StatusConflict, description: "schema conflict: event candidate does not match schema", code: CodeEventSchemaViolated},
+	{action: actionRegisterEventSchema, status: http.StatusConflict, description: "schema conflict: schema already exists", code: CodeEventSchemaAlreadyRegistered},
+	{action: actionRegisterEventSchema, status: http.StatusConflict, description: "schema conflict: event with ID", code: CodeEventSchemaViolated},
+	{action: actionReadEvents, status: http.StatusConflict, description: "state conflict: fromLatestEvent results in an event ID greater than upperBound ID", code: CodeRangeUnsatisfiable},
+	{action: actionReadEventType, status: http.StatusNotFound, code: CodeEventTypeUnknown},
+	{status: http.StatusServiceUnavailable, description: "the current operation mode conflicts with the given request", code: CodeStoreReadOnly},
+	{action: actionWriteEvents, status: http.StatusInsufficientStorage, code: CodeLicenseInvalid},
+}
+
 // codeOfV1Error returns the code of the v2 API that a failure of the v1 API
-// clearly matches, as EventSourcingDB 1.2 words it, or an empty code if there
-// is none.
+// clearly matches, or an empty code if there is none.
 func codeOfV1Error(action string, status int, description string) string {
-	switch {
-	case action == actionWriteEvents && status == http.StatusConflict && strings.HasPrefix(description, "state conflict"):
-		return CodePreconditionViolated
-	case action == actionWriteEvents && status == http.StatusConflict && strings.HasPrefix(description, "schema conflict"):
-		return CodeEventSchemaViolated
-	case action == actionRegisterEventSchema && status == http.StatusConflict && description == "schema conflict: schema already exists":
-		return CodeEventSchemaAlreadyRegistered
-	case action == actionReadEventType && status == http.StatusNotFound:
-		return CodeEventTypeUnknown
-	case status == http.StatusServiceUnavailable && strings.HasPrefix(description, "the current operation mode conflicts with the given request"):
-		return CodeStoreReadOnly
-	case action == actionWriteEvents && status == http.StatusInsufficientStorage:
-		return CodeLicenseInvalid
-	default:
-		return ""
+	for _, v1Code := range v1Codes {
+		if (v1Code.action == "" || v1Code.action == action) && v1Code.status == status && strings.HasPrefix(description, v1Code.description) {
+			return v1Code.code
+		}
 	}
+
+	return ""
 }

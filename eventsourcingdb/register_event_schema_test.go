@@ -84,4 +84,38 @@ func TestRegisterEventSchema(t *testing.T) {
 		)
 		assertCodeOfServer(t, err, "register event schema", eventsourcingdb.CodeEventSchemaAlreadyRegistered)
 	})
+	t.Run("returns an error if an event that was written before does not match the schema", func(t *testing.T) {
+		ctx := context.Background()
+
+		imageTag, err := internal.GetImageTag()
+		require.NoError(t, err)
+
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
+		container.Start(ctx)
+		defer container.Stop(ctx)
+
+		client, err := container.GetClient(ctx)
+		require.NoError(t, err)
+
+		_, err = client.WriteEvents(ctx, []eventsourcingdb.EventCandidate{
+			{
+				Source:  "https://www.eventsourcingdb.io",
+				Subject: "/test",
+				Type:    "io.eventsourcingdb.test",
+				Data:    map[string]any{"value": 23},
+			},
+		}, nil)
+		require.NoError(t, err)
+
+		err = client.RegisterEventSchema(
+			ctx,
+			"io.eventsourcingdb.test",
+			map[string]any{
+				"type":       "object",
+				"properties": map[string]any{},
+				"required":   []string{"title"},
+			},
+		)
+		assertCodeOfServer(t, err, "register event schema", eventsourcingdb.CodeEventSchemaViolated)
+	})
 }

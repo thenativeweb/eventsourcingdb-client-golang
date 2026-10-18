@@ -559,4 +559,57 @@ func TestReadEvents(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 42, firstData.Value)
 	})
+	t.Run("reports a range that no event can satisfy", func(t *testing.T) {
+		ctx := context.Background()
+
+		imageTag, err := internal.GetImageTag()
+		require.NoError(t, err)
+
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
+		container.Start(ctx)
+		defer container.Stop(ctx)
+
+		client, err := container.GetClient(ctx)
+		require.NoError(t, err)
+
+		_, err = client.WriteEvents(
+			ctx,
+			[]eventsourcingdb.EventCandidate{
+				{
+					Source:  "https://www.eventsourcingdb.io",
+					Subject: "/test",
+					Type:    "io.eventsourcingdb.test.foo",
+					Data:    EventData{Value: 23},
+				},
+				{
+					Source:  "https://www.eventsourcingdb.io",
+					Subject: "/test",
+					Type:    "io.eventsourcingdb.test.bar",
+					Data:    EventData{Value: 42},
+				},
+			},
+			nil,
+		)
+		require.NoError(t, err)
+
+		// The latest event of the type comes after the upper bound.
+		_, err = countItems(client.ReadEvents(
+			ctx,
+			"/test",
+			eventsourcingdb.ReadEventsOptions{
+				Recursive: false,
+				UpperBound: &eventsourcingdb.Bound{
+					ID:   "0",
+					Type: eventsourcingdb.BoundTypeInclusive,
+				},
+				FromLatestEvent: &eventsourcingdb.ReadFromLatestEvent{
+					Subject:          "/test",
+					Type:             "io.eventsourcingdb.test.bar",
+					IfEventIsMissing: eventsourcingdb.ReadIfEventIsMissingReadEverything,
+				},
+			},
+		), nil)
+
+		assertCodeOfServer(t, err, "read events", eventsourcingdb.CodeRangeUnsatisfiable)
+	})
 }
