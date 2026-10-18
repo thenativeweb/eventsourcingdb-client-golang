@@ -117,7 +117,7 @@ func (c *Client) ReadEvents(
 			return
 		}
 
-		for line, err := range guard.lines(response.Body, false) {
+		for line, err := range guard.lines(response.Body) {
 			if err != nil {
 				yield(Event{}, err)
 				return

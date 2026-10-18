@@ -29,11 +29,10 @@ type ClientOption func(client *Client) error
 // ends because of it. The time the caller spends on an item of a stream does
 // not count either.
 //
-// A request that stalls fails with ErrConnectionStalled. Observing events and
-// running an EventQL query fail with ErrHeartbeatTimeout instead once the
-// server has begun to answer. The server sends a heartbeat every second on
-// these streams, so the stall timeout should be several seconds at least. To
-// limit a single request further, hand it a context with a deadline.
+// A request that stalls fails with ErrConnectionStalled. While there is
+// nothing else to send, the server sends a heartbeat every second on its
+// streams, so the stall timeout should be several seconds at least. To limit a
+// single request further, hand it a context with a deadline.
 //
 // The stall timeout must be greater than zero, or NewClient returns an error.
 func WithStallTimeout(stallTimeout time.Duration) ClientOption {

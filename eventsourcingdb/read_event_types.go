@@ -64,7 +64,7 @@ func (c *Client) ReadEventTypes(
 			return
 		}
 
-		for line, err := range guard.lines(response.Body, false) {
+		for line, err := range guard.lines(response.Body) {
 			if err != nil {
 				yield(EventType{}, err)
 				return

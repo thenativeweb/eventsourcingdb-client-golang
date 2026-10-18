@@ -31,10 +31,7 @@ func TestErrConnectionStalled(t *testing.T) {
 				err := request(context.Background())
 				elapsed := time.Since(started)
 
-				// Before the server answers, a stream with heartbeats stalls
-				// as every other request does.
 				assert.ErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
-				assert.NotErrorIs(t, err, eventsourcingdb.ErrHeartbeatTimeout)
 				assert.EqualError(t, err, "connection stalled, nothing arrived from the server for 250ms")
 				assert.GreaterOrEqual(t, elapsed, timeout)
 				assert.Less(t, elapsed, 2*time.Second, "the stall timeout did not end the request")
@@ -57,14 +54,8 @@ func TestErrConnectionStalled(t *testing.T) {
 				err := request(context.Background())
 				elapsed := time.Since(started)
 
-				// Once the server answers, a stream with heartbeats ends with
-				// ErrHeartbeatTimeout, as before.
-				if name == "ObserveEvents" || name == "RunEventQLQuery" {
-					assert.ErrorIs(t, err, eventsourcingdb.ErrHeartbeatTimeout)
-					assert.NotErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
-				} else {
-					assert.ErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
-				}
+				assert.ErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
+				assert.EqualError(t, err, "connection stalled, nothing arrived from the server for 250ms")
 				assert.GreaterOrEqual(t, elapsed, timeout)
 				assert.Less(t, elapsed, 2*time.Second, "the stall timeout did not end the request")
 			})
@@ -138,7 +129,7 @@ func TestErrConnectionStalled(t *testing.T) {
 	})
 
 	t.Run("a stream ends if nothing arrives after an item", func(t *testing.T) {
-		for _, stream := range streamsWithoutHeartbeats() {
+		for _, stream := range streams() {
 			t.Run(stream.name, func(t *testing.T) {
 				client := clientOfAServerThatStreams(t, func(ctx context.Context, send func(line string)) {
 					send(stream.line)
@@ -229,6 +220,22 @@ func TestErrConnectionStalled(t *testing.T) {
 		var timeoutError interface{ Timeout() bool }
 		require.True(t, errors.As(wrapped, &timeoutError))
 		assert.True(t, timeoutError.Timeout())
+	})
+
+	t.Run("names the stall timeout", func(t *testing.T) {
+		messages := map[time.Duration]string{
+			time.Second:             "connection stalled, nothing arrived from the server for 1 second",
+			30 * time.Second:        "connection stalled, nothing arrived from the server for 30 seconds",
+			time.Minute:             "connection stalled, nothing arrived from the server for 60 seconds",
+			1500 * time.Millisecond: "connection stalled, nothing arrived from the server for 1.5s",
+		}
+
+		for stallTimeout, message := range messages {
+			err := eventsourcingdb.ConnectionStalledAfter(stallTimeout)
+
+			assert.ErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
+			assert.EqualError(t, err, message)
+		}
 	})
 }
 

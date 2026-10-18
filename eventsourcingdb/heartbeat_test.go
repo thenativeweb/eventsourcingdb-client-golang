@@ -2,7 +2,6 @@ package eventsourcingdb_test
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -15,12 +14,14 @@ const heartbeatLine = `{"type":"heartbeat","payload":{}}`
 
 // A caller that observes events has to learn when the connection stalls, e.g.
 // behind a proxy that keeps it open but no longer passes anything on.
-// Otherwise it keeps believing it is live, while nothing arrives any more.
-func TestErrHeartbeatTimeout(t *testing.T) {
+// Otherwise it keeps believing it is live, while nothing arrives any more. The
+// heartbeats that the server sends while there is nothing else to send must
+// keep a stream alive, though.
+func TestHeartbeats(t *testing.T) {
 	timeout := 250 * time.Millisecond
 	withTimeout := eventsourcingdb.WithStallTimeout(timeout)
 
-	t.Run("every stream with heartbeats ends if nothing arrives after a heartbeat", func(t *testing.T) {
+	t.Run("every stream with heartbeats stalls if nothing arrives after a heartbeat", func(t *testing.T) {
 		for _, stream := range streamsWithHeartbeats() {
 			t.Run(stream.name, func(t *testing.T) {
 				connectionClosed := make(chan struct{})
@@ -38,10 +39,10 @@ func TestErrHeartbeatTimeout(t *testing.T) {
 				_, err := stream.read(context.Background(), client, nil)
 				elapsed := time.Since(started)
 
-				assert.ErrorIs(t, err, eventsourcingdb.ErrHeartbeatTimeout)
-				assert.EqualError(t, err, "no event and no heartbeat arrived for 250ms")
+				assert.ErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
+				assert.EqualError(t, err, "connection stalled, nothing arrived from the server for 250ms")
 				assert.GreaterOrEqual(t, elapsed, timeout)
-				assert.Less(t, elapsed, 2*time.Second, "the heartbeat timeout did not end the stream")
+				assert.Less(t, elapsed, 2*time.Second, "the stall timeout did not end the stream")
 
 				select {
 				case <-connectionClosed:
@@ -72,45 +73,7 @@ func TestErrHeartbeatTimeout(t *testing.T) {
 		}
 	})
 
-	t.Run("items that arrive within the timeout are handed out as before", func(t *testing.T) {
-		for _, stream := range streamsWithHeartbeats() {
-			t.Run(stream.name, func(t *testing.T) {
-				// Without heartbeats in between, the items last for twice as
-				// long as the timeout.
-				client := clientOfAServerThatStreams(t, func(ctx context.Context, send func(line string)) {
-					for range 4 {
-						send(stream.line)
-						time.Sleep(timeout / 2)
-					}
-				}, withTimeout)
-
-				items, err := stream.read(context.Background(), client, nil)
-
-				assert.NoError(t, err)
-				assert.Equal(t, 4, items)
-			})
-		}
-	})
-
-	t.Run("the time the caller spends on an item does not count", func(t *testing.T) {
-		for _, stream := range streamsWithHeartbeats() {
-			t.Run(stream.name, func(t *testing.T) {
-				client := clientOfAServerThatStreams(t, func(ctx context.Context, send func(line string)) {
-					send(stream.line)
-					send(stream.line)
-				}, withTimeout)
-
-				items, err := stream.read(context.Background(), client, func() {
-					time.Sleep(2 * timeout)
-				})
-
-				assert.NoError(t, err)
-				assert.Equal(t, 2, items)
-			})
-		}
-	})
-
-	t.Run("a cancel ends a stream as before, not with a heartbeat timeout", func(t *testing.T) {
+	t.Run("a cancel ends a stream as before, not as a stall", func(t *testing.T) {
 		for _, stream := range streamsWithHeartbeats() {
 			t.Run(stream.name, func(t *testing.T) {
 				client := clientOfAServerThatStreams(t, func(ctx context.Context, send func(line string)) {
@@ -133,54 +96,8 @@ func TestErrHeartbeatTimeout(t *testing.T) {
 				_, err := stream.read(ctx, client, nil)
 
 				assert.ErrorIs(t, err, context.Canceled)
-				assert.NotErrorIs(t, err, eventsourcingdb.ErrHeartbeatTimeout)
+				assert.NotErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
 			})
-		}
-	})
-
-	t.Run("is found if it is wrapped", func(t *testing.T) {
-		client := clientOfAServerThatStreams(t, func(ctx context.Context, send func(line string)) {
-			send(heartbeatLine)
-
-			select {
-			case <-ctx.Done():
-			case <-time.After(5 * time.Second):
-			}
-		}, withTimeout)
-
-		var err error
-		for _, observeErr := range client.ObserveEvents(context.Background(), "/test", eventsourcingdb.ObserveEventsOptions{}) {
-			if observeErr != nil {
-				err = observeErr
-				break
-			}
-		}
-		wrapped := fmt.Errorf("failed to handle the command: %w", err)
-
-		assert.ErrorIs(t, wrapped, eventsourcingdb.ErrHeartbeatTimeout)
-	})
-
-	t.Run("is ErrHeartbeatTimeout itself with the default stall timeout, as before", func(t *testing.T) {
-		err := eventsourcingdb.HeartbeatTimeoutAfter(30 * time.Second)
-
-		assert.Same(t, eventsourcingdb.ErrHeartbeatTimeout, err)
-		assert.EqualError(t, err, "no event and no heartbeat arrived for 30 seconds")
-	})
-
-	t.Run("names any other stall timeout", func(t *testing.T) {
-		messages := map[time.Duration]string{
-			time.Second:             "no event and no heartbeat arrived for 1 second",
-			10 * time.Second:        "no event and no heartbeat arrived for 10 seconds",
-			time.Minute:             "no event and no heartbeat arrived for 60 seconds",
-			1500 * time.Millisecond: "no event and no heartbeat arrived for 1.5s",
-		}
-
-		for stallTimeout, message := range messages {
-			err := eventsourcingdb.HeartbeatTimeoutAfter(stallTimeout)
-
-			assert.ErrorIs(t, err, eventsourcingdb.ErrHeartbeatTimeout)
-			assert.NotErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
-			assert.EqualError(t, err, message)
 		}
 	})
 }

@@ -70,7 +70,7 @@ func (c *Client) RunEventQLQuery(
 			return
 		}
 
-		for line, err := range guard.lines(response.Body, true) {
+		for line, err := range guard.lines(response.Body) {
 			if err != nil {
 				yield(nil, err)
 				return

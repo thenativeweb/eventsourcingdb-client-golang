@@ -105,7 +105,7 @@ func (c *Client) ObserveEvents(
 			return
 		}
 
-		for line, err := range guard.lines(response.Body, true) {
+		for line, err := range guard.lines(response.Body) {
 			if err != nil {
 				yield(Event{}, err)
 				return
