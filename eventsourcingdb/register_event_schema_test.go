@@ -15,10 +15,10 @@ func TestRegisterEventSchema(t *testing.T) {
 	t.Run("registers an event schema", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -48,10 +48,10 @@ func TestRegisterEventSchema(t *testing.T) {
 	t.Run("returns an error if an event schema is already registered", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 

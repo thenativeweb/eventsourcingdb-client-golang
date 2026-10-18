@@ -23,10 +23,10 @@ func TestVerifyHash(t *testing.T) {
 	t.Run("verifies the event hash", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		err = container.Start(ctx)
 		require.NoError(t, err)
 		defer container.Stop(ctx)
@@ -59,10 +59,10 @@ func TestVerifyHash(t *testing.T) {
 	t.Run("returns an error if the event hash is invalid", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		err = container.Start(ctx)
 		require.NoError(t, err)
 		defer container.Stop(ctx)
@@ -106,10 +106,10 @@ func TestVerifySignature(t *testing.T) {
 	t.Run("returns an error if the signature is nil", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 
 		err = container.Start(ctx)
 		require.NoError(t, err)
@@ -148,11 +148,11 @@ func TestVerifySignature(t *testing.T) {
 	t.Run("returns an error if the hash verification fails", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().
-			WithImageTag(imageVersion).
+			WithImageTag(imageTag).
 			WithSigningKey()
 
 		err = container.Start(ctx)
@@ -197,11 +197,11 @@ func TestVerifySignature(t *testing.T) {
 	t.Run("returns an error if the signature verification fails", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().
-			WithImageTag(imageVersion).
+			WithImageTag(imageTag).
 			WithSigningKey()
 
 		err = container.Start(ctx)
@@ -245,11 +245,11 @@ func TestVerifySignature(t *testing.T) {
 	t.Run("verifies the signature", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().
-			WithImageTag(imageVersion).
+			WithImageTag(imageTag).
 			WithSigningKey()
 
 		err = container.Start(ctx)

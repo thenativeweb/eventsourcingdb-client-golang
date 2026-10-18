@@ -27,10 +27,10 @@ func TestTheContext(t *testing.T) {
 	t.Run("a read that is canceled midway ends with the error of the context", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -70,10 +70,10 @@ func TestTheContext(t *testing.T) {
 	t.Run("a read with a context that has already ended does not start", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -159,10 +159,10 @@ func TestTheContext(t *testing.T) {
 	t.Run("a write with a context that has already ended writes nothing", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 

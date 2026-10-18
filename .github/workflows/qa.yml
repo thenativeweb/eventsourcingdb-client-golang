@@ -8,9 +8,17 @@ concurrency:
 
 jobs:
   qa:
-    name: QA
+    name: QA (${{ matrix.image-tag }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        image-tag:
+          - latest
+          - preview
+    env:
+      EVENTSOURCINGDB_IMAGE_TAG: ${{ matrix.image-tag }}
 
     steps:
     - name: Clone repository

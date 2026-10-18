@@ -17,10 +17,10 @@ func TestPing(t *testing.T) {
 	t.Run("does not return an error if the server is reachable", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -34,10 +34,10 @@ func TestPing(t *testing.T) {
 	t.Run("returns an error if the server is not reachable", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(context.Background())
 		defer container.Stop(context.Background())
 

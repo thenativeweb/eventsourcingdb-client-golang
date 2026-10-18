@@ -21,10 +21,10 @@ func TestReadEvents(t *testing.T) {
 	t.Run("reads no events if the database is empty", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -50,10 +50,10 @@ func TestReadEvents(t *testing.T) {
 	t.Run("reads all events from the given subject", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -107,10 +107,10 @@ func TestReadEvents(t *testing.T) {
 	t.Run("reads a huge event without truncating its payload", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -171,10 +171,10 @@ func TestReadEvents(t *testing.T) {
 	t.Run("reads recursively", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -228,10 +228,10 @@ func TestReadEvents(t *testing.T) {
 	t.Run("reads chronologically", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -296,10 +296,10 @@ func TestReadEvents(t *testing.T) {
 	t.Run("reads antichronologically", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -364,10 +364,10 @@ func TestReadEvents(t *testing.T) {
 	t.Run("reads with lower bound", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -430,10 +430,10 @@ func TestReadEvents(t *testing.T) {
 	t.Run("reads with upper bound", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -496,10 +496,10 @@ func TestReadEvents(t *testing.T) {
 	t.Run("reads from latest event", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 

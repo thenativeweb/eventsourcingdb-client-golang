@@ -20,10 +20,10 @@ func TestReadEventTypes(t *testing.T) {
 	t.Run("reads no event types if the database is empty", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -43,10 +43,10 @@ func TestReadEventTypes(t *testing.T) {
 	t.Run("reads all event types", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 
@@ -102,10 +102,10 @@ func TestReadEventTypes(t *testing.T) {
 	t.Run("supports reading event schemas", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		container.Start(ctx)
 		defer container.Stop(ctx)
 

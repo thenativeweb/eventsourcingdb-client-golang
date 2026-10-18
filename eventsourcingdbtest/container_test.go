@@ -18,10 +18,10 @@ import (
 
 func TestContainer(t *testing.T) {
 	t.Run("starts, hands out a client, and stops", func(t *testing.T) {
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 		assert.False(t, container.IsRunning())
 
 		err = container.Start(t.Context())
@@ -56,11 +56,11 @@ func TestContainer(t *testing.T) {
 	})
 
 	t.Run("uses a custom API token and port", func(t *testing.T) {
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().
-			WithImageTag(imageVersion).
+			WithImageTag(imageTag).
 			WithPort(4000).
 			WithAPIToken("custom-token")
 
@@ -78,11 +78,11 @@ func TestContainer(t *testing.T) {
 	})
 
 	t.Run("signs events with its signing key", func(t *testing.T) {
-		imageVersion, err := internal.GetImageVersionFromDockerfile()
+		imageTag, err := internal.GetImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().
-			WithImageTag(imageVersion).
+			WithImageTag(imageTag).
 			WithSigningKey()
 
 		signingKey, err := container.GetSigningKey()
@@ -145,7 +145,7 @@ func TestContainer(t *testing.T) {
 // Start replaces such a container by a new one. A container that failed to
 // start must never be left behind, whatever the reason was.
 func TestContainerStart(t *testing.T) {
-	imageVersion, err := internal.GetImageVersionFromDockerfile()
+	imageTag, err := internal.GetImageTag()
 	require.NoError(t, err)
 
 	t.Run("replaces a container whose port Docker did not publish", func(t *testing.T) {
@@ -160,7 +160,7 @@ func TestContainerStart(t *testing.T) {
 		})
 
 		container := eventsourcingdbtest.NewContainer().
-			WithImageTag(imageVersion).
+			WithImageTag(imageTag).
 			WithSigningKey()
 
 		err := container.Start(t.Context())
@@ -201,7 +201,7 @@ func TestContainerStart(t *testing.T) {
 			return testcontainers.GenericContainer(ctx, request)
 		})
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 
 		err := container.Start(t.Context())
 		defer container.Stop(t.Context())
@@ -229,7 +229,7 @@ func TestContainerStart(t *testing.T) {
 					return testcontainers.GenericContainer(ctx, request)
 				})
 
-				container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+				container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 
 				err := container.Start(t.Context())
 				defer container.Stop(t.Context())
@@ -254,7 +254,7 @@ func TestContainerStart(t *testing.T) {
 				return testcontainers.GenericContainer(ctx, request)
 			})
 
-			container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+			container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 
 			err := container.Start(ctx)
 			defer container.Stop(t.Context())
@@ -278,7 +278,7 @@ func TestContainerStart(t *testing.T) {
 				}), err
 			})
 
-			container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+			container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 
 			err := container.Start(ctx)
 			defer container.Stop(t.Context())
@@ -303,7 +303,7 @@ func TestContainerStart(t *testing.T) {
 			}), err
 		})
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 
 		err := container.Start(t.Context())
 		defer container.Stop(t.Context())
@@ -325,7 +325,7 @@ func TestContainerStart(t *testing.T) {
 			return (*testcontainers.DockerContainer)(nil), errStart
 		})
 
-		container := eventsourcingdbtest.NewContainer().WithImageTag(imageVersion)
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
 
 		err := container.Start(t.Context())
 
