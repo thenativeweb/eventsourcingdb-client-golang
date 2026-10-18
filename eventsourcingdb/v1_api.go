@@ -6,6 +6,7 @@ import (
 	"errors"
 	"iter"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
@@ -274,10 +275,14 @@ func (a v1API) readSubjects(ctx context.Context, subject string, options ReadSub
 		fail := func(err error) { yield("", err) }
 
 		// The v1 API always reads recursively, from the base subject on, so
-		// reading the subject alone keeps only the subject itself.
+		// reading the subject alone keeps only the subject itself, as the
+		// server writes it: with a single slash at its start, and none at its
+		// end, e.g. "/books/42" for "/books/42/".
 		type RequestBody struct {
 			BaseSubject string `json:"baseSubject"`
 		}
+
+		normalizedSubject := "/" + strings.Trim(subject, "/")
 
 		a.stream(ctx, actionReadSubjects, "/api/v1/read-subjects", RequestBody{BaseSubject: subject}, false, fail, func(line internal.Line) bool {
 			if line.Type != "subject" {
@@ -293,7 +298,7 @@ func (a v1API) readSubjects(ctx context.Context, subject string, options ReadSub
 			}
 
 			if !options.Recursive {
-				if streamSubject.Subject != subject {
+				if streamSubject.Subject != normalizedSubject {
 					return true
 				}
 

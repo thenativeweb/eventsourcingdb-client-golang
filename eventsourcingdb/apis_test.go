@@ -355,7 +355,7 @@ func TestTheAPIs(t *testing.T) {
 				bodies = append(bodies, string(body))
 
 				w.Header().Set("Server", "EventSourcingDB/test")
-				for _, subject := range []string{"/test", "/test/1", "/test/1/a", "/test/2"} {
+				for _, subject := range []string{"/", "/test", "/test/1", "/test/1/a", "/test/2"} {
 					_, _ = w.Write([]byte(apiV1.line("subject", `{"subject":"`+subject+`"}`) + "\n"))
 				}
 			}))
@@ -365,10 +365,16 @@ func TestTheAPIs(t *testing.T) {
 				recursive bool
 				subjects  []string
 			}{
-				{subject: "/test", recursive: true, subjects: []string{"/test", "/test/1", "/test/1/a", "/test/2"}},
+				{subject: "/", recursive: true, subjects: []string{"/", "/test", "/test/1", "/test/1/a", "/test/2"}},
+				{subject: "/", recursive: false, subjects: []string{"/"}},
 				{subject: "/test", recursive: false, subjects: []string{"/test"}},
 				{subject: "/test/1", recursive: false, subjects: []string{"/test/1"}},
 				{subject: "/test/3", recursive: false, subjects: []string{}},
+
+				// The server writes every subject with a single slash at its
+				// start, and none at its end.
+				{subject: "/test/", recursive: false, subjects: []string{"/test"}},
+				{subject: "/test/1/", recursive: false, subjects: []string{"/test/1"}},
 			}
 
 			for _, subjectOf := range subjectsOf {

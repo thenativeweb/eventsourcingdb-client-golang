@@ -203,10 +203,12 @@ func TestReadSubjects(t *testing.T) {
 		require.NoError(t, err)
 
 		subjectsOf := map[string][]string{
-			"/":       {"/"},
-			"/test":   {"/test"},
-			"/test/1": {"/test/1"},
-			"/other":  {},
+			"/":        {"/"},
+			"/test":    {"/test"},
+			"/test/":   {"/test"},
+			"/test/1":  {"/test/1"},
+			"/test/1/": {"/test/1"},
+			"/other":   {},
 		}
 
 		for subject, expected := range subjectsOf {
