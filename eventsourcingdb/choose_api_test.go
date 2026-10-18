@@ -2,6 +2,7 @@ package eventsourcingdb_test
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -413,6 +414,23 @@ func TestChoosingTheAPI(t *testing.T) {
 
 		assert.Equal(t, "v2", eventsourcingdb.APIOf(&copied))
 		assert.Equal(t, int32(1), server.probes.Load())
+	})
+
+	t.Run("names the path with which it asks if the server can not be reached", func(t *testing.T) {
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+		address := listener.Addr().String()
+		require.NoError(t, listener.Close())
+
+		baseURL, err := url.Parse("http://" + address)
+		require.NoError(t, err)
+		client, err := eventsourcingdb.NewClient(baseURL, "secret")
+		require.NoError(t, err)
+
+		_, err = client.WriteEvents(context.Background(), []eventsourcingdb.EventCandidate{candidate()}, nil)
+
+		assert.ErrorContains(t, err, `Get "http://`+address+`/api/v2/system/ping": `)
+		assert.NotErrorIs(t, err, eventsourcingdb.ErrOutcomeUnknown)
 	})
 
 	t.Run("asks nothing for a request whose context has already ended", func(t *testing.T) {
