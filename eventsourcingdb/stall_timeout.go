@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 // ErrConnectionStalled reports that a request ended because nothing arrived

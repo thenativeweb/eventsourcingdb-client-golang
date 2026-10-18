@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 func (c *Client) WriteEvents(ctx context.Context, events []EventCandidate, preconditions []Precondition) ([]Event, error) {

@@ -1,6 +1,6 @@
 package eventsourcingdb
 
-import "github.com/thenativeweb/eventsourcingdb-client-golang/internal"
+import "github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 
 type Order string
 

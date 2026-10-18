@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 func (c *Client) ReadEventType(

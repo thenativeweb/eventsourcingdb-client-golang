@@ -13,7 +13,7 @@ This client SDK includes support for [Testcontainers](https://testcontainers.com
 Install the client SDK:
 
 ```shell
-go get github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb
+go get github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb
 ```
 
 Import the package and create an instance by providing the URL of your EventSourcingDB instance and the API token to use:
@@ -22,7 +22,7 @@ Import the package and create an instance by providing the URL of your EventSour
 import (
   "net/url"
 
-  "github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
+  "github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb"
 )
 
 // ...
@@ -741,11 +741,11 @@ If observing events or running an EventQL query receives nothing for the stall t
 The test container lives in the `eventsourcingdbtest` package. Add it to your module, and import it in your tests:
 
 ```shell
-go get github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdbtest
+go get github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdbtest
 ```
 
 ```go
-import "github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdbtest"
+import "github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdbtest"
 ```
 
 Call the `NewContainer` function, start the test container, defer stopping it, get a client, and run your test code:

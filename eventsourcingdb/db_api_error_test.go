@@ -13,9 +13,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdbtest"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdbtest"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 // A caller has to be able to tell failures apart that share a status code,

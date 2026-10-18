@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 func (c *Client) Ping(ctx context.Context) error {
