@@ -1,72 +1,19 @@
 package eventsourcingdb
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"io"
-	"net/http"
-
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
 )
 
+// ReadEventType reads the given event type, together with the schema
+// registered for it, if there is one.
 func (c *Client) ReadEventType(
 	ctx context.Context,
 	eventType string,
 ) (EventType, error) {
-	readEventTypeURL, err := c.getURL("/api/v1/read-event-type")
+	api, err := c.chooseAPI(ctx, actionReadEventType)
 	if err != nil {
 		return EventType{}, err
 	}
 
-	type RequestBody struct {
-		EventType string `json:"eventType"`
-	}
-	requestBody := RequestBody{
-		EventType: eventType,
-	}
-
-	requestBodyJSON, err := json.Marshal(requestBody)
-	if err != nil {
-		return EventType{}, err
-	}
-
-	requestBodyReader := io.NopCloser(bytes.NewReader(requestBodyJSON))
-
-	guard := c.guard(ctx)
-	defer guard.end()
-
-	request, err := http.NewRequestWithContext(guard.ctx, http.MethodPost, readEventTypeURL.String(), requestBodyReader)
-	if err != nil {
-		return EventType{}, err
-	}
-	request.Header.Set("Authorization", "Bearer "+c.apiToken)
-	request.Header.Set("Content-Type", "application/json")
-
-	response, err := c.send(guard, request)
-	if err != nil {
-		return EventType{}, err
-	}
-	defer response.Body.Close()
-
-	err = validateServerHeader(response)
-	if err != nil {
-		return EventType{}, err
-	}
-
-	if response.StatusCode != http.StatusOK {
-		return EventType{}, newDBAPIError("read event type", response)
-	}
-
-	var eventTypeResponse internal.StreamEventType
-	err = internal.ParseJSON(response.Body, &eventTypeResponse)
-	if err != nil {
-		return EventType{}, err
-	}
-
-	return EventType{
-		EventType: eventTypeResponse.EventType,
-		IsPhantom: eventTypeResponse.IsPhantom,
-		Schema:    eventTypeResponse.Schema,
-	}, nil
+	return api.readEventType(ctx, eventType)
 }

@@ -1,60 +1,16 @@
 package eventsourcingdb
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"io"
-	"net/http"
 )
 
+// RegisterEventSchema registers the given schema for the given event type,
+// which every event of that type has to match from then on.
 func (c *Client) RegisterEventSchema(ctx context.Context, eventType string, schema map[string]any) error {
-	registerEventSchemaURL, err := c.getURL("/api/v1/register-event-schema")
+	api, err := c.chooseAPI(ctx, actionRegisterEventSchema)
 	if err != nil {
 		return err
 	}
 
-	type RequestBody struct {
-		EventType string         `json:"eventType"`
-		Schema    map[string]any `json:"schema"`
-	}
-
-	requestBody := RequestBody{
-		EventType: eventType,
-		Schema:    schema,
-	}
-
-	requestBodyJSON, err := json.Marshal(requestBody)
-	if err != nil {
-		return err
-	}
-
-	requestBodyReader := io.NopCloser(bytes.NewReader(requestBodyJSON))
-
-	guard := c.guard(ctx)
-	defer guard.end()
-
-	request, err := http.NewRequestWithContext(guard.ctx, http.MethodPost, registerEventSchemaURL.String(), requestBodyReader)
-	if err != nil {
-		return err
-	}
-	request.Header.Set("Authorization", "Bearer "+c.apiToken)
-	request.Header.Set("Content-Type", "application/json")
-
-	response, err := c.send(guard, request)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-
-	err = validateServerHeader(response)
-	if err != nil {
-		return err
-	}
-
-	if response.StatusCode != http.StatusOK {
-		return newDBAPIError("register event schema", response)
-	}
-
-	return nil
+	return api.registerEventSchema(ctx, eventType, schema)
 }

@@ -3,14 +3,13 @@ package eventsourcingdb_test
 import (
 	"context"
 	"encoding/json"
-	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdbtest"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdbtest"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 func TestWriteEvents(t *testing.T) {
@@ -213,7 +212,7 @@ func TestWriteEvents(t *testing.T) {
 			},
 		)
 
-		assertReasonOfServer(t, err, "write events", http.StatusConflict, "state conflict: ")
+		assertCodeOfServer(t, err, "write events", eventsourcingdb.CodePreconditionViolated)
 	})
 
 	t.Run("supports the isSubjectPopulated precondition", func(t *testing.T) {
@@ -256,7 +255,7 @@ func TestWriteEvents(t *testing.T) {
 				eventsourcingdb.NewIsSubjectPopulatedPrecondition("/test"),
 			},
 		)
-		assertReasonOfServer(t, err, "write events", http.StatusConflict, "state conflict: ")
+		assertCodeOfServer(t, err, "write events", eventsourcingdb.CodePreconditionViolated)
 
 		_, err = client.WriteEvents(
 			ctx,
@@ -336,7 +335,7 @@ func TestWriteEvents(t *testing.T) {
 			},
 		)
 
-		assertReasonOfServer(t, err, "write events", http.StatusConflict, "state conflict: ")
+		assertCodeOfServer(t, err, "write events", eventsourcingdb.CodePreconditionViolated)
 	})
 
 	t.Run("supports the isEventQlQueryTrue precondition", func(t *testing.T) {
@@ -389,10 +388,10 @@ func TestWriteEvents(t *testing.T) {
 			},
 		)
 
-		assertReasonOfServer(t, err, "write events", http.StatusConflict, "state conflict: ")
+		assertCodeOfServer(t, err, "write events", eventsourcingdb.CodePreconditionViolated)
 	})
 
-	t.Run("reports the reason if an event does not match its schema", func(t *testing.T) {
+	t.Run("reports an event that does not match its schema", func(t *testing.T) {
 		ctx := context.Background()
 
 		imageTag, err := internal.GetImageTag()
@@ -437,6 +436,7 @@ func TestWriteEvents(t *testing.T) {
 			nil,
 		)
 
-		assertReasonOfServer(t, err, "write events", http.StatusConflict, "schema conflict: ", "additionalProperties 'extra' not allowed")
+		assertCodeOfServer(t, err, "write events", eventsourcingdb.CodeEventSchemaViolated)
+		assert.ErrorContains(t, err, "additionalProperties 'extra' not allowed")
 	})
 }

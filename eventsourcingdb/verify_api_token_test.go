@@ -8,9 +8,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdbtest"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdbtest"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 func TestVerifyAPIToken(t *testing.T) {
@@ -51,6 +51,6 @@ func TestVerifyAPIToken(t *testing.T) {
 
 		err = client.VerifyAPIToken(ctx)
 		assert.EqualError(t, err, "failed to verify API token, got HTTP status code '401', expected '200': unauthorized")
-		assertDBAPIError(t, err, http.StatusUnauthorized, "unauthorized")
+		assertDBAPIError(t, err, http.StatusUnauthorized, "", "unauthorized")
 	})
 }

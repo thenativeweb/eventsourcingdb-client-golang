@@ -6,9 +6,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdbtest"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdbtest"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 func TestReadSubjects(t *testing.T) {
@@ -34,6 +34,9 @@ func TestReadSubjects(t *testing.T) {
 		for _, err := range client.ReadSubjects(
 			ctx,
 			"/",
+			eventsourcingdb.ReadSubjectsOptions{
+				Recursive: true,
+			},
 		) {
 			assert.NoError(t, err)
 			didReadSubjects = true
@@ -88,6 +91,9 @@ func TestReadSubjects(t *testing.T) {
 		for subject, err := range client.ReadSubjects(
 			ctx,
 			"/",
+			eventsourcingdb.ReadSubjectsOptions{
+				Recursive: true,
+			},
 		) {
 			assert.NoError(t, err)
 			subjectsRead = append(subjectsRead, subject)
@@ -100,7 +106,7 @@ func TestReadSubjects(t *testing.T) {
 		assert.Equal(t, subjectsRead[3], "/test/2")
 	})
 
-	t.Run("reads all subjects from the base subject", func(t *testing.T) {
+	t.Run("reads all subjects from the given subject recursively", func(t *testing.T) {
 		ctx := context.Background()
 
 		imageTag, err := internal.GetImageTag()
@@ -146,6 +152,9 @@ func TestReadSubjects(t *testing.T) {
 		for subject, err := range client.ReadSubjects(
 			ctx,
 			"/test",
+			eventsourcingdb.ReadSubjectsOptions{
+				Recursive: true,
+			},
 		) {
 			assert.NoError(t, err)
 			subjectsRead = append(subjectsRead, subject)
@@ -155,5 +164,68 @@ func TestReadSubjects(t *testing.T) {
 		assert.Equal(t, subjectsRead[0], "/test")
 		assert.Equal(t, subjectsRead[1], "/test/1")
 		assert.Equal(t, subjectsRead[2], "/test/2")
+	})
+	t.Run("reads the given subject alone if not recursively", func(t *testing.T) {
+		ctx := context.Background()
+
+		imageTag, err := internal.GetImageTag()
+		require.NoError(t, err)
+
+		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
+		container.Start(ctx)
+		defer container.Stop(ctx)
+
+		client, err := container.GetClient(ctx)
+		require.NoError(t, err)
+
+		_, err = client.WriteEvents(
+			ctx,
+			[]eventsourcingdb.EventCandidate{
+				{
+					Source:  "https://www.eventsourcingdb.io",
+					Subject: "/test/1",
+					Type:    "io.eventsourcingdb.test",
+					Data: EventData{
+						Value: 23,
+					},
+				},
+				{
+					Source:  "https://www.eventsourcingdb.io",
+					Subject: "/test/2",
+					Type:    "io.eventsourcingdb.test",
+					Data: EventData{
+						Value: 42,
+					},
+				},
+			},
+			nil,
+		)
+		require.NoError(t, err)
+
+		subjectsOf := map[string][]string{
+			"/":        {"/"},
+			"/test":    {"/test"},
+			"/test/":   {"/test"},
+			"/test/1":  {"/test/1"},
+			"/test/1/": {"/test/1"},
+			"/other":   {},
+		}
+
+		for subject, expected := range subjectsOf {
+			subjectsRead := []string{}
+
+			for subjectRead, err := range client.ReadSubjects(
+				ctx,
+				subject,
+				eventsourcingdb.ReadSubjectsOptions{
+					Recursive: false,
+				},
+			) {
+				require.NoError(t, err)
+				subjectsRead = append(subjectsRead, subjectRead)
+			}
+
+			assert.Equal(t, expected, subjectsRead, "subject %s", subject)
+		}
 	})
 }

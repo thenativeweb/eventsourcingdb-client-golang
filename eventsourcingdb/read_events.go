@@ -1,155 +1,85 @@
 package eventsourcingdb
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"fmt"
-	"io"
 	"iter"
-	"net/http"
-
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
 )
 
+// ReadEvents reads the events of the given subject, as the given options
+// say, and ends once it has read all of them.
 func (c *Client) ReadEvents(
 	ctx context.Context,
 	subject string,
 	options ReadEventsOptions,
 ) iter.Seq2[Event, error] {
 	return func(yield func(Event, error) bool) {
-		readEventsURL, err := c.getURL("/api/v1/read-events")
+		api, err := c.chooseAPI(ctx, actionReadEvents)
 		if err != nil {
 			yield(Event{}, err)
 			return
 		}
 
-		type RequestBodyBound struct {
-			ID   string `json:"id"`
-			Type string `json:"type"`
-		}
+		api.readEvents(ctx, newReadEventsRequestBody(subject, options))(yield)
+	}
+}
 
-		type RequestBodyFromLatestEvent struct {
-			Subject          string `json:"subject"`
-			Type             string `json:"type"`
-			IfEventIsMissing string `json:"ifEventIsMissing"`
-		}
+// readEventsRequestBody is the body of a request that reads events, which
+// both APIs take alike.
+type readEventsRequestBody struct {
+	Subject string                       `json:"subject"`
+	Options readEventsRequestBodyOptions `json:"options"`
+}
 
-		type RequestBodyOptions struct {
-			Recursive       bool                        `json:"recursive"`
-			Order           *string                     `json:"order,omitempty"`
-			LowerBound      *RequestBodyBound           `json:"lowerBound,omitempty"`
-			UpperBound      *RequestBodyBound           `json:"upperBound,omitempty"`
-			FromLatestEvent *RequestBodyFromLatestEvent `json:"fromLatestEvent,omitempty"`
-		}
+type readEventsRequestBodyOptions struct {
+	Recursive       bool                                  `json:"recursive"`
+	Order           *string                               `json:"order,omitempty"`
+	LowerBound      *requestBodyBound                     `json:"lowerBound,omitempty"`
+	UpperBound      *requestBodyBound                     `json:"upperBound,omitempty"`
+	FromLatestEvent *readEventsRequestBodyFromLatestEvent `json:"fromLatestEvent,omitempty"`
+}
 
-		type RequestBody struct {
-			Subject string             `json:"subject"`
-			Options RequestBodyOptions `json:"options"`
-		}
+type readEventsRequestBodyFromLatestEvent struct {
+	Subject          string `json:"subject"`
+	Type             string `json:"type"`
+	IfEventIsMissing string `json:"ifEventIsMissing"`
+}
 
-		requestBody := RequestBody{
-			Subject: subject,
-			Options: RequestBodyOptions{
-				Recursive: options.Recursive,
-			},
-		}
-		if options.Order != nil {
-			order := string(*options.Order)
-			requestBody.Options.Order = &order
-		}
-		if options.LowerBound != nil {
-			requestBody.Options.LowerBound = &RequestBodyBound{
-				ID:   options.LowerBound.ID,
-				Type: string(options.LowerBound.Type),
-			}
-		}
-		if options.UpperBound != nil {
-			requestBody.Options.UpperBound = &RequestBodyBound{
-				ID:   options.UpperBound.ID,
-				Type: string(options.UpperBound.Type),
-			}
-		}
-		if options.FromLatestEvent != nil {
-			requestBody.Options.FromLatestEvent = &RequestBodyFromLatestEvent{
-				Subject:          options.FromLatestEvent.Subject,
-				Type:             string(options.FromLatestEvent.Type),
-				IfEventIsMissing: string(options.FromLatestEvent.IfEventIsMissing),
-			}
-		}
+type requestBodyBound struct {
+	ID   string `json:"id"`
+	Type string `json:"type"`
+}
 
-		requestBodyJSON, err := json.Marshal(requestBody)
-		if err != nil {
-			yield(Event{}, err)
-			return
-		}
+func newRequestBodyBound(bound *Bound) *requestBodyBound {
+	if bound == nil {
+		return nil
+	}
 
-		requestBodyReader := io.NopCloser(bytes.NewReader(requestBodyJSON))
+	return &requestBodyBound{
+		ID:   bound.ID,
+		Type: string(bound.Type),
+	}
+}
 
-		guard := c.guard(ctx)
-		defer guard.end()
-
-		request := (&http.Request{
-			Method: http.MethodPost,
-			URL:    readEventsURL,
-			Header: http.Header{
-				"Authorization": []string{"Bearer " + c.apiToken},
-				"Content-Type":  []string{"application/json"},
-			},
-			Body: requestBodyReader,
-		}).WithContext(guard.ctx)
-
-		response, err := c.send(guard, request)
-		if err != nil {
-			yield(Event{}, err)
-			return
-		}
-		defer response.Body.Close()
-
-		err = validateServerHeader(response)
-		if err != nil {
-			yield(Event{}, err)
-			return
-		}
-
-		if response.StatusCode != http.StatusOK {
-			yield(Event{}, newDBAPIError("read events", response))
-			return
-		}
-
-		for line, err := range guard.lines(response.Body, false) {
-			if err != nil {
-				yield(Event{}, err)
-				return
-			}
-
-			switch line.Type {
-			case "event":
-				var event Event
-				err := json.Unmarshal(line.Payload, &event)
-				if err != nil {
-					yield(Event{}, err)
-					return
-				}
-
-				if !yield(event, nil) {
-					return
-				}
-				continue
-			case "error":
-				var error internal.Error
-				err := json.Unmarshal(line.Payload, &error)
-				if err != nil {
-					yield(Event{}, err)
-					return
-				}
-
-				yield(Event{}, fmt.Errorf("failed to read events, got error: %s", error.Error))
-				return
-			default:
-				yield(Event{}, fmt.Errorf("failed to handle unsupported line type: %s", line.Type))
-				return
-			}
+func newReadEventsRequestBody(subject string, options ReadEventsOptions) readEventsRequestBody {
+	requestBody := readEventsRequestBody{
+		Subject: subject,
+		Options: readEventsRequestBodyOptions{
+			Recursive:  options.Recursive,
+			LowerBound: newRequestBodyBound(options.LowerBound),
+			UpperBound: newRequestBodyBound(options.UpperBound),
+		},
+	}
+	if options.Order != nil {
+		order := string(*options.Order)
+		requestBody.Options.Order = &order
+	}
+	if options.FromLatestEvent != nil {
+		requestBody.Options.FromLatestEvent = &readEventsRequestBodyFromLatestEvent{
+			Subject:          options.FromLatestEvent.Subject,
+			Type:             options.FromLatestEvent.Type,
+			IfEventIsMissing: string(options.FromLatestEvent.IfEventIsMissing),
 		}
 	}
+
+	return requestBody
 }

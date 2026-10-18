@@ -8,13 +8,23 @@ import (
 	"iter"
 )
 
+// Line is a line of a stream of the v1 API, whose payload depends on its type.
 type Line struct {
 	Type    string
 	Payload json.RawMessage
 }
 
-func UnmarshalNDJSON(ctx context.Context, r io.Reader) iter.Seq2[Line, error] {
-	return func(yield func(Line, error) bool) {
+// Envelope is an item of the v2 API, in a stream or as a single answer, whose
+// data depends on its type.
+type Envelope struct {
+	Type string          `json:"type"`
+	Data json.RawMessage `json:"data"`
+}
+
+// UnmarshalNDJSON reads the lines of a stream of newline-delimited JSON, and
+// decodes each of them as a T.
+func UnmarshalNDJSON[T any](ctx context.Context, r io.Reader) iter.Seq2[T, error] {
+	return func(yield func(T, error) bool) {
 		// We decode directly from the reader using a json.Decoder instead
 		// of reading whole lines with a bufio.Scanner. The scanner enforces
 		// a fixed maximum token size, so a single large event would exceed
@@ -37,7 +47,7 @@ func UnmarshalNDJSON(ctx context.Context, r io.Reader) iter.Seq2[Line, error] {
 		for {
 			select {
 			case <-ctx.Done():
-				yield(Line{}, ctx.Err())
+				yield(*new(T), ctx.Err())
 				return
 			default:
 				// From a technical point of view, this default block
@@ -49,7 +59,7 @@ func UnmarshalNDJSON(ctx context.Context, r io.Reader) iter.Seq2[Line, error] {
 				// readable.
 			}
 
-			var line Line
+			var line T
 			err := decoder.Decode(&line)
 			if errors.Is(err, io.EOF) {
 				return
@@ -58,7 +68,7 @@ func UnmarshalNDJSON(ctx context.Context, r io.Reader) iter.Seq2[Line, error] {
 				// A decoding error leaves the decoder's position within the
 				// stream unrecoverable, so we report the error and stop
 				// instead of trying to resynchronize on the next line.
-				yield(Line{}, err)
+				yield(*new(T), err)
 				return
 			}
 

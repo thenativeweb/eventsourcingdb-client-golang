@@ -8,11 +8,22 @@ import (
 	"time"
 )
 
+// Client talks to an EventSourcingDB. Create it with NewClient. It is safe for
+// concurrent use.
+//
+// The client speaks the v2 API of the server if the server offers it, and the
+// v1 API otherwise. Creating it sends no request: the first request of the
+// client finds out which API the server offers, and the client remembers that
+// for every request after it.
 type Client struct {
 	baseURL      *url.URL
 	apiToken     string
 	stallTimeout time.Duration
 	httpClient   *http.Client
+
+	// apiChoice is a pointer, so that a client stays comparable, and a copy
+	// of it shares what it found out about the server.
+	apiChoice *apiChoice
 }
 
 // ClientOption configures a client. Hand options to NewClient, e.g.
@@ -29,11 +40,10 @@ type ClientOption func(client *Client) error
 // ends because of it. The time the caller spends on an item of a stream does
 // not count either.
 //
-// A request that stalls fails with ErrConnectionStalled. Observing events and
-// running an EventQL query fail with ErrHeartbeatTimeout instead once the
-// server has begun to answer. The server sends a heartbeat every second on
-// these streams, so the stall timeout should be several seconds at least. To
-// limit a single request further, hand it a context with a deadline.
+// A request that stalls fails with ErrConnectionStalled. While there is
+// nothing else to send, the server sends a heartbeat every second on its
+// streams, so the stall timeout should be several seconds at least. To limit a
+// single request further, hand it a context with a deadline.
 //
 // The stall timeout must be greater than zero, or NewClient returns an error.
 func WithStallTimeout(stallTimeout time.Duration) ClientOption {
@@ -54,6 +64,7 @@ func NewClient(baseURL *url.URL, apiToken string, options ...ClientOption) (*Cli
 		baseURL:      baseURL,
 		apiToken:     apiToken,
 		stallTimeout: defaultStallTimeout,
+		apiChoice:    &apiChoice{},
 	}
 
 	for _, option := range options {

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb"
 )
 
 // An application may change http.DefaultClient for its own requests, e.g. give
@@ -18,17 +18,27 @@ func TestTheHTTPClient(t *testing.T) {
 	t.Run("every request ignores how http.DefaultClient is configured", func(t *testing.T) {
 		changeDefaultClient(t)
 
-		client := clientOfAServerThatAnswers(t, http.StatusServiceUnavailable, "service unavailable")
+		for _, api := range apis() {
+			// The client asks the server for its API first, which has to
+			// ignore http.DefaultClient as well.
+			client := newClientOf(t, answeringTheProbe(api, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Server", "EventSourcingDB/test")
+				w.WriteHeader(http.StatusServiceUnavailable)
+				_, _ = w.Write([]byte("service unavailable"))
+			})))
 
-		for _, request := range requestsOf(client) {
-			t.Run(request.name, func(t *testing.T) {
-				err := request.send()
+			for _, request := range requestsOf(client) {
+				t.Run(api.name+"/"+request.name, func(t *testing.T) {
+					err := request.send()
 
-				// The server answered, so the request did not go through
-				// http.DefaultClient, which fails every request.
-				assertDBAPIError(t, err, http.StatusServiceUnavailable, "service unavailable")
-				assert.NotErrorIs(t, err, errDefaultClientUsed)
-			})
+					// The server answered, so the request did not go through
+					// http.DefaultClient, which fails every request.
+					assertDBAPIError(t, err, http.StatusServiceUnavailable, "", "service unavailable")
+					assert.NotErrorIs(t, err, errDefaultClientUsed)
+				})
+			}
+
+			assert.Equal(t, api.name, eventsourcingdb.APIOf(client))
 		}
 	})
 
@@ -37,21 +47,23 @@ func TestTheHTTPClient(t *testing.T) {
 		http.DefaultClient.Transport = nil
 		http.DefaultClient.Timeout = 100 * time.Millisecond
 
-		for _, stream := range streamsWithHeartbeats() {
-			t.Run(stream.name, func(t *testing.T) {
-				client := clientOfAServerThatStreams(t, func(ctx context.Context, send func(line string)) {
-					for range 5 {
-						send(heartbeatLine)
-						time.Sleep(100 * time.Millisecond)
-					}
-					send(stream.line)
+		for _, api := range apis() {
+			for _, stream := range streamsWithHeartbeats(api) {
+				t.Run(api.name+"/"+stream.name, func(t *testing.T) {
+					client := clientOfAServerThatStreams(t, api, func(ctx context.Context, send func(line string)) {
+						for range 5 {
+							send(api.heartbeat())
+							time.Sleep(100 * time.Millisecond)
+						}
+						send(stream.item(api))
+					})
+
+					items, err := stream.read(context.Background(), client, nil)
+
+					assertEndedCleanly(t, api, stream, err)
+					assert.Equal(t, 1, items)
 				})
-
-				items, err := stream.read(context.Background(), client, nil)
-
-				require.NoError(t, err)
-				assert.Equal(t, 1, items)
-			})
+			}
 		}
 	})
 }

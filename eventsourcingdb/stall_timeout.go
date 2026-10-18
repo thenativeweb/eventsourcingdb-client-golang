@@ -10,9 +10,10 @@ import (
 	"net/http"
 	"net/http/httptrace"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"github.com/thenativeweb/eventsourcingdb-client-golang/internal"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 // ErrConnectionStalled reports that a request ended because nothing arrived
@@ -22,10 +23,11 @@ import (
 // The client then closes the connection. Every function of the client that
 // sends a request returns an error in that case that errors.Is finds it in,
 // and that names the stall timeout, e.g. "connection stalled, nothing arrived
-// from the server for 30 seconds". Only observing events and running an
-// EventQL query end with ErrHeartbeatTimeout instead once the server has begun
-// to answer. Use errors.Is to check for it, which also finds it if it is
-// wrapped:
+// from the server for 30 seconds", whether the server has not begun to answer
+// yet, or stops in the middle of an answer or of a stream. On a stream, the
+// heartbeats that the server sends while there is nothing else to send count
+// as something that arrives. Use errors.Is to check for it, which also finds
+// it if it is wrapped:
 //
 //	_, err := client.WriteEvents(ctx, events, preconditions)
 //	if errors.Is(err, eventsourcingdb.ErrConnectionStalled) {
@@ -66,33 +68,6 @@ func (e *connectionStalledError) Timeout() bool {
 	return true
 }
 
-// heartbeatTimeoutError reports a stall of a stream with heartbeats with
-// ErrHeartbeatTimeout, and names how long nothing arrived, if that is not the
-// default stall timeout that ErrHeartbeatTimeout names.
-type heartbeatTimeoutError struct {
-	stallTimeout time.Duration
-}
-
-func (e *heartbeatTimeoutError) Error() string {
-	return "no event and no heartbeat arrived for " + describeDuration(e.stallTimeout)
-}
-
-func (e *heartbeatTimeoutError) Is(target error) bool {
-	return target == ErrHeartbeatTimeout
-}
-
-// heartbeatTimeoutAfter returns the error with which a stream with heartbeats
-// ends if nothing arrives for the given stall timeout: ErrHeartbeatTimeout
-// itself for the default stall timeout, as before, and an error that wraps it
-// and names the stall timeout for every other one.
-func heartbeatTimeoutAfter(stallTimeout time.Duration) error {
-	if stallTimeout == defaultStallTimeout {
-		return ErrHeartbeatTimeout
-	}
-
-	return &heartbeatTimeoutError{stallTimeout: stallTimeout}
-}
-
 // describeDuration writes a duration in whole seconds as such, e.g. "30
 // seconds", and every other duration as time.Duration does, e.g. "250ms".
 func describeDuration(duration time.Duration) string {
@@ -120,15 +95,14 @@ func describeDuration(duration time.Duration) string {
 // The guard ends the request by ending its context with errStalled as the
 // cause, which closes the connection. Whatever fails then fails because of
 // that, so failure reports the stall instead.
+//
+// The guard also tells whether a connection to the server was established,
+// so that a write that fails can tell whether the server may have stored it.
 type stallGuard struct {
 	ctx          context.Context
 	cancel       context.CancelCauseFunc
 	stallTimeout time.Duration
-
-	// heartbeats tells whether the request reads a stream on which the server
-	// sends heartbeats, so that a stall ends it with ErrHeartbeatTimeout. It
-	// is only used by the goroutine that sends the request.
-	heartbeats bool
+	connected    atomic.Bool
 
 	mu      sync.Mutex
 	timer   *time.Timer
@@ -160,6 +134,9 @@ func (c *Client) guard(ctx context.Context) *stallGuard {
 			if err == nil {
 				guard.received()
 			}
+		},
+		GotConn: func(httptrace.GotConnInfo) {
+			guard.connected.Store(true)
 		},
 		GotFirstResponseByte: guard.received,
 	})
@@ -217,10 +194,6 @@ func (g *stallGuard) failure(err error) error {
 		return err
 	}
 
-	if g.heartbeats {
-		return heartbeatTimeoutAfter(g.stallTimeout)
-	}
-
 	return &connectionStalledError{stallTimeout: g.stallTimeout}
 }
 
@@ -261,17 +234,21 @@ func (b *guardedBody) Close() error {
 	return b.body.Close()
 }
 
-// lines reads the lines of a stream, as internal.UnmarshalNDJSON does. The
-// clock stops while the caller handles a line, so that only the time spent
-// waiting for a line counts. If heartbeats is true, the server sends
-// heartbeats on the stream, so a stall ends it with ErrHeartbeatTimeout.
-func (g *stallGuard) lines(body io.Reader, heartbeats bool) iter.Seq2[internal.Line, error] {
-	return func(yield func(internal.Line, error) bool) {
-		g.heartbeats = heartbeats
+// isConnected tells whether a connection to the server was established for
+// the request, so that it may have been sent.
+func (g *stallGuard) isConnected() bool {
+	return g.connected.Load()
+}
 
-		for line, err := range internal.UnmarshalNDJSON(g.ctx, body) {
+// guardedLines reads the lines of a stream that a stall guard watches, and
+// decodes each of them as a T, as internal.UnmarshalNDJSON does. The clock
+// stops while the caller handles a line, so that only the time spent waiting
+// for a line counts.
+func guardedLines[T any](g *stallGuard, body io.Reader) iter.Seq2[T, error] {
+	return func(yield func(T, error) bool) {
+		for line, err := range internal.UnmarshalNDJSON[T](g.ctx, body) {
 			if err != nil {
-				yield(internal.Line{}, g.failure(err))
+				yield(line, g.failure(err))
 				return
 			}
 

@@ -16,7 +16,7 @@ import (
 
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb"
+	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb"
 )
 
 // maxStartAttempts is how many containers Start starts at most, as it
