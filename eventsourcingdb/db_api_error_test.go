@@ -311,7 +311,7 @@ func requestsOf(client *eventsourcingdb.Client) []request {
 			name:   "ReadSubjects",
 			action: "read subjects",
 			send: func() error {
-				for _, err := range client.ReadSubjects(ctx, "/") {
+				for _, err := range client.ReadSubjects(ctx, "/", eventsourcingdb.ReadSubjectsOptions{Recursive: true}) {
 					if err != nil {
 						return err
 					}

@@ -319,7 +319,7 @@ func streamsWithoutHeartbeats() []streamWithHeartbeats {
 			line: `{"type":"subject","payload":{"subject":"/test"}}`,
 			read: func(ctx context.Context, client *eventsourcingdb.Client, handle func()) (int, error) {
 				items := 0
-				for _, err := range client.ReadSubjects(ctx, "/") {
+				for _, err := range client.ReadSubjects(ctx, "/", eventsourcingdb.ReadSubjectsOptions{Recursive: true}) {
 					if err != nil {
 						return items, err
 					}

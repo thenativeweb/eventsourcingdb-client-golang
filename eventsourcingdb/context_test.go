@@ -377,7 +377,7 @@ func requestsWithContextOf(client *eventsourcingdb.Client) map[string]func(conte
 			return nil
 		},
 		"ReadSubjects": func(ctx context.Context) error {
-			for _, err := range client.ReadSubjects(ctx, "/") {
+			for _, err := range client.ReadSubjects(ctx, "/", eventsourcingdb.ReadSubjectsOptions{Recursive: true}) {
 				if err != nil {
 					return err
 				}

@@ -14,7 +14,8 @@ import (
 
 func (c *Client) ReadSubjects(
 	ctx context.Context,
-	baseSubject string,
+	subject string,
+	options ReadSubjectsOptions,
 ) iter.Seq2[string, error] {
 	return func(yield func(string, error) bool) {
 		readSubjectsURL, err := c.getURL("/api/v1/read-subjects")
@@ -27,8 +28,10 @@ func (c *Client) ReadSubjects(
 			BaseSubject string `json:"baseSubject"`
 		}
 
+		// The v1 API always reads recursively, from the base subject on, so
+		// reading the subject alone keeps only the subject itself.
 		requestBody := RequestBody{
-			BaseSubject: baseSubject,
+			BaseSubject: subject,
 		}
 
 		requestBodyJSON, err := json.Marshal(requestBody)
@@ -82,6 +85,17 @@ func (c *Client) ReadSubjects(
 				err := json.Unmarshal(line.Payload, &streamSubject)
 				if err != nil {
 					yield("", err)
+					return
+				}
+
+				if !options.Recursive {
+					if streamSubject.Subject != subject {
+						continue
+					}
+
+					// No other subject is the subject itself, so there is
+					// nothing left to read.
+					yield(streamSubject.Subject, nil)
 					return
 				}
 
