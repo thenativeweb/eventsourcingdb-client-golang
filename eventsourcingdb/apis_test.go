@@ -80,9 +80,9 @@ func TestTheAPIs(t *testing.T) {
 
 						err := request.send()
 
-						// Observing never ends, so a server with the v2 API
-						// that ends it fails it.
-						if api.name == "v2" && request.name == "ObserveEvents" {
+						// Observing never ends, so a server that ends it
+						// fails it.
+						if request.name == "ObserveEvents" {
 							assert.EqualError(t, err, "failed to observe events, the stream broke off")
 						} else {
 							require.NoError(t, err)
@@ -149,6 +149,46 @@ func TestTheAPIs(t *testing.T) {
 			})
 		})
 	}
+
+	t.Run("observing fails if the server ends the stream without an error", func(t *testing.T) {
+		for _, api := range apis() {
+			for _, lines := range [][]string{{}, {api.heartbeat()}, {streams()[1].item(api)}, {streams()[1].item(api), api.heartbeat()}} {
+				t.Run(fmt.Sprintf("%s after %d lines", api.name, len(lines)), func(t *testing.T) {
+					client := clientOf(t, api, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.Header().Set("Server", "EventSourcingDB/test")
+						w.WriteHeader(http.StatusOK)
+						for _, line := range lines {
+							_, _ = w.Write([]byte(line + "\n"))
+						}
+					}))
+
+					items, err := countItems(client.ObserveEvents(context.Background(), "/test", eventsourcingdb.ObserveEventsOptions{}), nil)
+
+					assert.Equal(t, strings.Count(strings.Join(lines, ""), `"event"`), items)
+					assert.EqualError(t, err, "failed to observe events, the stream broke off")
+				})
+			}
+		}
+	})
+
+	t.Run("observing ends with an error the server reports, as before", func(t *testing.T) {
+		for _, api := range apis() {
+			errorLine := api.line("error", `{"error":"failed"}`)
+			if api.name == "v2" {
+				errorLine = errorItem(eventsourcingdb.CodeServerShuttingDown)
+			}
+
+			client := clientOfAServerThatStreams(t, api, func(ctx context.Context, send func(line string)) {
+				send(streams()[1].item(api))
+				send(errorLine)
+			})
+
+			items, err := countItems(client.ObserveEvents(context.Background(), "/test", eventsourcingdb.ObserveEventsOptions{}), nil)
+
+			assert.Equal(t, 1, items, api.name)
+			assert.EqualError(t, err, "failed to observe events, got error: failed", api.name)
+		}
+	})
 
 	t.Run("v2", func(t *testing.T) {
 		t.Run("reads the events that a write returns", func(t *testing.T) {
@@ -278,25 +318,23 @@ func TestTheAPIs(t *testing.T) {
 
 						err := stream.read(client)
 
-						assert.ErrorContains(t, err, fmt.Sprintf("failed to %s, the stream broke off before its end", stream.action))
+						assert.ErrorContains(t, err, fmt.Sprintf("failed to %s, the stream broke off", stream.action))
 					})
 				}
 			}
 		})
 
-		t.Run("observing fails if the stream ends", func(t *testing.T) {
-			for _, end := range []string{"", apiV2.end()} {
-				client := clientOf(t, apiV2, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					w.Header().Set("Server", "EventSourcingDB/test")
-					w.WriteHeader(http.StatusOK)
-					_, _ = w.Write([]byte(apiV2.line("event", eventOfV2("0")) + "\n" + end))
-				}))
+		t.Run("observing fails if the stream ends with an end item, which it never has", func(t *testing.T) {
+			client := clientOf(t, apiV2, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Server", "EventSourcingDB/test")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(apiV2.line("event", eventOfV2("0")) + "\n" + apiV2.end() + "\n"))
+			}))
 
-				items, err := countItems(client.ObserveEvents(context.Background(), "/test", eventsourcingdb.ObserveEventsOptions{}), nil)
+			items, err := countItems(client.ObserveEvents(context.Background(), "/test", eventsourcingdb.ObserveEventsOptions{}), nil)
 
-				assert.Equal(t, 1, items)
-				assert.Error(t, err)
-			}
+			assert.Equal(t, 1, items)
+			assert.EqualError(t, err, "failed to handle unsupported line type: end")
 		})
 
 		t.Run("takes no code from the description of an error, as the v1 API needs", func(t *testing.T) {

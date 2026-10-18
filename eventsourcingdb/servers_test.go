@@ -349,12 +349,12 @@ func assertErrorOfRequest(t *testing.T, name string, err error, message string) 
 }
 
 // assertEndedCleanly asserts that a stream that the server ended on its own
-// ended as it should: without an error, except for a stream of the v2 API
-// that never ends, which reports that it broke off.
+// ended as it should: without an error, except for a stream that never ends,
+// which reports that it broke off.
 func assertEndedCleanly(t *testing.T, api apiOfServer, stream stream, err error) {
 	t.Helper()
 
-	if api.name == "v2" && stream.endless {
+	if stream.endless {
 		assert.EqualError(t, err, fmt.Sprintf("failed to %s, the stream broke off", stream.action))
 		return
 	}

@@ -189,8 +189,10 @@ func (a v1API) readEventType(ctx context.Context, eventType string) (EventType, 
 
 // stream sends a request of the v1 API that the server answers with a stream,
 // and hands every line of it to handle, until handle returns false, or the
-// stream ends. An error line ends the stream with a DBAPIError.
-func (a v1API) stream(ctx context.Context, action string, path string, body any, fail func(err error), handle func(line internal.Line) bool) {
+// stream ends. An error line ends the stream with a DBAPIError. A stream of
+// the v1 API has no end line, so it ends with its last line, unless it never
+// ends, in which case it fails if it ends at all.
+func (a v1API) stream(ctx context.Context, action string, path string, body any, endless bool, fail func(err error), handle func(line internal.Line) bool) {
 	guard := a.client.guard(ctx)
 	defer guard.end()
 
@@ -216,13 +218,17 @@ func (a v1API) stream(ctx context.Context, action string, path string, body any,
 			return
 		}
 	}
+
+	if endless {
+		fail(errStreamBrokeOff(action))
+	}
 }
 
 func (a v1API) readEvents(ctx context.Context, body readEventsRequestBody) iter.Seq2[Event, error] {
 	return func(yield func(Event, error) bool) {
 		fail := func(err error) { yield(Event{}, err) }
 
-		a.stream(ctx, actionReadEvents, "/api/v1/read-events", body, fail, func(line internal.Line) bool {
+		a.stream(ctx, actionReadEvents, "/api/v1/read-events", body, false, fail, func(line internal.Line) bool {
 			return yieldEventOf(line.Type, line.Payload, yield)
 		})
 	}
@@ -232,7 +238,7 @@ func (a v1API) observeEvents(ctx context.Context, body observeEventsRequestBody)
 	return func(yield func(Event, error) bool) {
 		fail := func(err error) { yield(Event{}, err) }
 
-		a.stream(ctx, actionObserveEvents, "/api/v1/observe-events", body, fail, func(line internal.Line) bool {
+		a.stream(ctx, actionObserveEvents, "/api/v1/observe-events", body, true, fail, func(line internal.Line) bool {
 			if line.Type == "heartbeat" {
 				return true
 			}
@@ -250,7 +256,7 @@ func (a v1API) runEventQLQuery(ctx context.Context, query string) iter.Seq2[json
 			Query string `json:"query"`
 		}
 
-		a.stream(ctx, actionRunEventQLQuery, "/api/v1/run-eventql-query", RequestBody{Query: query}, fail, func(line internal.Line) bool {
+		a.stream(ctx, actionRunEventQLQuery, "/api/v1/run-eventql-query", RequestBody{Query: query}, false, fail, func(line internal.Line) bool {
 			switch line.Type {
 			case "heartbeat":
 				return true
@@ -274,7 +280,7 @@ func (a v1API) readSubjects(ctx context.Context, subject string, options ReadSub
 			BaseSubject string `json:"baseSubject"`
 		}
 
-		a.stream(ctx, actionReadSubjects, "/api/v1/read-subjects", RequestBody{BaseSubject: subject}, fail, func(line internal.Line) bool {
+		a.stream(ctx, actionReadSubjects, "/api/v1/read-subjects", RequestBody{BaseSubject: subject}, false, fail, func(line internal.Line) bool {
 			if line.Type != "subject" {
 				fail(errUnsupportedLineType(line.Type))
 				return false
@@ -307,7 +313,7 @@ func (a v1API) readEventTypes(ctx context.Context) iter.Seq2[EventType, error] {
 	return func(yield func(EventType, error) bool) {
 		fail := func(err error) { yield(EventType{}, err) }
 
-		a.stream(ctx, actionReadEventTypes, "/api/v1/read-event-types", struct{}{}, fail, func(line internal.Line) bool {
+		a.stream(ctx, actionReadEventTypes, "/api/v1/read-event-types", struct{}{}, false, fail, func(line internal.Line) bool {
 			if line.Type != "eventType" {
 				fail(errUnsupportedLineType(line.Type))
 				return false

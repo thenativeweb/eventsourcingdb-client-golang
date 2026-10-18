@@ -110,7 +110,7 @@ func (a v2API) items(guard *stallGuard, action string, body io.Reader, finite bo
 			}
 		}
 
-		yield(internal.Envelope{}, errStreamBrokeOff(action, finite))
+		yield(internal.Envelope{}, errStreamBrokeOff(action))
 	}
 }
 
@@ -437,15 +437,4 @@ func newV2DomainError(action string, data json.RawMessage) error {
 		Description: errorData.Description,
 		Details:     errorData.Details,
 	}
-}
-
-// errStreamBrokeOff reports that a stream of the v2 API ended before its end
-// item, or, for a stream that never ends, at all, e.g. because the server
-// failed unexpectedly, so that what it handed out is incomplete.
-func errStreamBrokeOff(action string, finite bool) error {
-	if finite {
-		return fmt.Errorf("failed to %s, the stream broke off before its end", action)
-	}
-
-	return fmt.Errorf("failed to %s, the stream broke off", action)
 }
