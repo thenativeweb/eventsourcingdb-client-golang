@@ -157,6 +157,30 @@ type apiChoice struct {
 	waiting func()
 }
 
+// run runs the given probe with find, remembers its outcome if it tells which
+// API the server offers, and lets the requests that wait for it go on, also if
+// find panics, in which case they ask themselves.
+func (a *apiChoice) run(ctx context.Context, running *probe, find func(ctx context.Context) (apiVersion, error)) {
+	hasReturned := false
+	defer func() {
+		if !hasReturned {
+			running.abandoned = true
+		}
+
+		a.mu.Lock()
+		if hasReturned && running.err == nil {
+			a.version = running.version
+		}
+		a.running = nil
+		a.mu.Unlock()
+		close(running.done)
+	}()
+
+	running.version, running.err = find(ctx)
+	running.abandoned = running.err != nil && ctx.Err() != nil
+	hasReturned = true
+}
+
 // probe is a request that asks the server for its API. Once done is closed,
 // version and err hold its outcome, and abandoned tells whether it failed
 // because the context of the request that sent it ended, which says nothing
@@ -192,16 +216,7 @@ func (a *apiChoice) choose(ctx context.Context, find func(ctx context.Context) (
 			a.running = running
 			a.mu.Unlock()
 
-			running.version, running.err = find(ctx)
-			running.abandoned = running.err != nil && ctx.Err() != nil
-
-			a.mu.Lock()
-			if running.err == nil {
-				a.version = running.version
-			}
-			a.running = nil
-			a.mu.Unlock()
-			close(running.done)
+			a.run(ctx, running, find)
 
 			return running.version, running.err
 		}

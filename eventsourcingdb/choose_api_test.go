@@ -369,6 +369,34 @@ func TestChoosingTheAPI(t *testing.T) {
 		assert.Equal(t, "v1", eventsourcingdb.APIOf(client))
 	})
 
+	t.Run("does not keep any request waiting if asking panics", func(t *testing.T) {
+		// A client without a base URL panics when it sends a request.
+		client, err := eventsourcingdb.NewClient(nil, "secret")
+		require.NoError(t, err)
+
+		for range 2 {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			panicked := make(chan any, 1)
+			go func() {
+				defer func() {
+					panicked <- recover()
+				}()
+
+				_ = client.Ping(ctx)
+			}()
+
+			select {
+			case value := <-panicked:
+				assert.NotNil(t, value, "the request did not panic")
+			case <-time.After(10 * time.Second):
+				require.FailNow(t, "the request did not end")
+			}
+			assert.NoError(t, ctx.Err(), "the request waited until its context ended")
+		}
+	})
+
 	t.Run("asks nothing for a request whose context has already ended", func(t *testing.T) {
 		server := newProbedServer(t, answerAsV2)
 		client := server.client(t)
