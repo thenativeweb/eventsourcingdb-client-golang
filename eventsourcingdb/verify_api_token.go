@@ -20,7 +20,7 @@ func (c *Client) VerifyAPIToken(ctx context.Context) error {
 	}
 	request.Header.Set("Authorization", "Bearer "+c.apiToken)
 
-	response, err := http.DefaultClient.Do(request)
+	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return err
 	}

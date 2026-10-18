@@ -89,7 +89,7 @@ func (c *Client) ObserveEvents(
 			Body: requestBodyReader,
 		}).WithContext(ctx)
 
-		response, err := http.DefaultClient.Do(request)
+		response, err := c.httpClient.Do(request)
 		if err != nil {
 			yield(Event{}, err)
 			return

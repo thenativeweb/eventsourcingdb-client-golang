@@ -40,7 +40,7 @@ func (c *Client) ReadEventType(
 	request.Header.Set("Authorization", "Bearer "+c.apiToken)
 	request.Header.Set("Content-Type", "application/json")
 
-	response, err := http.DefaultClient.Do(request)
+	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return EventType{}, err
 	}

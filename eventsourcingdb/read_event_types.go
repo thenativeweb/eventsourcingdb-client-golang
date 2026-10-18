@@ -43,7 +43,7 @@ func (c *Client) ReadEventTypes(
 			Body: requestBodyReader,
 		}).WithContext(ctx)
 
-		response, err := http.DefaultClient.Do(request)
+		response, err := c.httpClient.Do(request)
 		if err != nil {
 			yield(EventType{}, err)
 			return

@@ -54,7 +54,7 @@ func (c *Client) RunEventQLQuery(
 			Body: requestBodyReader,
 		}).WithContext(ctx)
 
-		response, err := http.DefaultClient.Do(request)
+		response, err := c.httpClient.Do(request)
 		if err != nil {
 			yield(nil, err)
 			return

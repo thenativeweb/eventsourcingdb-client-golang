@@ -19,7 +19,7 @@ func (c *Client) Ping(ctx context.Context) error {
 		return err
 	}
 
-	response, err := http.DefaultClient.Do(request)
+	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return err
 	}

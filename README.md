@@ -40,6 +40,8 @@ if err != nil {
 }
 ```
 
+*Note that the client sends its requests with an HTTP client of its own, which starts from a copy of `http.DefaultTransport`. Changing `http.DefaultClient`, e.g. setting its `Timeout`, does not affect it.*
+
 Then call the `Ping` function with a context to check whether the instance is reachable. If it is not, the function will return an error:
 
 ```go
