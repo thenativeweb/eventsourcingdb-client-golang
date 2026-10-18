@@ -8,11 +8,19 @@ import (
 	"time"
 )
 
+// Client talks to an EventSourcingDB. Create it with NewClient. It is safe for
+// concurrent use.
+//
+// The client speaks the v2 API of the server if the server offers it, and the
+// v1 API otherwise. Creating it sends no request: the first request of the
+// client finds out which API the server offers, and the client remembers that
+// for every request after it.
 type Client struct {
 	baseURL      *url.URL
 	apiToken     string
 	stallTimeout time.Duration
 	httpClient   *http.Client
+	apiChoice    apiChoice
 }
 
 // ClientOption configures a client. Hand options to NewClient, e.g.

@@ -2,55 +2,15 @@ package eventsourcingdb
 
 import (
 	"context"
-	"errors"
-	"net/http"
-
-	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
+// VerifyAPIToken checks whether the server accepts the API token of the
+// client.
 func (c *Client) VerifyAPIToken(ctx context.Context) error {
-	verifyAPITokenURL, err := c.getURL("/api/v1/verify-api-token")
+	api, err := c.chooseAPI(ctx, actionVerifyAPIToken)
 	if err != nil {
 		return err
 	}
 
-	guard := c.guard(ctx)
-	defer guard.end()
-
-	request, err := http.NewRequestWithContext(guard.ctx, http.MethodPost, verifyAPITokenURL.String(), nil)
-	if err != nil {
-		return err
-	}
-	request.Header.Set("Authorization", "Bearer "+c.apiToken)
-
-	response, err := c.send(guard, request)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-
-	err = validateServerHeader(response)
-	if err != nil {
-		return err
-	}
-
-	if response.StatusCode != http.StatusOK {
-		return newV1DBAPIError(actionVerifyAPIToken, response)
-	}
-
-	type Result struct {
-		Type string `json:"type"`
-	}
-
-	var result Result
-	err = internal.ParseJSON(response.Body, &result)
-	if err != nil {
-		return err
-	}
-
-	if result.Type != "io.eventsourcingdb.api.api-token-verified" {
-		return errors.New("failed to verify API token")
-	}
-
-	return nil
+	return api.verifyAPIToken(ctx)
 }

@@ -1,40 +1,49 @@
 package eventsourcingdb
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"time"
-
-	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
+// WriteEvents writes the given events, if all of the given preconditions
+// hold, and returns them as the server wrote them.
 func (c *Client) WriteEvents(ctx context.Context, events []EventCandidate, preconditions []Precondition) ([]Event, error) {
-	writeEventsURL, err := c.getURL("/api/v1/write-events")
+	body, err := newWriteEventsRequestBody(events, preconditions)
 	if err != nil {
 		return nil, err
 	}
 
-	type RequestBodyEvent struct {
-		Source      string  `json:"source"`
-		Subject     string  `json:"subject"`
-		Type        string  `json:"type"`
-		Data        any     `json:"data"`
-		TraceParent *string `json:"traceparent,omitempty"`
-		TraceState  *string `json:"tracestate,omitempty"`
+	api, err := c.chooseAPI(ctx, actionWriteEvents)
+	if err != nil {
+		return nil, err
 	}
 
-	type RequestBody struct {
-		Events        []RequestBodyEvent `json:"events"`
-		Preconditions []any              `json:"preconditions,omitempty"`
+	return api.writeEvents(ctx, body)
+}
+
+// writeEventsRequestBody is the body of a request that writes events, which
+// both APIs take alike.
+type writeEventsRequestBody struct {
+	Events        []writeEventsRequestBodyEvent `json:"events"`
+	Preconditions []any                         `json:"preconditions,omitempty"`
+}
+
+type writeEventsRequestBodyEvent struct {
+	Source      string  `json:"source"`
+	Subject     string  `json:"subject"`
+	Type        string  `json:"type"`
+	Data        any     `json:"data"`
+	TraceParent *string `json:"traceparent,omitempty"`
+	TraceState  *string `json:"tracestate,omitempty"`
+}
+
+func newWriteEventsRequestBody(events []EventCandidate, preconditions []Precondition) (writeEventsRequestBody, error) {
+	requestBody := writeEventsRequestBody{
+		Events: make([]writeEventsRequestBodyEvent, 0, len(events)),
 	}
 
-	var requestBody RequestBody
 	for _, event := range events {
-		requestBody.Events = append(requestBody.Events, RequestBodyEvent(event))
+		requestBody.Events = append(requestBody.Events, writeEventsRequestBodyEvent(event))
 	}
 
 	for _, precondition := range preconditions {
@@ -69,72 +78,9 @@ func (c *Client) WriteEvents(ctx context.Context, events []EventCandidate, preco
 				},
 			})
 		default:
-			return nil, fmt.Errorf("unsupported predicate type: %T", precondition)
+			return writeEventsRequestBody{}, fmt.Errorf("unsupported predicate type: %T", precondition)
 		}
 	}
 
-	requestBodyJSON, err := json.Marshal(requestBody)
-	if err != nil {
-		return nil, err
-	}
-
-	requestBodyReader := io.NopCloser(bytes.NewReader(requestBodyJSON))
-
-	guard := c.guard(ctx)
-	defer guard.end()
-
-	request, err := http.NewRequestWithContext(guard.ctx, http.MethodPost, writeEventsURL.String(), requestBodyReader)
-	if err != nil {
-		return nil, err
-	}
-	request.Header.Set("Authorization", "Bearer "+c.apiToken)
-	request.Header.Set("Content-Type", "application/json")
-
-	response, err := c.send(guard, request)
-	if err != nil {
-		return nil, err
-	}
-	defer response.Body.Close()
-
-	err = validateServerHeader(response)
-	if err != nil {
-		return nil, err
-	}
-
-	if response.StatusCode != http.StatusOK {
-		return nil, newV1DBAPIError(actionWriteEvents, response)
-	}
-
-	var cloudEvents []internal.CloudEvent
-	err = internal.ParseJSON(response.Body, &cloudEvents)
-	if err != nil {
-		return nil, err
-	}
-
-	writtenEvents := make([]Event, 0, len(cloudEvents))
-	for _, cloudEvent := range cloudEvents {
-		cloudEventTime, err := time.Parse(time.RFC3339Nano, cloudEvent.Time)
-		if err != nil {
-			return nil, err
-		}
-
-		writtenEvent := Event{
-			SpecVersion:     cloudEvent.SpecVersion,
-			ID:              cloudEvent.ID,
-			Time:            cloudEventTime,
-			Source:          cloudEvent.Source,
-			Subject:         cloudEvent.Subject,
-			Type:            cloudEvent.Type,
-			DataContentType: cloudEvent.DataContentType,
-			Data:            cloudEvent.Data,
-			Hash:            cloudEvent.Hash,
-			PredecessorHash: cloudEvent.PredecessorHash,
-			TraceParent:     cloudEvent.TraceParent,
-			TraceState:      cloudEvent.TraceState,
-			Signature:       cloudEvent.Signature,
-		}
-		writtenEvents = append(writtenEvents, writtenEvent)
-	}
-
-	return writtenEvents, nil
+	return requestBody, nil
 }

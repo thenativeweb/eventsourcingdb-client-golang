@@ -1,6 +1,7 @@
 package eventsourcingdb_test
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -40,8 +41,17 @@ func TestReadEventType(t *testing.T) {
 
 		_, err = client.ReadEventType(t.Context(), "io.eventsourcingdb.test.")
 		require.Error(t, err)
-		assertCodeOfServer(t, err, "read event type", "")
 		assert.ErrorContains(t, err, "event type")
+
+		// The v1 API refuses the request as malformed, while the v2 API
+		// tells that the event type is.
+		if eventsourcingdb.APIOf(client) == "v2" {
+			assertCodeOfServer(t, err, "read event type", eventsourcingdb.CodeEventTypeMalformed)
+			assertDBAPIError(t, err, http.StatusOK, eventsourcingdb.CodeEventTypeMalformed, "event type is malformed: expected a reverse domain name such as 'io.eventsourcingdb.library.book-acquired'")
+		} else {
+			assertCodeOfServer(t, err, "read event type", "")
+			assertDBAPIError(t, err, http.StatusBadRequest, "", "invalid event type: 'io.eventsourcingdb.test.'")
+		}
 	})
 
 	t.Run("reads an existing event type", func(t *testing.T) {

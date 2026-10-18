@@ -2,54 +2,19 @@ package eventsourcingdb
 
 import (
 	"context"
-	"errors"
-	"net/http"
-
-	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
+// typeOfPingReceived is the type of the event with which the server answers a
+// ping.
+const typeOfPingReceived = "io.eventsourcingdb.api.ping-received"
+
+// Ping checks whether the server is reachable. It does not need a valid API
+// token.
 func (c *Client) Ping(ctx context.Context) error {
-	pingURL, err := c.getURL("/api/v1/ping")
+	api, err := c.chooseAPI(ctx, actionPing)
 	if err != nil {
 		return err
 	}
 
-	guard := c.guard(ctx)
-	defer guard.end()
-
-	request, err := http.NewRequestWithContext(guard.ctx, http.MethodGet, pingURL.String(), nil)
-	if err != nil {
-		return err
-	}
-
-	response, err := c.send(guard, request)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-
-	err = validateServerHeader(response)
-	if err != nil {
-		return err
-	}
-
-	if response.StatusCode != http.StatusOK {
-		return newV1DBAPIError(actionPing, response)
-	}
-
-	type Result struct {
-		Type string `json:"type"`
-	}
-
-	var result Result
-	err = internal.ParseJSON(response.Body, &result)
-	if err != nil {
-		return err
-	}
-
-	if result.Type != "io.eventsourcingdb.api.ping-received" {
-		return errors.New("failed to ping")
-	}
-
-	return nil
+	return api.ping(ctx)
 }

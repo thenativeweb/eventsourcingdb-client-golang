@@ -226,14 +226,15 @@ func (b *guardedBody) Close() error {
 	return b.body.Close()
 }
 
-// lines reads the lines of a stream, as internal.UnmarshalNDJSON does. The
-// clock stops while the caller handles a line, so that only the time spent
-// waiting for a line counts.
-func (g *stallGuard) lines(body io.Reader) iter.Seq2[internal.Line, error] {
-	return func(yield func(internal.Line, error) bool) {
-		for line, err := range internal.UnmarshalNDJSON(g.ctx, body) {
+// guardedLines reads the lines of a stream that a stall guard watches, and
+// decodes each of them as a T, as internal.UnmarshalNDJSON does. The clock
+// stops while the caller handles a line, so that only the time spent waiting
+// for a line counts.
+func guardedLines[T any](g *stallGuard, body io.Reader) iter.Seq2[T, error] {
+	return func(yield func(T, error) bool) {
+		for line, err := range internal.UnmarshalNDJSON[T](g.ctx, body) {
 			if err != nil {
-				yield(internal.Line{}, g.failure(err))
+				yield(line, g.failure(err))
 				return
 			}
 

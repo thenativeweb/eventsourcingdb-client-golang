@@ -2,15 +2,12 @@ package eventsourcingdb_test
 
 import (
 	"context"
-	"net/http"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb"
 )
-
-const heartbeatLine = `{"type":"heartbeat","payload":{}}`
 
 // A caller that observes events has to learn when the connection stalls, e.g.
 // behind a proxy that keeps it open but no longer passes anything on.
@@ -21,161 +18,87 @@ func TestHeartbeats(t *testing.T) {
 	timeout := 250 * time.Millisecond
 	withTimeout := eventsourcingdb.WithStallTimeout(timeout)
 
-	t.Run("every stream with heartbeats stalls if nothing arrives after a heartbeat", func(t *testing.T) {
-		for _, stream := range streamsWithHeartbeats() {
-			t.Run(stream.name, func(t *testing.T) {
-				connectionClosed := make(chan struct{})
-				client := clientOfAServerThatStreams(t, func(ctx context.Context, send func(line string)) {
-					send(heartbeatLine)
+	for _, api := range apis() {
+		t.Run(api.name, func(t *testing.T) {
+			t.Run("every stream with heartbeats stalls if nothing arrives after a heartbeat", func(t *testing.T) {
+				for _, stream := range streamsWithHeartbeats(api) {
+					t.Run(stream.name, func(t *testing.T) {
+						connectionClosed := make(chan struct{})
+						client := clientOfAServerThatStreams(t, api, func(ctx context.Context, send func(line string)) {
+							send(api.heartbeat())
 
-					select {
-					case <-ctx.Done():
-						close(connectionClosed)
-					case <-time.After(5 * time.Second):
-					}
-				}, withTimeout)
+							select {
+							case <-ctx.Done():
+								close(connectionClosed)
+							case <-time.After(5 * time.Second):
+							}
+						}, withTimeout)
 
-				started := time.Now()
-				_, err := stream.read(context.Background(), client, nil)
-				elapsed := time.Since(started)
+						started := time.Now()
+						_, err := stream.read(context.Background(), client, nil)
+						elapsed := time.Since(started)
 
-				assert.ErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
-				assert.EqualError(t, err, "connection stalled, nothing arrived from the server for 250ms")
-				assert.GreaterOrEqual(t, elapsed, timeout)
-				assert.Less(t, elapsed, 2*time.Second, "the stall timeout did not end the stream")
+						assert.ErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
+						assert.EqualError(t, err, "connection stalled, nothing arrived from the server for 250ms")
+						assert.GreaterOrEqual(t, elapsed, timeout)
+						assert.Less(t, elapsed, 2*time.Second, "the stall timeout did not end the stream")
 
-				select {
-				case <-connectionClosed:
-				case <-time.After(time.Second):
-					assert.Fail(t, "the client did not close the connection")
+						select {
+						case <-connectionClosed:
+						case <-time.After(time.Second):
+							assert.Fail(t, "the client did not close the connection")
+						}
+					})
 				}
 			})
-		}
-	})
 
-	t.Run("heartbeats keep a stream alive", func(t *testing.T) {
-		for _, stream := range streamsWithHeartbeats() {
-			t.Run(stream.name, func(t *testing.T) {
-				// The heartbeats last for three times as long as the timeout.
-				client := clientOfAServerThatStreams(t, func(ctx context.Context, send func(line string)) {
-					for range 15 {
-						send(heartbeatLine)
-						time.Sleep(timeout / 5)
-					}
-					send(stream.line)
-				}, withTimeout)
+			t.Run("heartbeats keep a stream alive", func(t *testing.T) {
+				for _, stream := range streamsWithHeartbeats(api) {
+					t.Run(stream.name, func(t *testing.T) {
+						// The heartbeats last for three times as long as the timeout.
+						client := clientOfAServerThatStreams(t, api, func(ctx context.Context, send func(line string)) {
+							for range 15 {
+								send(api.heartbeat())
+								time.Sleep(timeout / 5)
+							}
+							send(stream.item(api))
+						}, withTimeout)
 
-				items, err := stream.read(context.Background(), client, nil)
+						items, err := stream.read(context.Background(), client, nil)
 
-				assert.NoError(t, err)
-				assert.Equal(t, 1, items)
+						assertEndedCleanly(t, api, stream, err)
+						assert.Equal(t, 1, items)
+					})
+				}
 			})
-		}
-	})
 
-	t.Run("a cancel ends a stream as before, not as a stall", func(t *testing.T) {
-		for _, stream := range streamsWithHeartbeats() {
-			t.Run(stream.name, func(t *testing.T) {
-				client := clientOfAServerThatStreams(t, func(ctx context.Context, send func(line string)) {
-					send(heartbeatLine)
+			t.Run("a cancel ends a stream as before, not as a stall", func(t *testing.T) {
+				for _, stream := range streamsWithHeartbeats(api) {
+					t.Run(stream.name, func(t *testing.T) {
+						client := clientOfAServerThatStreams(t, api, func(ctx context.Context, send func(line string)) {
+							send(api.heartbeat())
 
-					select {
-					case <-ctx.Done():
-					case <-time.After(5 * time.Second):
-					}
-				}, withTimeout)
+							select {
+							case <-ctx.Done():
+							case <-time.After(5 * time.Second):
+							}
+						}, withTimeout)
 
-				ctx, cancel := context.WithCancel(context.Background())
-				defer cancel()
+						ctx, cancel := context.WithCancel(context.Background())
+						defer cancel()
 
-				go func() {
-					time.Sleep(timeout / 5)
-					cancel()
-				}()
+						go func() {
+							time.Sleep(timeout / 5)
+							cancel()
+						}()
 
-				_, err := stream.read(ctx, client, nil)
+						_, err := stream.read(ctx, client, nil)
 
-				assert.ErrorIs(t, err, context.Canceled)
-				assert.NotErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
+						assert.ErrorIs(t, err, context.Canceled)
+						assert.NotErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
+					})
+				}
 			})
-		}
-	})
-}
-
-// clientOfAServerThatStreams returns a client of a server that answers every
-// request as EventSourcingDB would, and then sends every line that stream
-// hands to send, right away. The response ends when stream returns. The
-// context that stream gets ends when the client closes the connection, and
-// every stream that waits for it also has to give up after a few seconds, so
-// that a client that does not close the connection still ends. The client is
-// configured by the given options.
-func clientOfAServerThatStreams(t *testing.T, stream func(ctx context.Context, send func(line string)), options ...eventsourcingdb.ClientOption) *eventsourcingdb.Client {
-	t.Helper()
-
-	return clientOf(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Server", "EventSourcingDB/test")
-		w.Header().Set("Content-Type", "application/x-ndjson")
-		w.WriteHeader(http.StatusOK)
-		w.(http.Flusher).Flush()
-
-		stream(r.Context(), func(line string) {
-			_, _ = w.Write([]byte(line + "\n"))
-			w.(http.Flusher).Flush()
 		})
-	}), options...)
-}
-
-type stream struct {
-	name   string
-	action string
-	line   string
-	read   func(ctx context.Context, client *eventsourcingdb.Client, handle func()) (int, error)
-}
-
-// streamsWithHeartbeats returns every function of the client that reads a
-// stream on which the server sends heartbeats, together with a line that
-// carries one item of that stream. read reads until the stream ends, calls
-// handle for every item if it is given, and returns how many items there were
-// and the error the stream ends with.
-func streamsWithHeartbeats() []stream {
-	return []stream{
-		{
-			name:   "ObserveEvents",
-			action: "observe events",
-			line:   `{"type":"event","payload":{"specversion":"1.0","id":"0","time":"2026-10-01T12:00:00Z","source":"https://www.eventsourcingdb.io","subject":"/test","type":"io.eventsourcingdb.test","datacontenttype":"application/json","data":{},"hash":"","predecessorhash":""}}`,
-			read: func(ctx context.Context, client *eventsourcingdb.Client, handle func()) (int, error) {
-				items := 0
-				for _, err := range client.ObserveEvents(ctx, "/test", eventsourcingdb.ObserveEventsOptions{}) {
-					if err != nil {
-						return items, err
-					}
-
-					items++
-					if handle != nil {
-						handle()
-					}
-				}
-				return items, nil
-			},
-		},
-		{
-			name:   "RunEventQLQuery",
-			action: "run EventQL query",
-			line:   `{"type":"row","payload":{"value":23}}`,
-			read: func(ctx context.Context, client *eventsourcingdb.Client, handle func()) (int, error) {
-				items := 0
-				for _, err := range client.RunEventQLQuery(ctx, "FROM e IN events PROJECT INTO e") {
-					if err != nil {
-						return items, err
-					}
-
-					items++
-					if handle != nil {
-						handle()
-					}
-				}
-				return items, nil
-			},
-		},
 	}
 }

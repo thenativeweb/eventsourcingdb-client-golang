@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -24,23 +22,25 @@ import (
 // without parsing the error message.
 func TestDBAPIError(t *testing.T) {
 	t.Run("every request reports a status other than 200 with its status and description", func(t *testing.T) {
-		client := clientOfAServerThatAnswers(t, http.StatusServiceUnavailable, "service unavailable\n")
+		for _, api := range apis() {
+			client := clientOfAServerThatAnswers(t, api, http.StatusServiceUnavailable, "service unavailable\n")
 
-		for _, request := range requestsOf(client) {
-			t.Run(request.name, func(t *testing.T) {
-				err := request.send()
+			for _, request := range requestsOf(client) {
+				t.Run(api.name+"/"+request.name, func(t *testing.T) {
+					err := request.send()
 
-				var dbAPIError *eventsourcingdb.DBAPIError
-				require.ErrorAs(t, err, &dbAPIError)
-				assert.Equal(t, request.action, dbAPIError.Action)
-				assert.Equal(t, http.StatusServiceUnavailable, dbAPIError.Status)
-				assert.Empty(t, dbAPIError.Code)
-				assert.Equal(t, "service unavailable", dbAPIError.Description)
-				assert.Nil(t, dbAPIError.Details)
-				assert.Zero(t, dbAPIError.RetryAfter)
-				assert.NoError(t, dbAPIError.Err)
-				assert.EqualError(t, err, fmt.Sprintf("failed to %s, got HTTP status code '503', expected '200': service unavailable", request.action))
-			})
+					var dbAPIError *eventsourcingdb.DBAPIError
+					require.ErrorAs(t, err, &dbAPIError)
+					assert.Equal(t, request.action, dbAPIError.Action)
+					assert.Equal(t, http.StatusServiceUnavailable, dbAPIError.Status)
+					assert.Empty(t, dbAPIError.Code)
+					assert.Equal(t, "service unavailable", dbAPIError.Description)
+					assert.Nil(t, dbAPIError.Details)
+					assert.Zero(t, dbAPIError.RetryAfter)
+					assert.NoError(t, dbAPIError.Err)
+					assert.EqualError(t, err, fmt.Sprintf("failed to %s, got HTTP status code '503', expected '200': service unavailable", request.action))
+				})
+			}
 		}
 	})
 
@@ -75,11 +75,11 @@ func TestDBAPIError(t *testing.T) {
 		}
 	})
 
-	t.Run("every stream reports an error within it with status 200", func(t *testing.T) {
+	t.Run("every stream of the v1 API reports an error within it with status 200, and without a code", func(t *testing.T) {
 		for _, stream := range streams() {
 			t.Run(stream.name, func(t *testing.T) {
-				client := clientOfAServerThatStreams(t, func(ctx context.Context, send func(line string)) {
-					send(stream.line)
+				client := clientOfAServerThatStreams(t, apiV1, func(ctx context.Context, send func(line string)) {
+					send(stream.item(apiV1))
 					send(`{"type":"error","payload":{"error":"something failed"}}`)
 				})
 
@@ -92,8 +92,54 @@ func TestDBAPIError(t *testing.T) {
 		}
 	})
 
+	t.Run("every stream of the v2 API reports an error within it with status 200, its code and its details", func(t *testing.T) {
+		for _, stream := range streams() {
+			t.Run(stream.name, func(t *testing.T) {
+				client := clientOfAServerThatStreams(t, apiV2, func(ctx context.Context, send func(line string)) {
+					send(apiV2.heartbeat())
+					send(stream.item(apiV2))
+					send(`{"type":"error","data":{"code":"https://docs.eventsourcingdb.io/errors/indexes-rebuilding","description":"indexes are rebuilding","details":{"progress":0.5}}}`)
+				})
+
+				items, err := stream.read(context.Background(), client, nil)
+
+				assert.Equal(t, 1, items)
+				assertDBAPIError(t, err, http.StatusOK, eventsourcingdb.CodeIndexesRebuilding, "indexes are rebuilding")
+				assertDetails(t, err, `{"progress":0.5}`)
+				assert.EqualError(t, err, fmt.Sprintf("failed to %s, got error: indexes are rebuilding", stream.action))
+			})
+		}
+	})
+
+	t.Run("every request of the v2 API reports an error as its answer with status 200, its code and its details", func(t *testing.T) {
+		errorItem := `{"type":"error","data":{"code":"https://docs.eventsourcingdb.io/errors/store-read-only","description":"store is read-only","details":{}}}`
+		client := clientOf(t, apiV2, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Server", "EventSourcingDB/test")
+			_, _ = w.Write([]byte(errorItem + "\n"))
+
+			// A stream ends with an end item, also after an error, while a
+			// single answer is the error item alone.
+			if !strings.HasSuffix(r.URL.Path, "/ping") && !strings.HasSuffix(r.URL.Path, "/verify-token") && !strings.HasSuffix(r.URL.Path, "/read-event-type") {
+				_, _ = w.Write([]byte(apiV2.end() + "\n"))
+			}
+		}))
+
+		for _, request := range requestsOf(client) {
+			t.Run(request.name, func(t *testing.T) {
+				err := request.send()
+
+				var dbAPIError *eventsourcingdb.DBAPIError
+				require.ErrorAs(t, err, &dbAPIError)
+				assert.Equal(t, request.action, dbAPIError.Action)
+				assertDBAPIError(t, err, http.StatusOK, eventsourcingdb.CodeStoreReadOnly, "store is read-only")
+				assertDetails(t, err, `{}`)
+				assert.EqualError(t, err, fmt.Sprintf("failed to %s, got error: store is read-only", request.action))
+			})
+		}
+	})
+
 	t.Run("trims white space around the description", func(t *testing.T) {
-		client := clientOfAServerThatAnswers(t, http.StatusConflict, "\n  state conflict: precondition failed \n")
+		client := clientOfAServerThatAnswers(t, apiV1, http.StatusConflict, "\n  state conflict: precondition failed \n")
 
 		_, err := client.WriteEvents(context.Background(), nil, nil)
 
@@ -102,58 +148,95 @@ func TestDBAPIError(t *testing.T) {
 	})
 
 	t.Run("leaves out the description if the server gives none", func(t *testing.T) {
-		client := clientOfAServerThatAnswers(t, http.StatusBadGateway, "")
+		for _, api := range apis() {
+			t.Run(api.name, func(t *testing.T) {
+				client := clientOfAServerThatAnswers(t, api, http.StatusBadGateway, "")
 
-		err := client.Ping(context.Background())
+				err := client.Ping(context.Background())
 
-		assertDBAPIError(t, err, http.StatusBadGateway, "", "")
-		assert.EqualError(t, err, "failed to ping, got HTTP status code '502', expected '200'")
+				assertDBAPIError(t, err, http.StatusBadGateway, "", "")
+				assert.EqualError(t, err, "failed to ping, got HTTP status code '502', expected '200'")
+			})
+		}
 	})
 
 	t.Run("cuts a long description short", func(t *testing.T) {
-		client := clientOfAServerThatAnswers(t, http.StatusBadGateway, strings.Repeat("x", 10_000))
+		for _, api := range apis() {
+			t.Run(api.name, func(t *testing.T) {
+				client := clientOfAServerThatAnswers(t, api, http.StatusBadGateway, strings.Repeat("x", 10_000))
 
-		err := client.Ping(context.Background())
+				err := client.Ping(context.Background())
 
-		assertDBAPIError(t, err, http.StatusBadGateway, "", strings.Repeat("x", 4096))
-		assert.EqualError(t, err, "failed to ping, got HTTP status code '502', expected '200': "+strings.Repeat("x", 4096))
+				assertDBAPIError(t, err, http.StatusBadGateway, "", strings.Repeat("x", 4096))
+				assert.EqualError(t, err, "failed to ping, got HTTP status code '502', expected '200': "+strings.Repeat("x", 4096))
+			})
+		}
 	})
 
 	t.Run("reports if the description cannot be read", func(t *testing.T) {
-		// The server announces a longer description than it sends, so the
-		// connection ends before the description does.
-		client := clientOf(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Server", "EventSourcingDB/test")
-			w.Header().Set("Content-Length", "100")
-			w.WriteHeader(http.StatusBadGateway)
-			_, _ = w.Write([]byte("bad gateway"))
-		}))
+		for _, api := range apis() {
+			t.Run(api.name, func(t *testing.T) {
+				// The server announces a longer description than it sends, so the
+				// connection ends before the description does.
+				client := clientOf(t, api, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Server", "EventSourcingDB/test")
+					w.Header().Set("Content-Length", "100")
+					w.WriteHeader(http.StatusBadGateway)
+					_, _ = w.Write([]byte("bad gateway"))
+				}))
 
-		err := client.Ping(context.Background())
+				err := client.Ping(context.Background())
 
-		assertDBAPIError(t, err, http.StatusBadGateway, "", "")
-		assert.ErrorIs(t, err, io.ErrUnexpectedEOF)
-		assert.EqualError(t, err, "failed to ping, got HTTP status code '502', expected '200', and failed to read the description: unexpected EOF")
+				assertDBAPIError(t, err, http.StatusBadGateway, "", "")
+				assert.ErrorIs(t, err, io.ErrUnexpectedEOF)
+				assert.EqualError(t, err, "failed to ping, got HTTP status code '502', expected '200', and failed to read the description: unexpected EOF")
+			})
+		}
 	})
 
 	t.Run("reports how long to wait for status 429", func(t *testing.T) {
-		retryAfterOf := map[string]time.Duration{
-			"3":    3 * time.Second,
-			" 1 ":  time.Second,
-			"":     0,
-			"soon": 0,
-			"-1":   0,
-		}
+		for _, api := range apis() {
+			t.Run(api.name, func(t *testing.T) {
+				retryAfterOf := map[string]time.Duration{
+					"3":    3 * time.Second,
+					" 1 ":  time.Second,
+					"":     0,
+					"soon": 0,
+					"-1":   0,
+				}
 
-		for header, retryAfter := range retryAfterOf {
-			t.Run(fmt.Sprintf("Retry-After %q", header), func(t *testing.T) {
-				client := clientOf(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				for header, retryAfter := range retryAfterOf {
+					t.Run(fmt.Sprintf("Retry-After %q", header), func(t *testing.T) {
+						client := clientOf(t, api, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+							w.Header().Set("Server", "EventSourcingDB/test")
+							if header != "" {
+								w.Header().Set("Retry-After", header)
+							}
+							w.WriteHeader(http.StatusTooManyRequests)
+							_, _ = w.Write([]byte("too many requests"))
+						}))
+
+						for _, request := range requestsOf(client) {
+							err := request.send()
+
+							var dbAPIError *eventsourcingdb.DBAPIError
+							require.ErrorAs(t, err, &dbAPIError, request.name)
+							assert.Equal(t, http.StatusTooManyRequests, dbAPIError.Status, request.name)
+							assert.Equal(t, retryAfter, dbAPIError.RetryAfter, request.name)
+						}
+					})
+				}
+			})
+		}
+	})
+
+	t.Run("does not report how long to wait for any other status", func(t *testing.T) {
+		for _, api := range apis() {
+			t.Run(api.name, func(t *testing.T) {
+				client := clientOf(t, api, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.Header().Set("Server", "EventSourcingDB/test")
-					if header != "" {
-						w.Header().Set("Retry-After", header)
-					}
-					w.WriteHeader(http.StatusTooManyRequests)
-					_, _ = w.Write([]byte("too many requests"))
+					w.Header().Set("Retry-After", "3")
+					w.WriteHeader(http.StatusServiceUnavailable)
 				}))
 
 				for _, request := range requestsOf(client) {
@@ -161,31 +244,14 @@ func TestDBAPIError(t *testing.T) {
 
 					var dbAPIError *eventsourcingdb.DBAPIError
 					require.ErrorAs(t, err, &dbAPIError, request.name)
-					assert.Equal(t, http.StatusTooManyRequests, dbAPIError.Status, request.name)
-					assert.Equal(t, retryAfter, dbAPIError.RetryAfter, request.name)
+					assert.Zero(t, dbAPIError.RetryAfter, request.name)
 				}
 			})
 		}
 	})
 
-	t.Run("does not report how long to wait for any other status", func(t *testing.T) {
-		client := clientOf(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Server", "EventSourcingDB/test")
-			w.Header().Set("Retry-After", "3")
-			w.WriteHeader(http.StatusServiceUnavailable)
-		}))
-
-		for _, request := range requestsOf(client) {
-			err := request.send()
-
-			var dbAPIError *eventsourcingdb.DBAPIError
-			require.ErrorAs(t, err, &dbAPIError, request.name)
-			assert.Zero(t, dbAPIError.RetryAfter, request.name)
-		}
-	})
-
 	t.Run("is found if it is wrapped", func(t *testing.T) {
-		client := clientOfAServerThatAnswers(t, http.StatusConflict, "state conflict: precondition failed")
+		client := clientOfAServerThatAnswers(t, apiV1, http.StatusConflict, "state conflict: precondition failed")
 
 		_, err := client.WriteEvents(context.Background(), nil, nil)
 		wrapped := fmt.Errorf("failed to handle the command: %w", err)
@@ -247,12 +313,23 @@ func TestCodesOfV1Errors(t *testing.T) {
 
 	for _, v1Error := range v1Errors {
 		t.Run(fmt.Sprintf("%s, %d, %s", v1Error.request, v1Error.status, v1Error.description), func(t *testing.T) {
-			client := clientOfAServerThatAnswers(t, v1Error.status, v1Error.description)
+			client := clientOfAServerThatAnswers(t, apiV1, v1Error.status, v1Error.description)
 
 			err := requestOf(t, client, v1Error.request).send()
 
 			assertDBAPIError(t, err, v1Error.status, v1Error.code, v1Error.description)
 		})
+	}
+}
+
+// assertDetails asserts that errors.As finds a DBAPIError in err, with the
+// given details.
+func assertDetails(t *testing.T, err error, details string) {
+	t.Helper()
+
+	var dbAPIError *eventsourcingdb.DBAPIError
+	if assert.ErrorAs(t, err, &dbAPIError) {
+		assert.JSONEq(t, details, string(dbAPIError.Details))
 	}
 }
 
@@ -290,184 +367,4 @@ func assertCodeOfServer(t *testing.T, err error, action string, code string) {
 	assert.NoError(t, dbAPIError.Err)
 	assert.ErrorContains(t, err, "failed to "+action+", ")
 	assert.ErrorContains(t, err, ": "+dbAPIError.Description)
-}
-
-// clientOfAServerThatAnswers returns a client of a server that presents
-// itself as EventSourcingDB, and answers every request with the given status
-// code and body.
-func clientOfAServerThatAnswers(t *testing.T, statusCode int, body string) *eventsourcingdb.Client {
-	t.Helper()
-
-	return clientOf(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Server", "EventSourcingDB/test")
-		w.WriteHeader(statusCode)
-		_, _ = w.Write([]byte(body))
-	}))
-}
-
-// clientOf returns a client of a server that answers with the given handler,
-// configured by the given options.
-func clientOf(t *testing.T, handler http.Handler, options ...eventsourcingdb.ClientOption) *eventsourcingdb.Client {
-	t.Helper()
-
-	server := httptest.NewServer(handler)
-	t.Cleanup(server.Close)
-
-	baseURL, err := url.Parse(server.URL)
-	require.NoError(t, err)
-
-	client, err := eventsourcingdb.NewClient(baseURL, "secret", options...)
-	require.NoError(t, err)
-
-	return client
-}
-
-type request struct {
-	name   string
-	action string
-	send   func() error
-}
-
-// namesOfRequests returns the name of every function of the client that sends
-// a request, as requestsOf names them.
-func namesOfRequests() []string {
-	names := []string{}
-	for _, request := range requestsOf(nil) {
-		names = append(names, request.name)
-	}
-
-	return names
-}
-
-// requestOf returns the request of the client with the given name, as
-// requestsOf names them.
-func requestOf(t *testing.T, client *eventsourcingdb.Client, name string) request {
-	t.Helper()
-
-	for _, request := range requestsOf(client) {
-		if request.name == name {
-			return request
-		}
-	}
-
-	require.FailNow(t, "there is no request "+name)
-	return request{}
-}
-
-// requestsOf calls every function of the client that sends a request, and
-// returns the first error each of them hands out, together with the action it
-// names in its errors.
-func requestsOf(client *eventsourcingdb.Client) []request {
-	ctx := context.Background()
-
-	return []request{
-		{
-			name:   "Ping",
-			action: "ping",
-			send: func() error {
-				return client.Ping(ctx)
-			},
-		},
-		{
-			name:   "VerifyAPIToken",
-			action: "verify API token",
-			send: func() error {
-				return client.VerifyAPIToken(ctx)
-			},
-		},
-		{
-			name:   "WriteEvents",
-			action: "write events",
-			send: func() error {
-				_, err := client.WriteEvents(
-					ctx,
-					[]eventsourcingdb.EventCandidate{
-						{
-							Source:  "https://www.eventsourcingdb.io",
-							Subject: "/test",
-							Type:    "io.eventsourcingdb.test",
-							Data:    map[string]int{"value": 23},
-						},
-					},
-					nil,
-				)
-				return err
-			},
-		},
-		{
-			name:   "ReadEvents",
-			action: "read events",
-			send: func() error {
-				for _, err := range client.ReadEvents(ctx, "/test", eventsourcingdb.ReadEventsOptions{}) {
-					if err != nil {
-						return err
-					}
-				}
-				return nil
-			},
-		},
-		{
-			name:   "ObserveEvents",
-			action: "observe events",
-			send: func() error {
-				for _, err := range client.ObserveEvents(ctx, "/test", eventsourcingdb.ObserveEventsOptions{}) {
-					if err != nil {
-						return err
-					}
-				}
-				return nil
-			},
-		},
-		{
-			name:   "RunEventQLQuery",
-			action: "run EventQL query",
-			send: func() error {
-				for _, err := range client.RunEventQLQuery(ctx, "FROM e IN events PROJECT INTO e") {
-					if err != nil {
-						return err
-					}
-				}
-				return nil
-			},
-		},
-		{
-			name:   "RegisterEventSchema",
-			action: "register event schema",
-			send: func() error {
-				return client.RegisterEventSchema(ctx, "io.eventsourcingdb.test", map[string]any{"type": "object"})
-			},
-		},
-		{
-			name:   "ReadSubjects",
-			action: "read subjects",
-			send: func() error {
-				for _, err := range client.ReadSubjects(ctx, "/", eventsourcingdb.ReadSubjectsOptions{Recursive: true}) {
-					if err != nil {
-						return err
-					}
-				}
-				return nil
-			},
-		},
-		{
-			name:   "ReadEventType",
-			action: "read event type",
-			send: func() error {
-				_, err := client.ReadEventType(ctx, "io.eventsourcingdb.test")
-				return err
-			},
-		},
-		{
-			name:   "ReadEventTypes",
-			action: "read event types",
-			send: func() error {
-				for _, err := range client.ReadEventTypes(ctx) {
-					if err != nil {
-						return err
-					}
-				}
-				return nil
-			},
-		},
-	}
 }

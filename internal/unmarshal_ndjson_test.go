@@ -19,7 +19,7 @@ func TestUnmarshalNDJSON(t *testing.T) {
 			`{"type":"second","payload":{"value":42}}` + "\n"
 
 		var lines []internal.Line
-		for line, err := range internal.UnmarshalNDJSON(ctx, strings.NewReader(ndjson)) {
+		for line, err := range internal.UnmarshalNDJSON[internal.Line](ctx, strings.NewReader(ndjson)) {
 			require.NoError(t, err)
 			lines = append(lines, line)
 		}
@@ -50,7 +50,7 @@ func TestUnmarshalNDJSON(t *testing.T) {
 		require.Greater(t, len(ndjson), 256*1024)
 
 		var lines []internal.Line
-		for line, err := range internal.UnmarshalNDJSON(ctx, strings.NewReader(ndjson)) {
+		for line, err := range internal.UnmarshalNDJSON[internal.Line](ctx, strings.NewReader(ndjson)) {
 			require.NoError(t, err)
 			lines = append(lines, line)
 		}
@@ -74,7 +74,7 @@ func TestUnmarshalNDJSON(t *testing.T) {
 		ndjson := `{"type":"event","payload":{"value":23}` + "\n"
 
 		var gotError bool
-		for _, err := range internal.UnmarshalNDJSON(ctx, strings.NewReader(ndjson)) {
+		for _, err := range internal.UnmarshalNDJSON[internal.Line](ctx, strings.NewReader(ndjson)) {
 			if err != nil {
 				gotError = true
 			}
@@ -90,7 +90,7 @@ func TestUnmarshalNDJSON(t *testing.T) {
 		ndjson := `{"type":"event","payload":{"value":23}}` + "\n"
 
 		var gotError error
-		for _, err := range internal.UnmarshalNDJSON(ctx, strings.NewReader(ndjson)) {
+		for _, err := range internal.UnmarshalNDJSON[internal.Line](ctx, strings.NewReader(ndjson)) {
 			gotError = err
 		}
 

@@ -22,194 +22,202 @@ func TestErrConnectionStalled(t *testing.T) {
 	timeout := 250 * time.Millisecond
 	withTimeout := eventsourcingdb.WithStallTimeout(timeout)
 
-	t.Run("every request ends if the server does not answer", func(t *testing.T) {
-		client := clientOfAServerThatHangs(t, nil, withTimeout)
+	for _, api := range apis() {
+		t.Run(api.name, func(t *testing.T) {
+			t.Run("every request ends if the server does not answer", func(t *testing.T) {
+				client := clientOfAServerThatHangs(t, api, nil, withTimeout)
 
-		for name, request := range requestsWithContextOf(client) {
-			t.Run(name, func(t *testing.T) {
-				started := time.Now()
-				err := request(context.Background())
-				elapsed := time.Since(started)
+				for name, request := range requestsWithContextOf(client) {
+					t.Run(name, func(t *testing.T) {
+						started := time.Now()
+						err := request(context.Background())
+						elapsed := time.Since(started)
 
-				assert.ErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
-				assert.EqualError(t, err, "connection stalled, nothing arrived from the server for 250ms")
-				assert.GreaterOrEqual(t, elapsed, timeout)
-				assert.Less(t, elapsed, 2*time.Second, "the stall timeout did not end the request")
+						assert.ErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
+						assert.EqualError(t, err, "connection stalled, nothing arrived from the server for 250ms")
+						assert.GreaterOrEqual(t, elapsed, timeout)
+						assert.Less(t, elapsed, 2*time.Second, "the stall timeout did not end the request")
+					})
+				}
 			})
-		}
-	})
 
-	t.Run("every request ends if the response stops in the middle", func(t *testing.T) {
-		client := clientOfAServerThatHangs(t, []byte(`{"type":`), withTimeout)
+			t.Run("every request ends if the response stops in the middle", func(t *testing.T) {
+				client := clientOfAServerThatHangs(t, api, []byte(`{"type":`), withTimeout)
 
-		for name, request := range requestsWithContextOf(client) {
-			// Registering an event schema does not read the body of a
-			// response with status 200, so it does not wait for it.
-			if name == "RegisterEventSchema" {
-				continue
-			}
-
-			t.Run(name, func(t *testing.T) {
-				started := time.Now()
-				err := request(context.Background())
-				elapsed := time.Since(started)
-
-				assert.ErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
-				assert.EqualError(t, err, "connection stalled, nothing arrived from the server for 250ms")
-				assert.GreaterOrEqual(t, elapsed, timeout)
-				assert.Less(t, elapsed, 2*time.Second, "the stall timeout did not end the request")
-			})
-		}
-	})
-
-	t.Run("a request ends if the description of a status other than 200 stops in the middle", func(t *testing.T) {
-		client := clientOf(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Server", "EventSourcingDB/test")
-			w.Header().Set("Content-Length", "100")
-			w.WriteHeader(http.StatusServiceUnavailable)
-			_, _ = w.Write([]byte("service"))
-			w.(http.Flusher).Flush()
-
-			select {
-			case <-r.Context().Done():
-			case <-time.After(5 * time.Second):
-			}
-		}), withTimeout)
-
-		err := client.Ping(context.Background())
-
-		var dbAPIError *eventsourcingdb.DBAPIError
-		require.ErrorAs(t, err, &dbAPIError)
-		assert.Equal(t, http.StatusServiceUnavailable, dbAPIError.Status)
-		assert.ErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
-		assert.EqualError(t, err, "failed to ping, got HTTP status code '503', expected '200', and failed to read the description: connection stalled, nothing arrived from the server for 250ms")
-	})
-
-	t.Run("every byte keeps a request alive", func(t *testing.T) {
-		// Before the header and between the parts of the body, the server
-		// waits for half the stall timeout, so the response takes more than
-		// twice as long as the stall timeout.
-		client := clientOf(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			time.Sleep(timeout / 2)
-			w.Header().Set("Server", "EventSourcingDB/test")
-			w.WriteHeader(http.StatusOK)
-			w.(http.Flusher).Flush()
-
-			for _, part := range []string{`{"type":`, `"io.eventsourcingdb.api.`, `ping-received"`, `}`} {
-				time.Sleep(timeout / 2)
-				_, _ = w.Write([]byte(part))
-				w.(http.Flusher).Flush()
-			}
-		}), withTimeout)
-
-		started := time.Now()
-		err := client.Ping(context.Background())
-
-		assert.NoError(t, err)
-		assert.Greater(t, time.Since(started), 2*timeout)
-	})
-
-	t.Run("items keep every stream alive", func(t *testing.T) {
-		for _, stream := range streams() {
-			t.Run(stream.name, func(t *testing.T) {
-				// The items last for twice as long as the stall timeout.
-				client := clientOfAServerThatStreams(t, func(ctx context.Context, send func(line string)) {
-					for range 4 {
-						send(stream.line)
-						time.Sleep(timeout / 2)
+				for name, request := range requestsWithContextOf(client) {
+					// Registering an event schema with the v1 API does not read
+					// the body of a response with status 200, so it does not wait
+					// for it.
+					if api.name == "v1" && name == "RegisterEventSchema" {
+						continue
 					}
-				}, withTimeout)
 
-				items, err := stream.read(context.Background(), client, nil)
+					t.Run(name, func(t *testing.T) {
+						started := time.Now()
+						err := request(context.Background())
+						elapsed := time.Since(started)
 
-				assert.NoError(t, err)
-				assert.Equal(t, 4, items)
+						assert.ErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
+						assert.EqualError(t, err, "connection stalled, nothing arrived from the server for 250ms")
+						assert.GreaterOrEqual(t, elapsed, timeout)
+						assert.Less(t, elapsed, 2*time.Second, "the stall timeout did not end the request")
+					})
+				}
 			})
-		}
-	})
 
-	t.Run("a stream ends if nothing arrives after an item", func(t *testing.T) {
-		for _, stream := range streams() {
-			t.Run(stream.name, func(t *testing.T) {
-				client := clientOfAServerThatStreams(t, func(ctx context.Context, send func(line string)) {
-					send(stream.line)
+			t.Run("a request ends if the description of a status other than 200 stops in the middle", func(t *testing.T) {
+				client := clientOf(t, api, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Server", "EventSourcingDB/test")
+					w.Header().Set("Content-Length", "100")
+					w.WriteHeader(http.StatusServiceUnavailable)
+					_, _ = w.Write([]byte("service"))
+					w.(http.Flusher).Flush()
 
 					select {
-					case <-ctx.Done():
+					case <-r.Context().Done():
 					case <-time.After(5 * time.Second):
 					}
-				}, withTimeout)
+				}), withTimeout)
+
+				err := client.Ping(context.Background())
+
+				var dbAPIError *eventsourcingdb.DBAPIError
+				require.ErrorAs(t, err, &dbAPIError)
+				assert.Equal(t, http.StatusServiceUnavailable, dbAPIError.Status)
+				assert.ErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
+				assert.EqualError(t, err, "failed to ping, got HTTP status code '503', expected '200', and failed to read the description: connection stalled, nothing arrived from the server for 250ms")
+			})
+
+			t.Run("every byte keeps a request alive", func(t *testing.T) {
+				// Before the header and between the parts of the body, the server
+				// waits for half the stall timeout, so the response takes more than
+				// twice as long as the stall timeout.
+				answer := api.pingAnswer()
+				parts := []string{answer[:10], answer[10:100], answer[100:200], answer[200:]}
+
+				client := clientOf(t, api, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					time.Sleep(timeout / 2)
+					w.Header().Set("Server", "EventSourcingDB/test")
+					w.WriteHeader(http.StatusOK)
+					w.(http.Flusher).Flush()
+
+					for _, part := range parts {
+						time.Sleep(timeout / 2)
+						_, _ = w.Write([]byte(part))
+						w.(http.Flusher).Flush()
+					}
+				}), withTimeout)
 
 				started := time.Now()
-				items, err := stream.read(context.Background(), client, nil)
-				elapsed := time.Since(started)
-
-				assert.Equal(t, 1, items)
-				assert.ErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
-				assert.Less(t, elapsed, 2*time.Second, "the stall timeout did not end the stream")
-			})
-		}
-	})
-
-	t.Run("the time the caller spends on an item does not count", func(t *testing.T) {
-		for _, stream := range streams() {
-			t.Run(stream.name, func(t *testing.T) {
-				client := clientOfAServerThatStreams(t, func(ctx context.Context, send func(line string)) {
-					send(stream.line)
-					send(stream.line)
-				}, withTimeout)
-
-				items, err := stream.read(context.Background(), client, func() {
-					time.Sleep(2 * timeout)
-				})
+				err := client.Ping(context.Background())
 
 				assert.NoError(t, err)
-				assert.Equal(t, 2, items)
+				assert.Greater(t, time.Since(started), 2*timeout)
 			})
-		}
-	})
 
-	t.Run("a deadline of the context still ends a request earlier", func(t *testing.T) {
-		client := clientOfAServerThatHangs(t, nil, eventsourcingdb.WithStallTimeout(time.Minute))
+			t.Run("items keep every stream alive", func(t *testing.T) {
+				for _, stream := range streams() {
+					t.Run(stream.name, func(t *testing.T) {
+						// The items last for twice as long as the stall timeout.
+						client := clientOfAServerThatStreams(t, api, func(ctx context.Context, send func(line string)) {
+							for range 4 {
+								send(stream.item(api))
+								time.Sleep(timeout / 2)
+							}
+						}, withTimeout)
 
-		for name, request := range requestsWithContextOf(client) {
-			t.Run(name, func(t *testing.T) {
-				ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-				defer cancel()
+						items, err := stream.read(context.Background(), client, nil)
 
-				started := time.Now()
-				err := request(ctx)
-
-				assert.ErrorIs(t, err, context.DeadlineExceeded)
-				assert.NotErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
-				assert.Less(t, time.Since(started), 2*time.Second, "the deadline did not end the request")
+						assertEndedCleanly(t, api, stream, err)
+						assert.Equal(t, 4, items)
+					})
+				}
 			})
-		}
-	})
 
-	t.Run("a cancel ends a request as before, not as a stall", func(t *testing.T) {
-		client := clientOfAServerThatHangs(t, nil, withTimeout)
+			t.Run("a stream ends if nothing arrives after an item", func(t *testing.T) {
+				for _, stream := range streams() {
+					t.Run(stream.name, func(t *testing.T) {
+						client := clientOfAServerThatStreams(t, api, func(ctx context.Context, send func(line string)) {
+							send(stream.item(api))
 
-		for name, request := range requestsWithContextOf(client) {
-			t.Run(name, func(t *testing.T) {
-				ctx, cancel := context.WithCancel(context.Background())
-				defer cancel()
+							select {
+							case <-ctx.Done():
+							case <-time.After(5 * time.Second):
+							}
+						}, withTimeout)
 
-				go func() {
-					time.Sleep(timeout / 5)
-					cancel()
-				}()
+						started := time.Now()
+						items, err := stream.read(context.Background(), client, nil)
+						elapsed := time.Since(started)
 
-				err := request(ctx)
-
-				assert.ErrorIs(t, err, context.Canceled)
-				assert.NotErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
+						assert.Equal(t, 1, items)
+						assert.ErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
+						assert.Less(t, elapsed, 2*time.Second, "the stall timeout did not end the stream")
+					})
+				}
 			})
-		}
-	})
+
+			t.Run("the time the caller spends on an item does not count", func(t *testing.T) {
+				for _, stream := range streams() {
+					t.Run(stream.name, func(t *testing.T) {
+						client := clientOfAServerThatStreams(t, api, func(ctx context.Context, send func(line string)) {
+							send(stream.item(api))
+							send(stream.item(api))
+						}, withTimeout)
+
+						items, err := stream.read(context.Background(), client, func() {
+							time.Sleep(2 * timeout)
+						})
+
+						assertEndedCleanly(t, api, stream, err)
+						assert.Equal(t, 2, items)
+					})
+				}
+			})
+
+			t.Run("a deadline of the context still ends a request earlier", func(t *testing.T) {
+				client := clientOfAServerThatHangs(t, api, nil, eventsourcingdb.WithStallTimeout(time.Minute))
+
+				for name, request := range requestsWithContextOf(client) {
+					t.Run(name, func(t *testing.T) {
+						ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+						defer cancel()
+
+						started := time.Now()
+						err := request(ctx)
+
+						assert.ErrorIs(t, err, context.DeadlineExceeded)
+						assert.NotErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
+						assert.Less(t, time.Since(started), 2*time.Second, "the deadline did not end the request")
+					})
+				}
+			})
+
+			t.Run("a cancel ends a request as before, not as a stall", func(t *testing.T) {
+				client := clientOfAServerThatHangs(t, api, nil, withTimeout)
+
+				for name, request := range requestsWithContextOf(client) {
+					t.Run(name, func(t *testing.T) {
+						ctx, cancel := context.WithCancel(context.Background())
+						defer cancel()
+
+						go func() {
+							time.Sleep(timeout / 5)
+							cancel()
+						}()
+
+						err := request(ctx)
+
+						assert.ErrorIs(t, err, context.Canceled)
+						assert.NotErrorIs(t, err, eventsourcingdb.ErrConnectionStalled)
+					})
+				}
+			})
+		})
+	}
 
 	t.Run("is found if it is wrapped, and counts as a timeout", func(t *testing.T) {
-		client := clientOfAServerThatHangs(t, nil, withTimeout)
+		client := clientOfAServerThatHangs(t, apiV2, nil, withTimeout)
 
 		err := client.Ping(context.Background())
 		wrapped := fmt.Errorf("failed to handle the command: %w", err)
@@ -283,75 +291,4 @@ func TestWithStallTimeout(t *testing.T) {
 		assert.Zero(t, transport.ResponseHeaderTimeout)
 		assert.NotSame(t, http.DefaultTransport, transport)
 	})
-}
-
-// streams returns every function of the client that reads a stream, with and
-// without heartbeats.
-func streams() []stream {
-	return append(streamsWithHeartbeats(), streamsWithoutHeartbeats()...)
-}
-
-// streamsWithoutHeartbeats returns every function of the client that reads a
-// stream on which the server sends no heartbeats, as streamsWithHeartbeats
-// does for those with heartbeats.
-func streamsWithoutHeartbeats() []stream {
-	return []stream{
-		{
-			name:   "ReadEvents",
-			action: "read events",
-			line:   `{"type":"event","payload":{"specversion":"1.0","id":"0","time":"2026-10-01T12:00:00Z","source":"https://www.eventsourcingdb.io","subject":"/test","type":"io.eventsourcingdb.test","datacontenttype":"application/json","data":{},"hash":"","predecessorhash":""}}`,
-			read: func(ctx context.Context, client *eventsourcingdb.Client, handle func()) (int, error) {
-				items := 0
-				for _, err := range client.ReadEvents(ctx, "/test", eventsourcingdb.ReadEventsOptions{}) {
-					if err != nil {
-						return items, err
-					}
-
-					items++
-					if handle != nil {
-						handle()
-					}
-				}
-				return items, nil
-			},
-		},
-		{
-			name:   "ReadSubjects",
-			action: "read subjects",
-			line:   `{"type":"subject","payload":{"subject":"/test"}}`,
-			read: func(ctx context.Context, client *eventsourcingdb.Client, handle func()) (int, error) {
-				items := 0
-				for _, err := range client.ReadSubjects(ctx, "/", eventsourcingdb.ReadSubjectsOptions{Recursive: true}) {
-					if err != nil {
-						return items, err
-					}
-
-					items++
-					if handle != nil {
-						handle()
-					}
-				}
-				return items, nil
-			},
-		},
-		{
-			name:   "ReadEventTypes",
-			action: "read event types",
-			line:   `{"type":"eventType","payload":{"eventType":"io.eventsourcingdb.test","isPhantom":false}}`,
-			read: func(ctx context.Context, client *eventsourcingdb.Client, handle func()) (int, error) {
-				items := 0
-				for _, err := range client.ReadEventTypes(ctx) {
-					if err != nil {
-						return items, err
-					}
-
-					items++
-					if handle != nil {
-						handle()
-					}
-				}
-				return items, nil
-			},
-		},
-	}
 }

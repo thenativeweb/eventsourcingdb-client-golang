@@ -13,42 +13,46 @@ import (
 // A caller has to be able to tell a server that is not EventSourcingDB, e.g. a
 // proxy that answers in place of the database, from the database itself.
 func TestErrInvalidServerHeader(t *testing.T) {
-	t.Run("every request reports a server without a Server header", func(t *testing.T) {
-		client := clientOf(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-		}))
+	for _, api := range apis() {
+		t.Run(api.name, func(t *testing.T) {
+			t.Run("every request reports a server without a Server header", func(t *testing.T) {
+				client := clientOf(t, api, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusOK)
+				}))
 
-		for _, request := range requestsOf(client) {
-			t.Run(request.name, func(t *testing.T) {
-				err := request.send()
+				for _, request := range requestsOf(client) {
+					t.Run(request.name, func(t *testing.T) {
+						err := request.send()
 
-				assert.ErrorIs(t, err, eventsourcingdb.ErrInvalidServerHeader)
-				assert.EqualError(t, err, "server must be EventSourcingDB")
+						assert.ErrorIs(t, err, eventsourcingdb.ErrInvalidServerHeader)
+						assert.EqualError(t, err, "server must be EventSourcingDB")
+					})
+				}
 			})
-		}
-	})
 
-	t.Run("every request reports another server instead of its status", func(t *testing.T) {
-		client := clientOf(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Server", "nginx/1.29.0")
-			w.WriteHeader(http.StatusBadGateway)
-			_, _ = w.Write([]byte("bad gateway"))
-		}))
+			t.Run("every request reports another server instead of its status", func(t *testing.T) {
+				client := clientOf(t, api, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Server", "nginx/1.29.0")
+					w.WriteHeader(http.StatusBadGateway)
+					_, _ = w.Write([]byte("bad gateway"))
+				}))
 
-		for _, request := range requestsOf(client) {
-			t.Run(request.name, func(t *testing.T) {
-				err := request.send()
+				for _, request := range requestsOf(client) {
+					t.Run(request.name, func(t *testing.T) {
+						err := request.send()
 
-				var dbAPIError *eventsourcingdb.DBAPIError
-				assert.ErrorIs(t, err, eventsourcingdb.ErrInvalidServerHeader)
-				assert.NotErrorAs(t, err, &dbAPIError)
-				assert.EqualError(t, err, "server must be EventSourcingDB")
+						var dbAPIError *eventsourcingdb.DBAPIError
+						assert.ErrorIs(t, err, eventsourcingdb.ErrInvalidServerHeader)
+						assert.NotErrorAs(t, err, &dbAPIError)
+						assert.EqualError(t, err, "server must be EventSourcingDB")
+					})
+				}
 			})
-		}
-	})
+		})
+	}
 
 	t.Run("is found if it is wrapped", func(t *testing.T) {
-		client := clientOf(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		client := clientOf(t, apiV2, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		}))
 
