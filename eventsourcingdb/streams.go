@@ -34,6 +34,11 @@ func yieldEventOf(lineType string, payload json.RawMessage, yield func(Event, er
 	return yield(event, nil)
 }
 
+// streamedSubject is a subject as a line or an item of a stream carries it.
+type streamedSubject struct {
+	Subject string `json:"subject"`
+}
+
 // errUnsupportedLineType reports a line or an item of a stream of a type that
 // the stream does not have.
 func errUnsupportedLineType(lineType string) error {

@@ -1,4 +1,4 @@
-package internal
+package eventsourcingdbtest_test
 
 import (
 	"fmt"
@@ -7,18 +7,18 @@ import (
 	"regexp"
 )
 
-// ImageTagEnvironmentVariable names the environment variable that sets the
+// imageTagEnvironmentVariable names the environment variable that sets the
 // tag of the EventSourcingDB image the tests run against, e.g. latest or
 // preview.
-const ImageTagEnvironmentVariable = "EVENTSOURCINGDB_IMAGE_TAG"
+const imageTagEnvironmentVariable = "EVENTSOURCINGDB_IMAGE_TAG"
 
 var versionRegex = regexp.MustCompile(`(?m)^FROM\sthenativeweb\/eventsourcingdb:(.+)$`)
 
-// GetImageTag returns the tag of the EventSourcingDB image the tests run
+// getImageTag returns the tag of the EventSourcingDB image the tests run
 // against: the value of EVENTSOURCINGDB_IMAGE_TAG if it is set and not empty,
 // and the tag in docker/Dockerfile otherwise.
-func GetImageTag() (string, error) {
-	imageTag := os.Getenv(ImageTagEnvironmentVariable)
+func getImageTag() (string, error) {
+	imageTag := os.Getenv(imageTagEnvironmentVariable)
 	if imageTag != "" {
 		return imageTag, nil
 	}

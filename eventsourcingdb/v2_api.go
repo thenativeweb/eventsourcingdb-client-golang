@@ -8,8 +8,6 @@ import (
 	"io"
 	"iter"
 	"net/http"
-
-	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 // v2API sends the requests of a client through the v2 API. It answers every
@@ -63,8 +61,8 @@ func (a v2API) open(guard *stallGuard, action string, method string, path string
 // returns its data if it is of the given type, or the DBAPIError of an error
 // item.
 func (a v2API) answer(response *http.Response, action string, itemType string) (json.RawMessage, error) {
-	var item internal.Envelope
-	err := internal.ParseJSON(response.Body, &item)
+	var item envelope
+	err := parseJSON(response.Body, &item)
 	if err != nil {
 		return nil, err
 	}
@@ -107,11 +105,11 @@ func (a v2API) expectEvent(response *http.Response, action string, eventType str
 // the stream with a DBAPIError. A finite stream ends with its end item, and
 // fails if it breaks off before that item, while a stream that never ends
 // fails if it ends at all.
-func (a v2API) items(guard *stallGuard, action string, body io.Reader, finite bool) iter.Seq2[internal.Envelope, error] {
-	return func(yield func(internal.Envelope, error) bool) {
-		for item, err := range guardedLines[internal.Envelope](guard, body) {
+func (a v2API) items(guard *stallGuard, action string, body io.Reader, finite bool) iter.Seq2[envelope, error] {
+	return func(yield func(envelope, error) bool) {
+		for item, err := range guardedLines[envelope](guard, body) {
 			if err != nil {
-				yield(internal.Envelope{}, err)
+				yield(envelope{}, err)
 				return
 			}
 
@@ -119,7 +117,7 @@ func (a v2API) items(guard *stallGuard, action string, body io.Reader, finite bo
 			case item.Type == "heartbeat":
 				continue
 			case item.Type == "error":
-				yield(internal.Envelope{}, newV2DomainError(action, item.Data))
+				yield(envelope{}, newV2DomainError(action, item.Data))
 				return
 			case item.Type == "end" && finite:
 				return
@@ -130,14 +128,14 @@ func (a v2API) items(guard *stallGuard, action string, body io.Reader, finite bo
 			}
 		}
 
-		yield(internal.Envelope{}, errStreamBrokeOff(action))
+		yield(envelope{}, errStreamBrokeOff(action))
 	}
 }
 
 // stream sends a request of the v2 API that the server answers with a stream,
 // and hands every item of it to handle, as items reads them, until handle
 // returns false, or the stream ends.
-func (a v2API) stream(ctx context.Context, action string, path string, body any, finite bool, fail func(err error), handle func(item internal.Envelope) bool) {
+func (a v2API) stream(ctx context.Context, action string, path string, body any, finite bool, fail func(err error), handle func(item envelope) bool) {
 	guard := a.client.guard(ctx)
 	defer guard.end()
 
@@ -314,7 +312,7 @@ func (a v2API) readEvents(ctx context.Context, body readEventsRequestBody) iter.
 	return func(yield func(Event, error) bool) {
 		fail := func(err error) { yield(Event{}, err) }
 
-		a.stream(ctx, actionReadEvents, "/api/v2/data/read-events", body, true, fail, func(item internal.Envelope) bool {
+		a.stream(ctx, actionReadEvents, "/api/v2/data/read-events", body, true, fail, func(item envelope) bool {
 			return yieldEventOf(item.Type, item.Data, yield)
 		})
 	}
@@ -324,7 +322,7 @@ func (a v2API) observeEvents(ctx context.Context, body observeEventsRequestBody)
 	return func(yield func(Event, error) bool) {
 		fail := func(err error) { yield(Event{}, err) }
 
-		a.stream(ctx, actionObserveEvents, "/api/v2/data/observe-events", body, false, fail, func(item internal.Envelope) bool {
+		a.stream(ctx, actionObserveEvents, "/api/v2/data/observe-events", body, false, fail, func(item envelope) bool {
 			return yieldEventOf(item.Type, item.Data, yield)
 		})
 	}
@@ -338,7 +336,7 @@ func (a v2API) runEventQLQuery(ctx context.Context, query string) iter.Seq2[json
 			Query string `json:"query"`
 		}
 
-		a.stream(ctx, actionRunEventQLQuery, "/api/v2/data/run-eventql-query", RequestBody{Query: query}, true, fail, func(item internal.Envelope) bool {
+		a.stream(ctx, actionRunEventQLQuery, "/api/v2/data/run-eventql-query", RequestBody{Query: query}, true, fail, func(item envelope) bool {
 			if item.Type != "row" {
 				fail(errUnsupportedLineType(item.Type))
 				return false
@@ -378,13 +376,13 @@ func (a v2API) readSubjects(ctx context.Context, subject string, options ReadSub
 			Options: RequestBodyOptions(options),
 		}
 
-		a.stream(ctx, actionReadSubjects, "/api/v2/data/read-subjects", requestBody, true, fail, func(item internal.Envelope) bool {
+		a.stream(ctx, actionReadSubjects, "/api/v2/data/read-subjects", requestBody, true, fail, func(item envelope) bool {
 			if item.Type != "subject" {
 				fail(errUnsupportedLineType(item.Type))
 				return false
 			}
 
-			var streamSubject internal.StreamSubject
+			var streamSubject streamedSubject
 			err := json.Unmarshal(item.Data, &streamSubject)
 			if err != nil {
 				fail(err)
@@ -400,7 +398,7 @@ func (a v2API) readEventTypes(ctx context.Context) iter.Seq2[EventType, error] {
 	return func(yield func(EventType, error) bool) {
 		fail := func(err error) { yield(EventType{}, err) }
 
-		a.stream(ctx, actionReadEventTypes, "/api/v2/data/read-event-types", nil, true, fail, func(item internal.Envelope) bool {
+		a.stream(ctx, actionReadEventTypes, "/api/v2/data/read-event-types", nil, true, fail, func(item envelope) bool {
 			if item.Type != "eventType" {
 				fail(errUnsupportedLineType(item.Type))
 				return false

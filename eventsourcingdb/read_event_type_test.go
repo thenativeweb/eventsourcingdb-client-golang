@@ -8,12 +8,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdbtest"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 func TestReadEventType(t *testing.T) {
 	t.Run("fails if the event type does not exist", func(t *testing.T) {
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
@@ -29,7 +28,7 @@ func TestReadEventType(t *testing.T) {
 	})
 
 	t.Run("fails if the event type is malformed", func(t *testing.T) {
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
@@ -55,7 +54,7 @@ func TestReadEventType(t *testing.T) {
 	})
 
 	t.Run("reads an existing event type", func(t *testing.T) {
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)

@@ -1,4 +1,4 @@
-package internal
+package eventsourcingdb
 
 import (
 	"context"
@@ -8,22 +8,23 @@ import (
 	"iter"
 )
 
-// Line is a line of a stream of the v1 API, whose payload depends on its type.
-type Line struct {
+// v1Line is a line of a stream of the v1 API, whose payload depends on its
+// type.
+type v1Line struct {
 	Type    string
 	Payload json.RawMessage
 }
 
-// Envelope is an item of the v2 API, in a stream or as a single answer, whose
+// envelope is an item of the v2 API, in a stream or as a single answer, whose
 // data depends on its type.
-type Envelope struct {
+type envelope struct {
 	Type string          `json:"type"`
 	Data json.RawMessage `json:"data"`
 }
 
-// UnmarshalNDJSON reads the lines of a stream of newline-delimited JSON, and
+// unmarshalNDJSON reads the lines of a stream of newline-delimited JSON, and
 // decodes each of them as a T.
-func UnmarshalNDJSON[T any](ctx context.Context, r io.Reader) iter.Seq2[T, error] {
+func unmarshalNDJSON[T any](ctx context.Context, r io.Reader) iter.Seq2[T, error] {
 	return func(yield func(T, error) bool) {
 		// We decode directly from the reader using a json.Decoder instead
 		// of reading whole lines with a bufio.Scanner. The scanner enforces

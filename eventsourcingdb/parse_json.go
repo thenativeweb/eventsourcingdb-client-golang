@@ -1,11 +1,13 @@
-package internal
+package eventsourcingdb
 
 import (
 	"encoding/json"
 	"io"
 )
 
-func ParseJSON(reader io.ReadCloser, v any) error {
+// parseJSON reads all of the given reader, closes it, and decodes what it
+// read as JSON into v.
+func parseJSON(reader io.ReadCloser, v any) error {
 	defer reader.Close()
 
 	bytes, err := io.ReadAll(reader)

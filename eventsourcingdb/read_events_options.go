@@ -1,15 +1,13 @@
 package eventsourcingdb
 
-import "github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
-
 type Order string
 
 func OrderChronological() *Order {
-	return internal.Ptr(Order("chronological"))
+	return new(Order("chronological"))
 }
 
 func OrderAntichronological() *Order {
-	return internal.Ptr(Order("antichronological"))
+	return new(Order("antichronological"))
 }
 
 type ReadIfEventIsMissing string

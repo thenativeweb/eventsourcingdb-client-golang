@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdbtest"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 // A caller has to be able to tell failures apart that share a status code,
@@ -47,7 +46,7 @@ func TestDBAPIError(t *testing.T) {
 	t.Run("every request reports a rejected token with status 401", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)

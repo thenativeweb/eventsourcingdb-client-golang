@@ -15,14 +15,13 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdbtest"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 func TestPing(t *testing.T) {
 	t.Run("does not return an error if the server is reachable", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
@@ -39,7 +38,7 @@ func TestPing(t *testing.T) {
 	t.Run("returns an error if the server is not reachable", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
@@ -74,7 +73,7 @@ func TestTheAPIOfTheServer(t *testing.T) {
 	t.Run("every request goes to the API that the server offers", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
