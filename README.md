@@ -741,23 +741,6 @@ if errors.As(err, &dbAPIError) {
 
 *Note that a server with the v1 API only sends no codes. The client gives those of its errors that clearly match an error of the v2 API the code of that error, e.g. `CodePreconditionViolated` for a precondition that does not hold, and leaves the code of every other one empty.*
 
-If writing events or registering an event schema fails in a way that leaves open whether the server stored it nevertheless, the error wraps its cause with `ErrOutcomeUnknown`. This is the case, e.g., if the connection stalls or breaks after the client has connected, if your context ends after that, if a stream breaks off, or if the server fails unexpectedly. Every other error of a write means that the server certainly did not store anything: either the client could not connect to it at all, or the server refused the write, e.g. because a precondition does not hold. Use `errors.Is` to check for it, which also finds the cause, as does `errors.As`:
-
-```golang
-_, err := client.WriteEvents(
-  context.TODO(),
-  []eventsourcingdb.EventCandidate{
-    // ...
-  },
-  nil,
-)
-
-if errors.Is(err, eventsourcingdb.ErrOutcomeUnknown) {
-  // Read the events to find out whether they were written, or write them
-  // again with a precondition that does not hold if they were.
-}
-```
-
 If a stream that ends on its own breaks off before it is complete, or if the server ends observing events, which never ends on its own, the stream ends with an error that says that it broke off, since the items it handed out may not be all of them.
 
 If the server is not an EventSourcingDB, e.g. because a proxy answers in its place, the client returns `ErrInvalidServerHeader`. Use `errors.Is` to check for it:
@@ -790,6 +773,25 @@ for event, err := range client.ObserveEvents(
 *Note that a write that stalls once the client has connected to the server wraps `ErrConnectionStalled` with `ErrOutcomeUnknown`, since the server may have stored it nevertheless. A write that stalls before that, e.g. while the client connects, or while it asks the server which API it offers on its first request, returns `ErrConnectionStalled` itself, since the server certainly did not store it.*
 
 Since a stalled connection is a timeout, `errors.Is` also finds `context.DeadlineExceeded` in the error, as it does for a timeout of an `http.Client`. To tell a stall from a deadline of your context, check for `ErrConnectionStalled`, or check whether your context has ended.
+
+#### Knowing Whether a Write Was Stored
+
+If writing events or registering an event schema fails in a way that leaves open whether the server stored it nevertheless, the error wraps its cause with `ErrOutcomeUnknown`. This is the case, e.g., if the connection stalls or breaks after the client has connected, if your context ends after that, if a stream breaks off, or if the server fails unexpectedly. Every other error of a write means that the server certainly did not store anything: either the client could not connect to it at all, or the server refused the write, e.g. because a precondition does not hold. Use `errors.Is` to check for it, which also finds the cause, as does `errors.As`:
+
+```golang
+_, err := client.WriteEvents(
+  context.TODO(),
+  []eventsourcingdb.EventCandidate{
+    // ...
+  },
+  nil,
+)
+
+if errors.Is(err, eventsourcingdb.ErrOutcomeUnknown) {
+  // Read the events to find out whether they were written, or write them
+  // again with a precondition that does not hold if they were.
+}
+```
 
 ### Using Testcontainers
 
