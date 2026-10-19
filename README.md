@@ -44,25 +44,6 @@ if err != nil {
 
 *Note that the client sends its requests with an HTTP client of its own, which starts from a copy of `http.DefaultTransport`. Changing `http.DefaultClient`, e.g. setting its `Timeout`, does not affect it.*
 
-The client works with servers that offer the v2 API of EventSourcingDB, and with servers that offer the v1 API only. Creating a client sends no request. On its first request, the client asks the server whether it offers the v2 API, and remembers the answer: it speaks the v2 API if the server offers it, and the v1 API otherwise. If the server gives no clear answer, e.g. because it can not be reached, that first request fails with the error, and the next request asks again. Since the client asks with `GET /api/v2/system/ping`, the error of that first request then names that path, whatever the request was, e.g. `Get "http://localhost:3000/api/v2/system/ping": dial tcp [::1]:3000: connect: connection refused`.
-
-*Note that with the v2 API, the client reads with the HTTP method `QUERY` ([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008)). If a proxy runs in front of the database, it has to let `QUERY` through. The client does not fall back to `POST`.*
-
-A request fails if nothing arrives from the server for 30 seconds, e.g. because the server can not be reached, or because a proxy keeps the connection open but no longer passes anything on (see [Handling Errors](#handling-errors)). To change this stall timeout, pass the `WithStallTimeout` option to `NewClient`:
-
-```go
-client, err := eventsourcingdb.NewClient(
-  baseURL,
-  apiToken,
-  eventsourcingdb.WithStallTimeout(10*time.Second),
-)
-if err != nil {
-  // ...
-}
-```
-
-The clock starts when a request is sent, so it covers connecting and waiting for the response, and starts again with every byte that arrives. It does not limit how long a request takes in total: a stream that keeps receiving events or heartbeats never ends because of it, and the time you spend on an item of a stream does not count. The stall timeout must be greater than zero, and since the server sends a heartbeat every second while observing events and running EventQL queries, it should be several seconds at least. To limit a single request further, give its context a deadline.
-
 Then call the `Ping` function with a context to check whether the instance is reachable. If it is not, the function will return an error:
 
 ```go
@@ -82,6 +63,29 @@ if err != nil {
   // ...
 }
 ```
+
+### Talking to Servers With and Without the v2 API
+
+The client works with servers that offer the v2 API of EventSourcingDB, and with servers that offer the v1 API only. Creating a client sends no request. On its first request, the client asks the server whether it offers the v2 API, and remembers the answer: it speaks the v2 API if the server offers it, and the v1 API otherwise. If the server gives no clear answer, e.g. because it can not be reached, that first request fails with the error, and the next request asks again. Since the client asks with `GET /api/v2/system/ping`, the error of that first request then names that path, whatever the request was, e.g. `Get "http://localhost:3000/api/v2/system/ping": dial tcp [::1]:3000: connect: connection refused`.
+
+*Note that with the v2 API, the client reads with the HTTP method `QUERY` ([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008)). If a proxy runs in front of the database, it has to let `QUERY` through. The client does not fall back to `POST`.*
+
+### Configuring the Stall Timeout
+
+A request fails if nothing arrives from the server for 30 seconds, e.g. because the server can not be reached, or because a proxy keeps the connection open but no longer passes anything on (see [Handling Errors](#handling-errors)). To change this stall timeout, pass the `WithStallTimeout` option to `NewClient`:
+
+```go
+client, err := eventsourcingdb.NewClient(
+  baseURL,
+  apiToken,
+  eventsourcingdb.WithStallTimeout(10*time.Second),
+)
+if err != nil {
+  // ...
+}
+```
+
+The clock starts when a request is sent, so it covers connecting and waiting for the response, and starts again with every byte that arrives. It does not limit how long a request takes in total: a stream that keeps receiving events or heartbeats never ends because of it, and the time you spend on an item of a stream does not count. The stall timeout must be greater than zero, and since the server sends a heartbeat every second while observing events and running EventQL queries, it should be several seconds at least. To limit a single request further, give its context a deadline.
 
 ### Writing Events
 
@@ -737,23 +741,6 @@ if errors.As(err, &dbAPIError) {
 
 *Note that a server with the v1 API only sends no codes. The client gives those of its errors that clearly match an error of the v2 API the code of that error, e.g. `CodePreconditionViolated` for a precondition that does not hold, and leaves the code of every other one empty.*
 
-If writing events or registering an event schema fails in a way that leaves open whether the server stored it nevertheless, the error wraps its cause with `ErrOutcomeUnknown`. This is the case, e.g., if the connection stalls or breaks after the client has connected, if your context ends after that, if a stream breaks off, or if the server fails unexpectedly. Every other error of a write means that the server certainly did not store anything: either the client could not connect to it at all, or the server refused the write, e.g. because a precondition does not hold. Use `errors.Is` to check for it, which also finds the cause, as does `errors.As`:
-
-```golang
-_, err := client.WriteEvents(
-  context.TODO(),
-  []eventsourcingdb.EventCandidate{
-    // ...
-  },
-  nil,
-)
-
-if errors.Is(err, eventsourcingdb.ErrOutcomeUnknown) {
-  // Read the events to find out whether they were written, or write them
-  // again with a precondition that does not hold if they were.
-}
-```
-
 If a stream that ends on its own breaks off before it is complete, or if the server ends observing events, which never ends on its own, the stream ends with an error that says that it broke off, since the items it handed out may not be all of them.
 
 If the server is not an EventSourcingDB, e.g. because a proxy answers in its place, the client returns `ErrInvalidServerHeader`. Use `errors.Is` to check for it:
@@ -765,7 +752,7 @@ if errors.Is(err, eventsourcingdb.ErrInvalidServerHeader) {
 }
 ```
 
-If nothing arrives from the server for the stall timeout, 30 seconds by default (see [Getting Started](#getting-started)), e.g. because the server can not be reached, or because a proxy keeps the connection open but no longer passes anything on, the client closes the connection, and the request ends with `ErrConnectionStalled`. This applies to every request, also to streams once the server has begun to answer, on which heartbeats count as something that arrives. Its message names the stall timeout. Use `errors.Is` to check for it:
+If nothing arrives from the server for the stall timeout, 30 seconds by default (see [Configuring the Stall Timeout](#configuring-the-stall-timeout)), e.g. because the server can not be reached, or because a proxy keeps the connection open but no longer passes anything on, the client closes the connection, and the request ends with `ErrConnectionStalled`. This applies to every request, also to streams once the server has begun to answer, on which heartbeats count as something that arrives. Its message names the stall timeout. Use `errors.Is` to check for it:
 
 ```golang
 for event, err := range client.ObserveEvents(
@@ -786,6 +773,25 @@ for event, err := range client.ObserveEvents(
 *Note that a write that stalls once the client has connected to the server wraps `ErrConnectionStalled` with `ErrOutcomeUnknown`, since the server may have stored it nevertheless. A write that stalls before that, e.g. while the client connects, or while it asks the server which API it offers on its first request, returns `ErrConnectionStalled` itself, since the server certainly did not store it.*
 
 Since a stalled connection is a timeout, `errors.Is` also finds `context.DeadlineExceeded` in the error, as it does for a timeout of an `http.Client`. To tell a stall from a deadline of your context, check for `ErrConnectionStalled`, or check whether your context has ended.
+
+#### Knowing Whether a Write Was Stored
+
+If writing events or registering an event schema fails in a way that leaves open whether the server stored it nevertheless, the error wraps its cause with `ErrOutcomeUnknown`. This is the case, e.g., if the connection stalls or breaks after the client has connected, if your context ends after that, if a stream breaks off, or if the server fails unexpectedly. Every other error of a write means that the server certainly did not store anything: either the client could not connect to it at all, or the server refused the write, e.g. because a precondition does not hold. Use `errors.Is` to check for it, which also finds the cause, as does `errors.As`:
+
+```golang
+_, err := client.WriteEvents(
+  context.TODO(),
+  []eventsourcingdb.EventCandidate{
+    // ...
+  },
+  nil,
+)
+
+if errors.Is(err, eventsourcingdb.ErrOutcomeUnknown) {
+  // Read the events to find out whether they were written, or write them
+  // again with a precondition that does not hold if they were.
+}
+```
 
 ### Using Testcontainers
 
@@ -868,7 +874,7 @@ In case you need to set up the client yourself, use the following functions to g
 
 ## Upgrading From Version 1
 
-Version 2 of the client SDK speaks the v2 API of EventSourcingDB with servers that offer it, and the v1 API with all others (see [Getting Started](#getting-started)). Upgrading takes these changes:
+Version 2 of the client SDK speaks the v2 API of EventSourcingDB with servers that offer it, and the v1 API with all others (see [Talking to Servers With and Without the v2 API](#talking-to-servers-with-and-without-the-v2-api)). Upgrading takes these changes:
 
 - **The module path ends with `/v2`.** Import `github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb` instead of `github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb`, and `github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdbtest` instead of `github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdbtest`.
 - **`ErrHeartbeatTimeout` is gone.** A stream that stalls once the server has begun to answer ends with `ErrConnectionStalled`, as every other request that stalls. Replace `errors.Is(err, eventsourcingdb.ErrHeartbeatTimeout)` with `errors.Is(err, eventsourcingdb.ErrConnectionStalled)`.
