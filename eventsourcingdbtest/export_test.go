@@ -50,6 +50,29 @@ func RemoveContainers(ctx context.Context, attemptID string) error {
 	return removeContainersOfAttempt(ctx, attemptID)
 }
 
+// AwaitEnded waits until the attempt with the given context noticed that it
+// is to end, e.g. as the context of Start ended, for 5 seconds at most, and
+// tells whether it did.
+func AwaitEnded(ctx context.Context) bool {
+	attemptCtx, ok := ctx.(*attemptContext)
+	if !ok {
+		return false
+	}
+
+	for range 5000 {
+		attemptCtx.mu.Lock()
+		ended := attemptCtx.cause != nil
+		attemptCtx.mu.Unlock()
+
+		if ended {
+			return true
+		}
+		time.Sleep(time.Millisecond)
+	}
+
+	return false
+}
+
 // GetStartupTimeout returns the startup timeout of a container.
 func GetStartupTimeout(c *Container) time.Duration {
 	return c.startupTimeout
