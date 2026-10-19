@@ -47,15 +47,16 @@ const pathOfV2Ping = "/api/v2/system/ping"
 // remembers the answer, if it is a definitive one. Otherwise, the request
 // fails with the error of asking, and the next one asks again. Requests that
 // start while the server is asked wait for its answer, rather than asking as
-// well.
+// well. Once the server answers a request through the v2 API with 404 or 405,
+// the client forgets the answer, and the next request asks again.
 func (c *Client) chooseAPI(ctx context.Context, action string) (api, error) {
-	version, err := c.apiChoice.choose(ctx, c.probeAPI)
+	version, generation, err := c.apiChoice.choose(ctx, c.probeAPI)
 	if err != nil {
 		return nil, errorOfProbeFor(err, action)
 	}
 
 	if version == apiVersionV2 {
-		return v2API{client: c}, nil
+		return v2API{client: c, generation: generation}, nil
 	}
 
 	return v1API{client: c}, nil
@@ -152,9 +153,28 @@ type apiChoice struct {
 	version apiVersion
 	running *probe
 
+	// generation counts the answers that probes remembered, so that forget
+	// forgets only the answer that a request was sent by, and never a newer
+	// one.
+	generation uint64
+
 	// waiting is called whenever a request starts to wait for the probe of
 	// another request. It is nil, but in tests.
 	waiting func()
+}
+
+// forget forgets that the server offers the v2 API, as the probe of the given
+// generation found out, so that the next request asks the server again. It
+// leaves the answer of a newer probe alone, and a probe that runs right now,
+// as the request that forgets was sent before either, and so tells nothing
+// about them.
+func (a *apiChoice) forget(generation uint64) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if a.version == apiVersionV2 && a.generation == generation {
+		a.version = apiVersionUnknown
+	}
 }
 
 // run runs the given probe with find, remembers its outcome if it tells which
@@ -169,7 +189,9 @@ func (a *apiChoice) run(ctx context.Context, running *probe, find func(ctx conte
 
 		a.mu.Lock()
 		if hasReturned && running.err == nil {
+			a.generation++
 			a.version = running.version
+			running.generation = a.generation
 		}
 		a.running = nil
 		a.mu.Unlock()
@@ -182,32 +204,34 @@ func (a *apiChoice) run(ctx context.Context, running *probe, find func(ctx conte
 }
 
 // probe is a request that asks the server for its API. Once done is closed,
-// version and err hold its outcome, and abandoned tells whether it failed
-// because the context of the request that sent it ended, which says nothing
-// about the server.
+// version and err hold its outcome, generation the generation with which it
+// was remembered, and abandoned tells whether it failed because the context
+// of the request that sent it ended, which says nothing about the server.
 type probe struct {
-	done      chan struct{}
-	version   apiVersion
-	err       error
-	abandoned bool
+	done       chan struct{}
+	version    apiVersion
+	generation uint64
+	err        error
+	abandoned  bool
 }
 
-// choose returns the API that the server offers, as the given function finds
-// out with the given context, unless it is known already, or unless another
-// request is finding it out right now, in which case it waits for that.
-func (a *apiChoice) choose(ctx context.Context, find func(ctx context.Context) (apiVersion, error)) (apiVersion, error) {
+// choose returns the API that the server offers, and the generation of that
+// answer, as the given function finds out with the given context, unless it
+// is known already, or unless another request is finding it out right now, in
+// which case it waits for that.
+func (a *apiChoice) choose(ctx context.Context, find func(ctx context.Context) (apiVersion, error)) (apiVersion, uint64, error) {
 	for {
 		err := ctx.Err()
 		if err != nil {
-			return apiVersionUnknown, err
+			return apiVersionUnknown, 0, err
 		}
 
 		a.mu.Lock()
 		if a.version != apiVersionUnknown {
-			version := a.version
+			version, generation := a.version, a.generation
 			a.mu.Unlock()
 
-			return version, nil
+			return version, generation, nil
 		}
 
 		running := a.running
@@ -218,7 +242,7 @@ func (a *apiChoice) choose(ctx context.Context, find func(ctx context.Context) (
 
 			a.run(ctx, running, find)
 
-			return running.version, running.err
+			return running.version, running.generation, running.err
 		}
 
 		waiting := a.waiting
@@ -231,7 +255,7 @@ func (a *apiChoice) choose(ctx context.Context, find func(ctx context.Context) (
 		select {
 		case <-running.done:
 		case <-ctx.Done():
-			return apiVersionUnknown, ctx.Err()
+			return apiVersionUnknown, 0, ctx.Err()
 		}
 
 		// The request that sent the probe ended, so this one asks itself.
@@ -239,6 +263,6 @@ func (a *apiChoice) choose(ctx context.Context, find func(ctx context.Context) (
 			continue
 		}
 
-		return running.version, running.err
+		return running.version, running.generation, running.err
 	}
 }
