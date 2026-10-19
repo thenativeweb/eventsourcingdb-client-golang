@@ -491,6 +491,55 @@ func TestChoosingTheAPI(t *testing.T) {
 		}
 	})
 
+	t.Run("forgets the v2 API also on a 404 or 405 that does not come from EventSourcingDB, as when it asks", func(t *testing.T) {
+		for _, status := range []int{http.StatusNotFound, http.StatusMethodNotAllowed} {
+			for _, name := range namesOfRequests() {
+				t.Run(fmt.Sprintf("%d/%s", status, name), func(t *testing.T) {
+					server := newChangingServer(t, answerAsServer)
+					client := server.client(t)
+
+					err := client.Ping(context.Background())
+					require.NoError(t, err)
+					require.Equal(t, "v2", eventsourcingdb.APIOf(client))
+
+					// The server is rolled back behind a proxy that passes on
+					// nothing but the paths of the v1 API, and answers every
+					// other path itself.
+					server.answerWith(func(w http.ResponseWriter, r *http.Request) {
+						if strings.HasPrefix(r.URL.Path, "/api/v2/") {
+							answerFromProxy(status)(w, r)
+							return
+						}
+						answerAsServer(w, r)
+					})
+					before := len(server.paths())
+					request := requestOf(t, client, name)
+
+					// The request fails as before, since the answer does not
+					// come from EventSourcingDB.
+					err = request.send()
+					assert.ErrorIs(t, err, eventsourcingdb.ErrInvalidServerHeader)
+					assertErrorOfRequest(t, name, err, "server must be EventSourcingDB")
+					assert.Empty(t, eventsourcingdb.APIOf(client))
+
+					err = request.send()
+					if name == "ObserveEvents" {
+						assert.EqualError(t, err, "failed to observe events, the stream broke off")
+					} else {
+						assert.NoError(t, err)
+					}
+					assert.Equal(t, "v1", eventsourcingdb.APIOf(client))
+
+					paths := server.paths()[before:]
+					require.Len(t, paths, 3)
+					assert.Contains(t, paths[0], " /api/v2/")
+					assert.Equal(t, "GET /api/v2/system/ping", paths[1])
+					assert.Contains(t, paths[2], " /api/v1/")
+				})
+			}
+		}
+	})
+
 	t.Run("forgets nothing on an error that the v2 API reports with status 200 or with a status other than 404 and 405, nor on a 404 of the v1 API", func(t *testing.T) {
 		server := newChangingServer(t, answerAsServer)
 		client := server.client(t)
