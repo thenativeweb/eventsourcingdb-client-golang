@@ -44,25 +44,6 @@ if err != nil {
 
 *Note that the client sends its requests with an HTTP client of its own, which starts from a copy of `http.DefaultTransport`. Changing `http.DefaultClient`, e.g. setting its `Timeout`, does not affect it.*
 
-The client works with servers that offer the v2 API of EventSourcingDB, and with servers that offer the v1 API only. Creating a client sends no request. On its first request, the client asks the server whether it offers the v2 API, and remembers the answer: it speaks the v2 API if the server offers it, and the v1 API otherwise. If the server gives no clear answer, e.g. because it can not be reached, that first request fails with the error, and the next request asks again. Since the client asks with `GET /api/v2/system/ping`, the error of that first request then names that path, whatever the request was, e.g. `Get "http://localhost:3000/api/v2/system/ping": dial tcp [::1]:3000: connect: connection refused`.
-
-*Note that with the v2 API, the client reads with the HTTP method `QUERY` ([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008)). If a proxy runs in front of the database, it has to let `QUERY` through. The client does not fall back to `POST`.*
-
-A request fails if nothing arrives from the server for 30 seconds, e.g. because the server can not be reached, or because a proxy keeps the connection open but no longer passes anything on (see [Handling Errors](#handling-errors)). To change this stall timeout, pass the `WithStallTimeout` option to `NewClient`:
-
-```go
-client, err := eventsourcingdb.NewClient(
-  baseURL,
-  apiToken,
-  eventsourcingdb.WithStallTimeout(10*time.Second),
-)
-if err != nil {
-  // ...
-}
-```
-
-The clock starts when a request is sent, so it covers connecting and waiting for the response, and starts again with every byte that arrives. It does not limit how long a request takes in total: a stream that keeps receiving events or heartbeats never ends because of it, and the time you spend on an item of a stream does not count. The stall timeout must be greater than zero, and since the server sends a heartbeat every second while observing events and running EventQL queries, it should be several seconds at least. To limit a single request further, give its context a deadline.
-
 Then call the `Ping` function with a context to check whether the instance is reachable. If it is not, the function will return an error:
 
 ```go
@@ -82,6 +63,29 @@ if err != nil {
   // ...
 }
 ```
+
+### Talking to Servers With and Without the v2 API
+
+The client works with servers that offer the v2 API of EventSourcingDB, and with servers that offer the v1 API only. Creating a client sends no request. On its first request, the client asks the server whether it offers the v2 API, and remembers the answer: it speaks the v2 API if the server offers it, and the v1 API otherwise. If the server gives no clear answer, e.g. because it can not be reached, that first request fails with the error, and the next request asks again. Since the client asks with `GET /api/v2/system/ping`, the error of that first request then names that path, whatever the request was, e.g. `Get "http://localhost:3000/api/v2/system/ping": dial tcp [::1]:3000: connect: connection refused`.
+
+*Note that with the v2 API, the client reads with the HTTP method `QUERY` ([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008)). If a proxy runs in front of the database, it has to let `QUERY` through. The client does not fall back to `POST`.*
+
+### Configuring the Stall Timeout
+
+A request fails if nothing arrives from the server for 30 seconds, e.g. because the server can not be reached, or because a proxy keeps the connection open but no longer passes anything on (see [Handling Errors](#handling-errors)). To change this stall timeout, pass the `WithStallTimeout` option to `NewClient`:
+
+```go
+client, err := eventsourcingdb.NewClient(
+  baseURL,
+  apiToken,
+  eventsourcingdb.WithStallTimeout(10*time.Second),
+)
+if err != nil {
+  // ...
+}
+```
+
+The clock starts when a request is sent, so it covers connecting and waiting for the response, and starts again with every byte that arrives. It does not limit how long a request takes in total: a stream that keeps receiving events or heartbeats never ends because of it, and the time you spend on an item of a stream does not count. The stall timeout must be greater than zero, and since the server sends a heartbeat every second while observing events and running EventQL queries, it should be several seconds at least. To limit a single request further, give its context a deadline.
 
 ### Writing Events
 
