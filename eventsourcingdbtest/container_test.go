@@ -258,9 +258,8 @@ func TestContainerStart(t *testing.T) {
 				request.WaitingFor = wait.ForHTTP("/api/v1/ping").
 					WithPort("3000/tcp").
 					WithStartupTimeout(time.Minute)
-				return startBeforeTheClock(ctx, request)
 			}
-			return testcontainers.GenericContainer(ctx, request)
+			return startBeforeTheClock(ctx, request)
 		})
 
 		container := eventsourcingdbtest.NewContainer().
@@ -337,7 +336,7 @@ func TestContainerStart(t *testing.T) {
 					}
 
 					unreachable.change(&request)
-					return testcontainers.GenericContainer(ctx, request)
+					return startBeforeTheClock(ctx, request)
 				})
 
 				container := eventsourcingdbtest.NewContainer().
@@ -512,12 +511,13 @@ func TestContainerStart(t *testing.T) {
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 
-			var cutShort atomic.Bool
+			var noticed, cutShort atomic.Bool
 			attempts := replaceStart(t, func(attemptCtx context.Context, attempt int, request testcontainers.GenericContainerRequest) (testcontainers.Container, error) {
 				request.LifecycleHooks = append(request.LifecycleHooks, testcontainers.ContainerLifecycleHooks{
 					PreCreates: []testcontainers.ContainerRequestHook{
 						func(context.Context, testcontainers.ContainerRequest) error {
 							cancel()
+							noticed.Store(eventsourcingdbtest.AwaitEnded(attemptCtx))
 							cutShort.Store(attemptCtx.Err() != nil)
 							return nil
 						},
@@ -531,6 +531,7 @@ func TestContainerStart(t *testing.T) {
 			err := container.Start(ctx)
 			defer container.Stop(t.Context())
 
+			assert.True(t, noticed.Load(), "the attempt did not notice that the context ended")
 			assert.False(t, cutShort.Load(), "the context cut creating the container short")
 			assert.EqualError(t, err, "failed to start the container: context canceled")
 			require.Len(t, attempts.IDs(), 1)
@@ -779,9 +780,21 @@ func startUnchanged(ctx context.Context, _ int, request testcontainers.GenericCo
 
 // createdButNotHandedOut creates and starts a container, but behaves as if
 // Docker had not answered before the context ended, so that it does not hand
-// out the container.
+// out the container. Docker creates and starts the container before the clock
+// starts, and the hooks of Start run only then, as if Docker had just created
+// it, so that how fast Docker is does not matter.
 func createdButNotHandedOut(ctx context.Context, request testcontainers.GenericContainerRequest) (testcontainers.Container, error) {
-	_, _ = testcontainers.GenericContainer(ctx, request)
+	_, _ = startBeforeTheClock(ctx, request)
+
+	for _, hooks := range request.LifecycleHooks {
+		for _, hook := range hooks.PreCreates {
+			_ = hook(ctx, request.ContainerRequest)
+		}
+		for _, hook := range hooks.PostCreates {
+			_ = hook(ctx, nil)
+		}
+	}
+
 	<-ctx.Done()
 	return nil, ctx.Err()
 }
@@ -852,19 +865,14 @@ func (c *trackedContainer) Terminate(ctx context.Context, options ...testcontain
 
 // assertTerminated asserts that each container that was handed out to Start
 // was terminated once, so that Testcontainers released what it holds for it.
-// That may happen in the background, within the grace period, if Start
-// stopped waiting for Docker to create the container.
 func assertTerminated(t *testing.T, attempts *attempts) {
 	t.Helper()
 
-	assert.Eventually(t, func() bool {
-		for _, container := range attempts.Containers() {
-			if container != nil && container.terminations.Load() != 1 {
-				return false
-			}
+	for _, container := range attempts.Containers() {
+		if container != nil {
+			assert.Equal(t, int32(1), container.terminations.Load(), "a container was not terminated once")
 		}
-		return true
-	}, 2*eventsourcingdbtest.CreateGracePeriod, 100*time.Millisecond, "a container was not terminated once")
+	}
 }
 
 // assertDistinct asserts that each attempt has an id of its own.
@@ -879,8 +887,7 @@ func assertDistinct(t *testing.T, attemptIDs []string) {
 }
 
 // assertRemoved asserts that Docker no longer knows any container of the
-// given attempts. If Start stopped waiting for Docker to create a container,
-// it removes the container in the background, within the grace period.
+// given attempts.
 func assertRemoved(t *testing.T, attemptIDs []string) {
 	t.Helper()
 
@@ -888,16 +895,12 @@ func assertRemoved(t *testing.T, attemptIDs []string) {
 	require.NoError(t, err)
 	defer dockerClient.Close()
 
-	assert.Eventually(t, func() bool {
-		for _, attemptID := range attemptIDs {
-			containers, err := dockerClient.ContainerList(context.Background(), client.ContainerListOptions{
-				All:     true,
-				Filters: make(client.Filters).Add("label", eventsourcingdbtest.StartLabel+"="+attemptID),
-			})
-			if err != nil || len(containers.Items) > 0 {
-				return false
-			}
-		}
-		return true
-	}, 2*eventsourcingdbtest.CreateGracePeriod, 100*time.Millisecond, "a container of the attempts was left behind")
+	for _, attemptID := range attemptIDs {
+		containers, err := dockerClient.ContainerList(context.Background(), client.ContainerListOptions{
+			All:     true,
+			Filters: make(client.Filters).Add("label", eventsourcingdbtest.StartLabel+"="+attemptID),
+		})
+		require.NoError(t, err)
+		assert.Empty(t, containers.Items, "a container of the attempt was left behind")
+	}
 }
