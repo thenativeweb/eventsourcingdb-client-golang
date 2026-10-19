@@ -20,14 +20,34 @@ import (
 // it is incomplete.
 type v2API struct {
 	client *Client
+
+	// generation is the generation of the answer with which the client chose
+	// the v2 API, so that forgetting it leaves a newer answer alone.
+	generation uint64
 }
 
 // open sends a request of the v2 API, as Client.request does, and returns the
 // response if its status is 200, and a DBAPIError without a code otherwise.
 // The caller has to close its body.
 func (a v2API) open(guard *stallGuard, action string, method string, path string, body any, authorize bool) (*http.Response, error) {
-	response, err := a.client.request(guard, method, path, body, authorize)
+	response, err := a.client.requestOfAnyServer(guard, method, path, body, authorize)
 	if err != nil {
+		return nil, err
+	}
+
+	// A server that answers a path of the v2 API with 404 or 405 no longer
+	// offers it, e.g. since it was rolled back to a version without it, so
+	// the client forgets the API, and the next request asks again. As when
+	// the client asks, that holds also if the answer does not come from
+	// EventSourcingDB, e.g. from a proxy that passes on nothing but the
+	// paths of the v1 API. The request itself fails as with any other status.
+	if response.StatusCode == http.StatusNotFound || response.StatusCode == http.StatusMethodNotAllowed {
+		a.client.apiChoice.forget(a.generation)
+	}
+
+	err = validateServerHeader(response)
+	if err != nil {
+		response.Body.Close()
 		return nil, err
 	}
 
