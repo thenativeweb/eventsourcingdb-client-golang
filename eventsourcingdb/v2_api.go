@@ -20,6 +20,10 @@ import (
 // it is incomplete.
 type v2API struct {
 	client *Client
+
+	// generation is the generation of the answer with which the client chose
+	// the v2 API, so that forgetting it leaves a newer answer alone.
+	generation uint64
 }
 
 // open sends a request of the v2 API, as Client.request does, and returns the
@@ -33,6 +37,15 @@ func (a v2API) open(guard *stallGuard, action string, method string, path string
 
 	if response.StatusCode != http.StatusOK {
 		defer response.Body.Close()
+
+		// A server that answers a path of the v2 API with 404 or 405 no
+		// longer offers it, e.g. since it was rolled back to a version
+		// without it, so the client forgets the API, and the next request
+		// asks again. The request itself fails as with any other status.
+		if response.StatusCode == http.StatusNotFound || response.StatusCode == http.StatusMethodNotAllowed {
+			a.client.apiChoice.forget(a.generation)
+		}
+
 		return nil, newDBAPIError(action, response)
 	}
 

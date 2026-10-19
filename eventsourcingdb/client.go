@@ -14,7 +14,9 @@ import (
 // The client speaks the v2 API of the server if the server offers it, and the
 // v1 API otherwise. Creating it sends no request: the first request of the
 // client finds out which API the server offers, and the client remembers that
-// for every request after it.
+// for every request after it. If the server answers a path of the v2 API with
+// 404 or 405, e.g. after it was rolled back to a version without it, the
+// client asks again on the next request.
 type Client struct {
 	baseURL      *url.URL
 	apiToken     string

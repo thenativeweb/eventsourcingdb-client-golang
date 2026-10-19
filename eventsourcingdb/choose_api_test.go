@@ -2,11 +2,13 @@ package eventsourcingdb_test
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -449,6 +451,347 @@ func TestChoosingTheAPI(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("forgets the v2 API once the server answers a path of it with 404 or 405, and asks again on the next request", func(t *testing.T) {
+		for _, status := range []int{http.StatusNotFound, http.StatusMethodNotAllowed} {
+			for _, name := range namesOfRequests() {
+				t.Run(fmt.Sprintf("%d/%s", status, name), func(t *testing.T) {
+					server := newChangingServer(t, answerAsServer)
+					client := server.client(t)
+
+					err := client.Ping(context.Background())
+					require.NoError(t, err)
+					require.Equal(t, "v2", eventsourcingdb.APIOf(client))
+
+					server.answerWith(answerAsRolledBack(status))
+					before := len(server.paths())
+					request := requestOf(t, client, name)
+
+					// The request fails as with any other status, and a write
+					// may have been stored.
+					err = request.send()
+					assertErrorOfRequest(t, name, err, fmt.Sprintf("failed to %s, got HTTP status code '%d', expected '200'", request.action, status))
+					assert.Empty(t, eventsourcingdb.APIOf(client))
+
+					err = request.send()
+					if name == "ObserveEvents" {
+						assert.EqualError(t, err, "failed to observe events, the stream broke off")
+					} else {
+						assert.NoError(t, err)
+					}
+					assert.Equal(t, "v1", eventsourcingdb.APIOf(client))
+
+					paths := server.paths()[before:]
+					require.Len(t, paths, 3)
+					assert.Contains(t, paths[0], " /api/v2/")
+					assert.Equal(t, "GET /api/v2/system/ping", paths[1])
+					assert.Contains(t, paths[2], " /api/v1/")
+				})
+			}
+		}
+	})
+
+	t.Run("forgets nothing on an error that the v2 API reports with status 200 or with a status other than 404 and 405, nor on a 404 of the v1 API", func(t *testing.T) {
+		server := newChangingServer(t, answerAsServer)
+		client := server.client(t)
+
+		err := client.Ping(context.Background())
+		require.NoError(t, err)
+
+		server.answerWith(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Server", "EventSourcingDB/test")
+			_, _ = w.Write([]byte(errorItem(eventsourcingdb.CodeServerShuttingDown) + "\n"))
+		})
+		for _, request := range requestsOf(client) {
+			err := request.send()
+			assertDBAPIError(t, err, http.StatusOK, eventsourcingdb.CodeServerShuttingDown, "failed")
+			assert.Equal(t, "v2", eventsourcingdb.APIOf(client), request.name)
+		}
+
+		for _, status := range []int{http.StatusConflict, http.StatusInternalServerError} {
+			server.answerWith(func(w http.ResponseWriter, r *http.Request) {
+				answerWithStatus(status)(w, r)
+			})
+			for _, request := range requestsOf(client) {
+				err := request.send()
+				assertDBAPIError(t, err, status, "", "failed")
+				assert.Equal(t, "v2", eventsourcingdb.APIOf(client), request.name)
+			}
+		}
+
+		// Once the server is rolled back, its 404 makes the client find out
+		// that it offers the v1 API only.
+		server.answerWith(answerAsRolledBack(http.StatusNotFound))
+		_ = client.Ping(context.Background())
+		err = client.Ping(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, "v1", eventsourcingdb.APIOf(client))
+
+		// A 404 of the v1 API is an error of the request, e.g. an event type
+		// that does not exist.
+		server.answerWith(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Server", "EventSourcingDB/test")
+			http.NotFound(w, r)
+		})
+		before := len(server.paths())
+		for _, request := range requestsOf(client) {
+			err := request.send()
+			var dbAPIError *eventsourcingdb.DBAPIError
+			if assert.ErrorAs(t, err, &dbAPIError, request.name) {
+				assert.Equal(t, http.StatusNotFound, dbAPIError.Status, request.name)
+			}
+			assert.Equal(t, "v1", eventsourcingdb.APIOf(client), request.name)
+		}
+
+		paths := server.paths()[before:]
+		assert.Len(t, paths, len(requestsOf(nil)))
+		for _, path := range paths {
+			assert.Contains(t, path, " /api/v1/")
+		}
+	})
+
+	t.Run("a 404 that arrives while the client asks again leaves the asking alone", func(t *testing.T) {
+		released, release := newRelease()
+		probeReleased, releaseProbe := newRelease()
+
+		var isRolledBack atomic.Bool
+		var probes atomic.Int32
+		probeReceived := make(chan struct{}, 10)
+		reading := make(chan struct{}, 10)
+		statuses := make(chan int)
+
+		client := newClientOf(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			// Reading events through the v2 API waits for the status that the
+			// test answers it with.
+			case r.URL.Path == "/api/v2/data/read-events":
+				reading <- struct{}{}
+				select {
+				case status := <-statuses:
+					w.Header().Set("Server", "EventSourcingDB/test")
+					w.WriteHeader(status)
+				case <-released:
+				case <-r.Context().Done():
+				}
+			// Once rolled back, the server answers the request with which the
+			// client asks for its API only when the test releases it.
+			case r.URL.Path == "/api/v2/system/ping" && isRolledBack.Load():
+				probes.Add(1)
+				probeReceived <- struct{}{}
+				select {
+				case <-probeReleased:
+				case <-released:
+				case <-r.Context().Done():
+				}
+				answerAsV1(w, r)
+			default:
+				answerAsServer(w, r)
+			}
+		}))
+		// The server waits for its handlers when it closes, so they have to be
+		// released first, also if the test fails.
+		t.Cleanup(release)
+
+		readEvents := func() error {
+			_, err := countItems(client.ReadEvents(context.Background(), "/test", eventsourcingdb.ReadEventsOptions{}), nil)
+			return err
+		}
+
+		err := client.Ping(context.Background())
+		require.NoError(t, err)
+
+		readErrs := make(chan error, 2)
+		for range 2 {
+			go func() {
+				readErrs <- readEvents()
+			}()
+		}
+		for range 2 {
+			receive(t, reading, "a request did not read events through the v2 API")
+		}
+
+		// The server is rolled back, and answers the first read with 404.
+		isRolledBack.Store(true)
+		statuses <- http.StatusNotFound
+		assertDBAPIError(t, <-readErrs, http.StatusNotFound, "", "")
+		require.Empty(t, eventsourcingdb.APIOf(client))
+
+		waiting := make(chan struct{}, 10)
+		eventsourcingdb.SetWaitingForProbe(client, func() {
+			waiting <- struct{}{}
+		})
+
+		askingErrs := make(chan error, 3)
+		go func() {
+			askingErrs <- readEvents()
+		}()
+		receive(t, probeReceived, "the client did not ask again")
+		go func() {
+			askingErrs <- readEvents()
+		}()
+		receive(t, waiting, "a request did not wait for the answer")
+
+		// The 404 of the second read arrives while the client asks, and a
+		// request that starts after it still waits for the answer.
+		statuses <- http.StatusNotFound
+		assertDBAPIError(t, <-readErrs, http.StatusNotFound, "", "")
+		go func() {
+			askingErrs <- readEvents()
+		}()
+		receive(t, waiting, "a request did not wait for the answer")
+
+		releaseProbe()
+		for range 3 {
+			assert.NoError(t, <-askingErrs)
+		}
+		assert.Equal(t, int32(1), probes.Load())
+		assert.Equal(t, "v1", eventsourcingdb.APIOf(client))
+	})
+
+	t.Run("a 404 that arrives after the client asked again leaves the newer answer alone", func(t *testing.T) {
+		released, release := newRelease()
+
+		var pings atomic.Int32
+		reading := make(chan struct{}, 10)
+		statuses := make(chan int)
+
+		client := newClientOf(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Reading events through the v2 API waits for the status that the
+			// test answers it with.
+			if r.URL.Path == "/api/v2/data/read-events" {
+				reading <- struct{}{}
+				select {
+				case status := <-statuses:
+					w.Header().Set("Server", "EventSourcingDB/test")
+					w.WriteHeader(status)
+				case <-released:
+				case <-r.Context().Done():
+				}
+				return
+			}
+
+			if r.URL.Path == "/api/v2/system/ping" {
+				pings.Add(1)
+			}
+			answerAsServer(w, r)
+		}))
+		// The server waits for its handlers when it closes, so they have to be
+		// released first, also if the test fails.
+		t.Cleanup(release)
+
+		readErrs := make(chan error, 2)
+		readEvents := func() {
+			_, err := countItems(client.ReadEvents(context.Background(), "/test", eventsourcingdb.ReadEventsOptions{}), nil)
+			readErrs <- err
+		}
+
+		err := client.Ping(context.Background())
+		require.NoError(t, err)
+
+		for range 2 {
+			go readEvents()
+		}
+		for range 2 {
+			receive(t, reading, "a request did not read events through the v2 API")
+		}
+
+		statuses <- http.StatusNotFound
+		assertDBAPIError(t, <-readErrs, http.StatusNotFound, "", "")
+		require.Empty(t, eventsourcingdb.APIOf(client))
+
+		// The client asks again, and the server offers the v2 API, e.g. as it
+		// was upgraded again.
+		err = client.Ping(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, "v2", eventsourcingdb.APIOf(client))
+		require.Equal(t, int32(4), pings.Load())
+
+		// The 404 of the second read was sent before.
+		statuses <- http.StatusNotFound
+		assertDBAPIError(t, <-readErrs, http.StatusNotFound, "", "")
+		assert.Equal(t, "v2", eventsourcingdb.APIOf(client))
+
+		err = client.Ping(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, int32(5), pings.Load())
+	})
+}
+
+// answerAsRolledBack answers as a server that was rolled back to a version
+// without the v2 API: every path of the v2 API with the given status, and
+// every other one as answerAsServer does.
+func answerAsRolledBack(status int) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasPrefix(r.URL.Path, "/api/v2/") {
+			answerAsServer(w, r)
+			return
+		}
+
+		w.Header().Set("Server", "EventSourcingDB/test")
+		w.WriteHeader(status)
+	}
+}
+
+// changingServer is a fake server that answers every request with the handler
+// that the test gave it last, e.g. to roll it back to a version without the v2
+// API. It records the method and the path of every request it receives.
+type changingServer struct {
+	baseURL *url.URL
+
+	mu       sync.Mutex
+	answer   http.HandlerFunc
+	received []string
+}
+
+// newChangingServer starts a changingServer, which answers every request with
+// answer.
+func newChangingServer(t *testing.T, answer http.HandlerFunc) *changingServer {
+	t.Helper()
+
+	server := &changingServer{answer: answer}
+
+	httpServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server.mu.Lock()
+		server.received = append(server.received, r.Method+" "+r.URL.Path)
+		answer := server.answer
+		server.mu.Unlock()
+
+		answer(w, r)
+	}))
+	t.Cleanup(httpServer.Close)
+
+	baseURL, err := url.Parse(httpServer.URL)
+	require.NoError(t, err)
+	server.baseURL = baseURL
+
+	return server
+}
+
+// client returns a client of the server.
+func (s *changingServer) client(t *testing.T) *eventsourcingdb.Client {
+	t.Helper()
+
+	client, err := eventsourcingdb.NewClient(s.baseURL, "secret")
+	require.NoError(t, err)
+
+	return client
+}
+
+// answerWith makes the server answer every request with answer from now on.
+func (s *changingServer) answerWith(answer http.HandlerFunc) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.answer = answer
+}
+
+// paths returns the method and the path of every request the server received
+// so far.
+func (s *changingServer) paths() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return append([]string{}, s.received...)
 }
 
 // probeAnswer answers the request with which a client asks a server for its
