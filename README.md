@@ -769,7 +769,7 @@ if errors.Is(err, eventsourcingdb.ErrInvalidServerHeader) {
 }
 ```
 
-If nothing arrives from the server for the stall timeout, 30 seconds by default (see [Getting Started](#getting-started)), e.g. because the server can not be reached, or because a proxy keeps the connection open but no longer passes anything on, the client closes the connection, and the request ends with `ErrConnectionStalled`. This applies to every request, also to streams once the server has begun to answer, on which heartbeats count as something that arrives. Its message names the stall timeout. Use `errors.Is` to check for it:
+If nothing arrives from the server for the stall timeout, 30 seconds by default (see [Configuring the Stall Timeout](#configuring-the-stall-timeout)), e.g. because the server can not be reached, or because a proxy keeps the connection open but no longer passes anything on, the client closes the connection, and the request ends with `ErrConnectionStalled`. This applies to every request, also to streams once the server has begun to answer, on which heartbeats count as something that arrives. Its message names the stall timeout. Use `errors.Is` to check for it:
 
 ```golang
 for event, err := range client.ObserveEvents(
@@ -872,7 +872,7 @@ In case you need to set up the client yourself, use the following functions to g
 
 ## Upgrading From Version 1
 
-Version 2 of the client SDK speaks the v2 API of EventSourcingDB with servers that offer it, and the v1 API with all others (see [Getting Started](#getting-started)). Upgrading takes these changes:
+Version 2 of the client SDK speaks the v2 API of EventSourcingDB with servers that offer it, and the v1 API with all others (see [Talking to Servers With and Without the v2 API](#talking-to-servers-with-and-without-the-v2-api)). Upgrading takes these changes:
 
 - **The module path ends with `/v2`.** Import `github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb` instead of `github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdb`, and `github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdbtest` instead of `github.com/thenativeweb/eventsourcingdb-client-golang/eventsourcingdbtest`.
 - **`ErrHeartbeatTimeout` is gone.** A stream that stalls once the server has begun to answer ends with `ErrConnectionStalled`, as every other request that stalls. Replace `errors.Is(err, eventsourcingdb.ErrHeartbeatTimeout)` with `errors.Is(err, eventsourcingdb.ErrConnectionStalled)`.
