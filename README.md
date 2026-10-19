@@ -828,6 +828,8 @@ To check if the test container is running, call the `IsRunning` function:
 isRunning := container.IsRunning()
 ```
 
+`Start` waits until the database answers a ping, for up to 30 seconds from creating the container. Pulling the image does not count. If the container runs, but the database does not become reachable in time, `Start` replaces the container with a new one, up to 3 containers in total. If Docker fails, or if the container exits, `Start` returns an error at once, which in the latter case names the last lines of the container's log. Whenever a container fails to start, `Start` removes it.
+
 #### Configuring the Container Instance
 
 By default, `Container` uses the `latest` tag of the official EventSourcingDB Docker image. To change that, call the `WithImageTag` function:
@@ -843,6 +845,13 @@ Similarly, you can configure the port to use and the API token. Call the `WithPo
 container := eventsourcingdbtest.NewContainer().
   WithPort(4000).
   WithAPIToken("secret")
+```
+
+To change how long `Start` waits for the database in each container, call the `WithStartupTimeout` function. The default is 30 seconds:
+
+```go
+container := eventsourcingdbtest.NewContainer().
+  WithStartupTimeout(60 * time.Second)
 ```
 
 If you want to sign events, call the `WithSigningKey` function. This generates a new signing and verification key pair inside the container:
