@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-
-	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 // newV1DBAPIError reports that a server with the v1 API answered with a status
@@ -18,10 +16,16 @@ func newV1DBAPIError(action string, response *http.Response) *DBAPIError {
 	return dbAPIError
 }
 
+// v1ErrorPayload is the payload of a line with which a server with the v1 API
+// reports an error within a stream.
+type v1ErrorPayload struct {
+	Error string `json:"error"`
+}
+
 // newV1StreamError reports an error that a server with the v1 API sent within
 // a stream, as an error with status 200 and without a code.
 func newV1StreamError(action string, payload json.RawMessage) error {
-	var streamError internal.Error
+	var streamError v1ErrorPayload
 	err := json.Unmarshal(payload, &streamError)
 	if err != nil {
 		return err

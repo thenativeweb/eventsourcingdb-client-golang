@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdbtest"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 func TestReadSubjects(t *testing.T) {
@@ -19,7 +18,7 @@ func TestReadSubjects(t *testing.T) {
 	t.Run("reads no subjects if the database is empty", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
@@ -48,7 +47,7 @@ func TestReadSubjects(t *testing.T) {
 	t.Run("reads all subjects", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
@@ -109,7 +108,7 @@ func TestReadSubjects(t *testing.T) {
 	t.Run("reads all subjects from the given subject recursively", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
@@ -168,7 +167,7 @@ func TestReadSubjects(t *testing.T) {
 	t.Run("reads the given subject alone if not recursively", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)

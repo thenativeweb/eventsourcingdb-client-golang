@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdbtest"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 func TestVerifyHash(t *testing.T) {
@@ -23,7 +22,7 @@ func TestVerifyHash(t *testing.T) {
 	t.Run("verifies the event hash", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
@@ -59,7 +58,7 @@ func TestVerifyHash(t *testing.T) {
 	t.Run("returns an error if the event hash is invalid", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
@@ -107,7 +106,7 @@ func TestVerifySignature(t *testing.T) {
 	t.Run("returns an error if the signature is nil", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
@@ -149,7 +148,7 @@ func TestVerifySignature(t *testing.T) {
 	t.Run("returns an error if the hash verification fails", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().
@@ -199,7 +198,7 @@ func TestVerifySignature(t *testing.T) {
 	t.Run("returns an error if the signature verification fails", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().
@@ -248,7 +247,7 @@ func TestVerifySignature(t *testing.T) {
 	t.Run("returns an error if the signature belongs to another key", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().
@@ -291,7 +290,7 @@ func TestVerifySignature(t *testing.T) {
 	t.Run("verifies the signature", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().
@@ -341,7 +340,7 @@ func TestVerifySignature(t *testing.T) {
 func TestVerifyEventsOfTheServer(t *testing.T) {
 	ctx := context.Background()
 
-	imageTag, err := internal.GetImageTag()
+	imageTag, err := getImageTag()
 	require.NoError(t, err)
 
 	container := eventsourcingdbtest.NewContainer().
@@ -375,8 +374,8 @@ func TestVerifyEventsOfTheServer(t *testing.T) {
 			Subject:     "/books/42",
 			Type:        "io.eventsourcingdb.library.book-borrowed",
 			Data:        map[string]any{"borrowedBy": "/readers/23"},
-			TraceParent: internal.Ptr("00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01"),
-			TraceState:  internal.Ptr("rojo=00f067aa0ba902b7,congo=t61rcWkgMzE"),
+			TraceParent: new("00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01"),
+			TraceState:  new("rojo=00f067aa0ba902b7,congo=t61rcWkgMzE"),
 		},
 	}
 

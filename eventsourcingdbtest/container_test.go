@@ -25,12 +25,11 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdbtest"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 func TestContainer(t *testing.T) {
 	t.Run("starts, hands out a client, and stops", func(t *testing.T) {
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
@@ -68,7 +67,7 @@ func TestContainer(t *testing.T) {
 	})
 
 	t.Run("uses a custom API token and port", func(t *testing.T) {
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().
@@ -90,7 +89,7 @@ func TestContainer(t *testing.T) {
 	})
 
 	t.Run("signs events with its signing key", func(t *testing.T) {
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().
@@ -149,7 +148,7 @@ func TestContainer(t *testing.T) {
 // attempt fails, whatever the reason was, its container must not be left
 // behind.
 func TestContainerStart(t *testing.T) {
-	imageTag, err := internal.GetImageTag()
+	imageTag, err := getImageTag()
 	require.NoError(t, err)
 
 	t.Run("waits for 30 seconds by default", func(t *testing.T) {

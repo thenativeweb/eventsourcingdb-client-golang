@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdbtest"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 // A caller has to be able to end every request with its context, e.g. a write
@@ -25,7 +24,7 @@ func TestTheContext(t *testing.T) {
 	t.Run("a read that is canceled midway ends with the error of the context", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
@@ -68,7 +67,7 @@ func TestTheContext(t *testing.T) {
 	t.Run("a read with a context that has already ended does not start", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
@@ -93,7 +92,7 @@ func TestTheContext(t *testing.T) {
 	t.Run("a write with a context that has already ended writes nothing", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)

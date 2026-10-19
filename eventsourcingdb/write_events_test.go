@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdbtest"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 func TestWriteEvents(t *testing.T) {
@@ -20,7 +19,7 @@ func TestWriteEvents(t *testing.T) {
 	t.Run("writes a single event", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
@@ -54,7 +53,7 @@ func TestWriteEvents(t *testing.T) {
 	t.Run("writes the trace context of an event", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
@@ -74,8 +73,8 @@ func TestWriteEvents(t *testing.T) {
 			Data: EventData{
 				Value: 42,
 			},
-			TraceParent: internal.Ptr(traceParent),
-			TraceState:  internal.Ptr(traceState),
+			TraceParent: new(traceParent),
+			TraceState:  new(traceState),
 		}
 
 		writtenEvents, err := client.WriteEvents(
@@ -110,7 +109,7 @@ func TestWriteEvents(t *testing.T) {
 	t.Run("writes multiple events", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
@@ -165,7 +164,7 @@ func TestWriteEvents(t *testing.T) {
 	t.Run("supports the isSubjectPristine precondition", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
@@ -218,7 +217,7 @@ func TestWriteEvents(t *testing.T) {
 	t.Run("supports the isSubjectPopulated precondition", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
@@ -288,7 +287,7 @@ func TestWriteEvents(t *testing.T) {
 	t.Run("supports the isSubjectOnEventId precondition", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
@@ -341,7 +340,7 @@ func TestWriteEvents(t *testing.T) {
 	t.Run("supports the isEventQlQueryTrue precondition", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
@@ -394,7 +393,7 @@ func TestWriteEvents(t *testing.T) {
 	t.Run("reports an event that does not match its schema", func(t *testing.T) {
 		ctx := context.Background()
 
-		imageTag, err := internal.GetImageTag()
+		imageTag, err := getImageTag()
 		require.NoError(t, err)
 
 		container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)

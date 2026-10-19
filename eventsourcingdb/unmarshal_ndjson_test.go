@@ -1,4 +1,4 @@
-package internal_test
+package eventsourcingdb
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 func TestUnmarshalNDJSON(t *testing.T) {
@@ -18,8 +17,8 @@ func TestUnmarshalNDJSON(t *testing.T) {
 		ndjson := `{"type":"first","payload":{"value":23}}` + "\n" +
 			`{"type":"second","payload":{"value":42}}` + "\n"
 
-		var lines []internal.Line
-		for line, err := range internal.UnmarshalNDJSON[internal.Line](ctx, strings.NewReader(ndjson)) {
+		var lines []v1Line
+		for line, err := range unmarshalNDJSON[v1Line](ctx, strings.NewReader(ndjson)) {
 			require.NoError(t, err)
 			lines = append(lines, line)
 		}
@@ -49,8 +48,8 @@ func TestUnmarshalNDJSON(t *testing.T) {
 		ndjson := `{"type":"event","payload":` + string(payload) + "}\n"
 		require.Greater(t, len(ndjson), 256*1024)
 
-		var lines []internal.Line
-		for line, err := range internal.UnmarshalNDJSON[internal.Line](ctx, strings.NewReader(ndjson)) {
+		var lines []v1Line
+		for line, err := range unmarshalNDJSON[v1Line](ctx, strings.NewReader(ndjson)) {
 			require.NoError(t, err)
 			lines = append(lines, line)
 		}
@@ -74,7 +73,7 @@ func TestUnmarshalNDJSON(t *testing.T) {
 		ndjson := `{"type":"event","payload":{"value":23}` + "\n"
 
 		var gotError bool
-		for _, err := range internal.UnmarshalNDJSON[internal.Line](ctx, strings.NewReader(ndjson)) {
+		for _, err := range unmarshalNDJSON[v1Line](ctx, strings.NewReader(ndjson)) {
 			if err != nil {
 				gotError = true
 			}
@@ -90,7 +89,7 @@ func TestUnmarshalNDJSON(t *testing.T) {
 		ndjson := `{"type":"event","payload":{"value":23}}` + "\n"
 
 		var gotError error
-		for _, err := range internal.UnmarshalNDJSON[internal.Line](ctx, strings.NewReader(ndjson)) {
+		for _, err := range unmarshalNDJSON[v1Line](ctx, strings.NewReader(ndjson)) {
 			gotError = err
 		}
 

@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 // v1API sends the requests of a client through the v1 API, for a server that
@@ -41,7 +39,7 @@ func (a v1API) expectEvent(response *http.Response, action string, eventType str
 	var result struct {
 		Type string `json:"type"`
 	}
-	err := internal.ParseJSON(response.Body, &result)
+	err := parseJSON(response.Body, &result)
 	if err != nil {
 		return err
 	}
@@ -91,6 +89,23 @@ func (a v1API) writeEvents(ctx context.Context, body writeEventsRequestBody) ([]
 	return writtenEvents, nil
 }
 
+// v1Event is an event as the v1 API sends it, with its time as text.
+type v1Event struct {
+	SpecVersion     string          `json:"specversion"`
+	ID              string          `json:"id"`
+	Time            string          `json:"time"`
+	Source          string          `json:"source"`
+	Subject         string          `json:"subject"`
+	Type            string          `json:"type"`
+	DataContentType string          `json:"datacontenttype"`
+	Data            json.RawMessage `json:"data"`
+	Hash            string          `json:"hash"`
+	PredecessorHash string          `json:"predecessorhash"`
+	TraceParent     *string         `json:"traceparent"`
+	TraceState      *string         `json:"tracestate"`
+	Signature       *string         `json:"signature"`
+}
+
 func (a v1API) sendWriteEvents(guard *stallGuard, body writeEventsRequestBody) ([]Event, error) {
 	response, err := a.open(guard, actionWriteEvents, http.MethodPost, "/api/v1/write-events", body, true)
 	if err != nil {
@@ -98,8 +113,8 @@ func (a v1API) sendWriteEvents(guard *stallGuard, body writeEventsRequestBody) (
 	}
 	defer response.Body.Close()
 
-	var cloudEvents []internal.CloudEvent
-	err = internal.ParseJSON(response.Body, &cloudEvents)
+	var cloudEvents []v1Event
+	err = parseJSON(response.Body, &cloudEvents)
 	if err != nil {
 		return nil, err
 	}
@@ -178,8 +193,8 @@ func (a v1API) readEventType(ctx context.Context, eventType string) (EventType, 
 	}
 	defer response.Body.Close()
 
-	var eventTypeResponse internal.StreamEventType
-	err = internal.ParseJSON(response.Body, &eventTypeResponse)
+	var eventTypeResponse v1EventType
+	err = parseJSON(response.Body, &eventTypeResponse)
 	if err != nil {
 		return EventType{}, err
 	}
@@ -192,7 +207,7 @@ func (a v1API) readEventType(ctx context.Context, eventType string) (EventType, 
 // stream ends. An error line ends the stream with a DBAPIError. A stream of
 // the v1 API has no end line, so it ends with its last line, unless it never
 // ends, in which case it fails if it ends at all.
-func (a v1API) stream(ctx context.Context, action string, path string, body any, endless bool, fail func(err error), handle func(line internal.Line) bool) {
+func (a v1API) stream(ctx context.Context, action string, path string, body any, endless bool, fail func(err error), handle func(line v1Line) bool) {
 	guard := a.client.guard(ctx)
 	defer guard.end()
 
@@ -203,7 +218,7 @@ func (a v1API) stream(ctx context.Context, action string, path string, body any,
 	}
 	defer response.Body.Close()
 
-	for line, err := range guardedLines[internal.Line](guard, response.Body) {
+	for line, err := range guardedLines[v1Line](guard, response.Body) {
 		if err != nil {
 			fail(err)
 			return
@@ -228,7 +243,7 @@ func (a v1API) readEvents(ctx context.Context, body readEventsRequestBody) iter.
 	return func(yield func(Event, error) bool) {
 		fail := func(err error) { yield(Event{}, err) }
 
-		a.stream(ctx, actionReadEvents, "/api/v1/read-events", body, false, fail, func(line internal.Line) bool {
+		a.stream(ctx, actionReadEvents, "/api/v1/read-events", body, false, fail, func(line v1Line) bool {
 			return yieldEventOf(line.Type, line.Payload, yield)
 		})
 	}
@@ -238,7 +253,7 @@ func (a v1API) observeEvents(ctx context.Context, body observeEventsRequestBody)
 	return func(yield func(Event, error) bool) {
 		fail := func(err error) { yield(Event{}, err) }
 
-		a.stream(ctx, actionObserveEvents, "/api/v1/observe-events", body, true, fail, func(line internal.Line) bool {
+		a.stream(ctx, actionObserveEvents, "/api/v1/observe-events", body, true, fail, func(line v1Line) bool {
 			if line.Type == "heartbeat" {
 				return true
 			}
@@ -256,7 +271,7 @@ func (a v1API) runEventQLQuery(ctx context.Context, query string) iter.Seq2[json
 			Query string `json:"query"`
 		}
 
-		a.stream(ctx, actionRunEventQLQuery, "/api/v1/run-eventql-query", RequestBody{Query: query}, false, fail, func(line internal.Line) bool {
+		a.stream(ctx, actionRunEventQLQuery, "/api/v1/run-eventql-query", RequestBody{Query: query}, false, fail, func(line v1Line) bool {
 			switch line.Type {
 			case "heartbeat":
 				return true
@@ -284,13 +299,13 @@ func (a v1API) readSubjects(ctx context.Context, subject string, options ReadSub
 
 		normalizedSubject := "/" + strings.Trim(subject, "/")
 
-		a.stream(ctx, actionReadSubjects, "/api/v1/read-subjects", RequestBody{BaseSubject: subject}, false, fail, func(line internal.Line) bool {
+		a.stream(ctx, actionReadSubjects, "/api/v1/read-subjects", RequestBody{BaseSubject: subject}, false, fail, func(line v1Line) bool {
 			if line.Type != "subject" {
 				fail(errUnsupportedLineType(line.Type))
 				return false
 			}
 
-			var streamSubject internal.StreamSubject
+			var streamSubject streamedSubject
 			err := json.Unmarshal(line.Payload, &streamSubject)
 			if err != nil {
 				fail(err)
@@ -317,13 +332,13 @@ func (a v1API) readEventTypes(ctx context.Context) iter.Seq2[EventType, error] {
 	return func(yield func(EventType, error) bool) {
 		fail := func(err error) { yield(EventType{}, err) }
 
-		a.stream(ctx, actionReadEventTypes, "/api/v1/read-event-types", struct{}{}, false, fail, func(line internal.Line) bool {
+		a.stream(ctx, actionReadEventTypes, "/api/v1/read-event-types", struct{}{}, false, fail, func(line v1Line) bool {
 			if line.Type != "eventType" {
 				fail(errUnsupportedLineType(line.Type))
 				return false
 			}
 
-			var streamEventType internal.StreamEventType
+			var streamEventType v1EventType
 			err := json.Unmarshal(line.Payload, &streamEventType)
 			if err != nil {
 				fail(err)
@@ -335,9 +350,16 @@ func (a v1API) readEventTypes(ctx context.Context) iter.Seq2[EventType, error] {
 	}
 }
 
+// v1EventType is an event type as the v1 API sends it.
+type v1EventType struct {
+	EventType string          `json:"eventType"`
+	IsPhantom bool            `json:"isPhantom"`
+	Schema    *map[string]any `json:"schema,omitempty"`
+}
+
 // eventTypeOfV1 returns an event type as the v1 API sends it as an EventType,
 // whose HasEvents is the opposite of IsPhantom.
-func eventTypeOfV1(eventType internal.StreamEventType) EventType {
+func eventTypeOfV1(eventType v1EventType) EventType {
 	return EventType{
 		Type:      eventType.EventType,
 		HasEvents: !eventType.IsPhantom,

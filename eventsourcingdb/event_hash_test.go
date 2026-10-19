@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb"
-	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 // The fixtures are events as EventSourcingDB sent them, byte for byte: those
@@ -111,10 +110,10 @@ func TestVerifyHashOfFixtures(t *testing.T) {
 	t.Run("covers the trace context in version 2", func(t *testing.T) {
 		changes := map[string]func(event *eventsourcingdb.Event){
 			"a changed TraceParent": func(event *eventsourcingdb.Event) {
-				event.TraceParent = internal.Ptr("00-0af7651916cd43dd8448eb211c80319c-00f067aa0ba902b7-01")
+				event.TraceParent = new("00-0af7651916cd43dd8448eb211c80319c-00f067aa0ba902b7-01")
 			},
 			"a changed TraceState": func(event *eventsourcingdb.Event) {
-				event.TraceState = internal.Ptr("rojo=00f067aa0ba902b7")
+				event.TraceState = new("rojo=00f067aa0ba902b7")
 			},
 			"a missing TraceParent": func(event *eventsourcingdb.Event) { event.TraceParent = nil },
 			"a missing TraceState":  func(event *eventsourcingdb.Event) { event.TraceState = nil },
@@ -131,7 +130,7 @@ func TestVerifyHashOfFixtures(t *testing.T) {
 
 		t.Run("an added trace context", func(t *testing.T) {
 			event := eventOf(t, fixtureOfVersion2)
-			event.TraceParent = internal.Ptr("00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01")
+			event.TraceParent = new("00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01")
 
 			assert.ErrorIs(t, event.VerifyHash(), eventsourcingdb.ErrHashVerificationFailed)
 		})
@@ -192,7 +191,7 @@ func TestVerifyHashOfFixtures(t *testing.T) {
 		for name, fixture := range fixtures {
 			t.Run(name, func(t *testing.T) {
 				event := eventOf(t, fixture)
-				event.Signature = internal.Ptr(changedHash(*event.Signature))
+				event.Signature = new(changedHash(*event.Signature))
 
 				err := event.VerifySignature(verificationKeyOfFixtures(t))
 

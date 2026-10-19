@@ -12,8 +12,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/internal"
 )
 
 // ErrConnectionStalled reports that a request ended because nothing arrived
@@ -241,12 +239,12 @@ func (g *stallGuard) isConnected() bool {
 }
 
 // guardedLines reads the lines of a stream that a stall guard watches, and
-// decodes each of them as a T, as internal.UnmarshalNDJSON does. The clock
+// decodes each of them as a T, as unmarshalNDJSON does. The clock
 // stops while the caller handles a line, so that only the time spent waiting
 // for a line counts.
 func guardedLines[T any](g *stallGuard, body io.Reader) iter.Seq2[T, error] {
 	return func(yield func(T, error) bool) {
-		for line, err := range internal.UnmarshalNDJSON[T](g.ctx, body) {
+		for line, err := range unmarshalNDJSON[T](g.ctx, body) {
 			if err != nil {
 				yield(line, g.failure(err))
 				return
