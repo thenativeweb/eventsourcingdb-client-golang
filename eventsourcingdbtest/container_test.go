@@ -171,23 +171,17 @@ func TestContainerStart(t *testing.T) {
 		}
 	})
 
-	t.Run("does not count the time before Docker creates the container, such as pulling the image", func(t *testing.T) {
-		const startupTimeout = 200 * time.Millisecond
+	t.Run("does not count the time before Docker begins to create the container, such as pulling the image", func(t *testing.T) {
+		const startupTimeout = 2 * time.Second
 		errStop := errors.New("stop")
 
-		var errBeforeStart, errBeforeCreate error
+		var errBeforeStart error
 		attempts := replaceStart(t, func(ctx context.Context, attempt int, request testcontainers.GenericContainerRequest) (testcontainers.Container, error) {
-			time.Sleep(3 * startupTimeout)
+			// As if pulling the image took longer than the startup timeout.
+			time.Sleep(startupTimeout + 500*time.Millisecond)
 			errBeforeStart = ctx.Err()
 
 			request.LifecycleHooks = append(request.LifecycleHooks, testcontainers.ContainerLifecycleHooks{
-				PreCreates: []testcontainers.ContainerRequestHook{
-					func(context.Context, testcontainers.ContainerRequest) error {
-						time.Sleep(3 * startupTimeout)
-						errBeforeCreate = ctx.Err()
-						return nil
-					},
-				},
 				// Ends the attempt at once, once Docker created the container.
 				PostCreates: []testcontainers.ContainerHook{
 					func(context.Context, testcontainers.Container) error {
@@ -206,7 +200,6 @@ func TestContainerStart(t *testing.T) {
 		defer container.Stop(t.Context())
 
 		assert.NoError(t, errBeforeStart)
-		assert.NoError(t, errBeforeCreate)
 		assert.ErrorIs(t, err, errStop)
 		assert.Len(t, attempts.ids, 1)
 		assertRemoved(t, attempts.ids)
@@ -548,6 +541,70 @@ func TestContainerStart(t *testing.T) {
 			assertTerminated(t, attempts)
 		})
 
+		t.Run("while Docker hangs creating it, for the grace period at most", func(t *testing.T) {
+			const deadline = 300 * time.Millisecond
+			errHung := errors.New("Docker hung")
+
+			var attemptID string
+			done := make(chan struct{})
+			eventsourcingdbtest.SetStartContainer(t, func(ctx context.Context, request testcontainers.GenericContainerRequest) (testcontainers.Container, error) {
+				defer close(done)
+				attemptID = request.Labels[eventsourcingdbtest.StartLabel]
+
+				// Docker hangs while it creates the container, beyond the
+				// grace period, and creates it only once the attempt stopped
+				// waiting for it.
+				late := request
+				late.LifecycleHooks = nil
+				request.LifecycleHooks = append(request.LifecycleHooks, testcontainers.ContainerLifecycleHooks{
+					PreCreates: []testcontainers.ContainerRequestHook{
+						func(context.Context, testcontainers.ContainerRequest) error {
+							time.Sleep(deadline + eventsourcingdbtest.CreateGracePeriod + 500*time.Millisecond)
+							return errHung
+						},
+					},
+				})
+
+				_, err := testcontainers.GenericContainer(ctx, request)
+				_, _ = testcontainers.GenericContainer(context.Background(), late)
+				return nil, err
+			})
+			t.Cleanup(func() {
+				<-done
+				err := eventsourcingdbtest.RemoveContainers(context.Background(), attemptID)
+				assert.NoError(t, err)
+			})
+
+			ctx, cancel := context.WithTimeout(t.Context(), deadline)
+			defer cancel()
+
+			container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
+
+			startedAt := time.Now()
+			err := container.Start(ctx)
+			elapsed := time.Since(startedAt)
+
+			assert.EqualError(t, err, "failed to start the container: context deadline exceeded")
+			assert.False(t, container.IsRunning())
+			assert.GreaterOrEqual(t, elapsed, deadline+eventsourcingdbtest.CreateGracePeriod)
+			assert.Less(t, elapsed, deadline+eventsourcingdbtest.CreateGracePeriod+time.Second)
+
+			// Once Docker created the container late, it is removed in the
+			// background.
+			<-done
+			dockerClient, err := testcontainers.NewDockerClientWithOpts(context.Background())
+			require.NoError(t, err)
+			defer dockerClient.Close()
+
+			assert.Eventually(t, func() bool {
+				containers, err := dockerClient.ContainerList(context.Background(), client.ContainerListOptions{
+					All:     true,
+					Filters: make(client.Filters).Add("label", eventsourcingdbtest.StartLabel+"="+attemptID),
+				})
+				return err == nil && len(containers.Items) == 0
+			}, eventsourcingdbtest.CreateGracePeriod, 100*time.Millisecond, "the container that Docker created late was left behind")
+		})
+
 		t.Run("at any time, within a deadline", func(t *testing.T) {
 			for _, deadline := range []time.Duration{25, 50, 75, 100, 150, 200, 300, 400} {
 				ctx, cancel := context.WithTimeout(t.Context(), deadline*time.Millisecond)
@@ -651,7 +708,7 @@ func replaceStart(
 	recorded := &attempts{}
 	eventsourcingdbtest.SetStartContainer(t, func(ctx context.Context, request testcontainers.GenericContainerRequest) (testcontainers.Container, error) {
 		attemptID := request.Labels[eventsourcingdbtest.StartLabel]
-		require.NotEmpty(t, attemptID)
+		assert.NotEmpty(t, attemptID)
 		t.Cleanup(func() {
 			err := eventsourcingdbtest.RemoveContainers(context.Background(), attemptID)
 			assert.NoError(t, err)

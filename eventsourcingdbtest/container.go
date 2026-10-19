@@ -22,6 +22,7 @@ import (
 	dockercontainer "github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
 	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/log"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb"
 )
 
@@ -50,6 +51,12 @@ const (
 // logTailLines is how many lines from the end of its log the error of a
 // container that exited names.
 const logTailLines = 20
+
+// createGracePeriod is how long an attempt waits at most for Docker to finish
+// creating a container once the context of Start ended, or once the startup
+// timeout ran out, before it stops waiting and removes the container in the
+// background.
+const createGracePeriod = 5 * time.Second
 
 // errStartupTimedOut is the cause with which the context of an attempt ends
 // once the startup timeout ran out, so that Start can tell it from any other
@@ -114,9 +121,9 @@ func (c *Container) WithPort(port int) *Container {
 }
 
 // WithStartupTimeout sets how long Start waits for the database in a container
-// to become reachable, from the time Docker created the container until the
-// database answers a ping. The default is 30 seconds. Pulling the image does
-// not count.
+// to become reachable, from the time Docker begins to create the container
+// until the database answers a ping. The default is 30 seconds. Pulling the
+// image does not count.
 //
 // The startup timeout must be greater than zero, or Start returns an error.
 func (c *Container) WithStartupTimeout(startupTimeout time.Duration) *Container {
@@ -169,78 +176,45 @@ func (c *Container) startAttempt(ctx context.Context) (testcontainers.Container,
 		return nil, false, err
 	}
 
-	// The context of the attempt ends once the startup timeout ran out, or
-	// once the context of Start ended. If the context of Start ends while
-	// Docker creates the container, the context of the attempt ends only once
-	// Docker created it, as Docker might otherwise create it only after the
-	// attempt looked for it to remove it.
-	attemptCtx, cancel := context.WithCancelCause(context.WithoutCancel(ctx))
-	defer cancel(nil)
-
-	var mu sync.Mutex
-	creating, ended := false, false
-	stopEnding := context.AfterFunc(ctx, func() {
-		mu.Lock()
-		defer mu.Unlock()
-
-		ended = true
-		if !creating {
-			cancel(context.Cause(ctx))
-		}
-	})
-	defer stopEnding()
-
-	// The clock starts once Docker created the container, so that neither
-	// pulling the image nor starting the reaper of Testcontainers counts. It
-	// starts at the latest once the call to create and start the container
-	// returned.
-	var clock *time.Timer
-	created := func() {
-		mu.Lock()
-		defer mu.Unlock()
-
-		creating = false
-		if ended {
-			cancel(context.Cause(ctx))
-		}
-		if clock == nil {
-			clock = time.AfterFunc(c.startupTimeout, func() {
-				cancel(errStartupTimedOut)
-			})
-		}
-	}
-	defer func() {
-		mu.Lock()
-		defer mu.Unlock()
-
-		if clock != nil {
-			clock.Stop()
-		}
-	}()
+	attemptCtx := newAttemptContext(ctx, c.startupTimeout)
+	defer attemptCtx.release()
 
 	request.LifecycleHooks = append(request.LifecycleHooks, testcontainers.ContainerLifecycleHooks{
 		PreCreates: []testcontainers.ContainerRequestHook{
 			func(context.Context, testcontainers.ContainerRequest) error {
-				mu.Lock()
-				defer mu.Unlock()
-
-				if ended {
-					return context.Cause(ctx)
-				}
-				creating = true
-				return nil
+				return attemptCtx.creating()
 			},
 		},
 		PostCreates: []testcontainers.ContainerHook{
 			func(context.Context, testcontainers.Container) error {
-				created()
+				attemptCtx.created()
 				return nil
 			},
 		},
 	})
 
-	container, err := startContainer(attemptCtx, request)
-	created()
+	start := startContainer
+	started := make(chan startResult, 1)
+	go func() {
+		container, err := start(attemptCtx, request)
+		attemptCtx.created()
+		started <- startResult{container: container, err: err}
+	}()
+
+	var result startResult
+	select {
+	case result = <-started:
+	case <-attemptCtx.abandoned:
+		// Docker did not finish creating the container within the grace
+		// period, so the attempt does not wait for it any longer, and removes
+		// its containers in the background.
+		go removeAbandonedAttempt(started, attemptID)
+
+		replace, err := c.failure(ctx, attemptCtx, nil)
+		return nil, replace, err
+	}
+
+	container, err := result.container, result.err
 	if err == nil {
 		err = c.waitUntilReachable(ctx, attemptCtx, container)
 		if err == nil {
@@ -248,36 +222,197 @@ func (c *Container) startAttempt(ctx context.Context) (testcontainers.Container,
 		}
 	}
 
-	replace := false
-	switch {
-	case errors.Is(err, errExited):
-		// The error names the end of the log of the container already.
-	case ctx.Err() != nil:
-		err = fmt.Errorf("failed to start the container: %w", ctx.Err())
-	case errors.Is(context.Cause(attemptCtx), errStartupTimedOut):
-		// This includes a container that Docker is still starting when the
-		// time runs out.
-		replace = true
-		err = fmt.Errorf("failed to start the container, the database did not become reachable within %s", formatSeconds(c.startupTimeout))
-	default:
-		err = fmt.Errorf("failed to start the container: %w", err)
-	}
+	replace, err := c.failure(ctx, attemptCtx, err)
 
-	// A container that Testcontainers handed out is terminated, so that
-	// Testcontainers releases what it holds for it. Beyond that, the
-	// containers of the attempt are found by their label, as a start that
-	// fails while Docker starts a container may not hand it out. Both happen
-	// even if the context of Start ended. If they fail, that is named after
-	// the error of the attempt, which stays as it is.
-	removeErr := errors.Join(
-		testcontainers.TerminateContainer(container),
-		removeContainers(context.WithoutCancel(ctx), attemptID),
-	)
+	// If removing the container fails, that is named after the error of the
+	// attempt, which stays as it is.
+	removeErr := removeAttempt(ctx, container, attemptID)
 	if removeErr != nil {
 		return nil, false, errors.Join(err, fmt.Errorf("failed to remove the container: %w", removeErr))
 	}
 
 	return nil, replace, err
+}
+
+// startResult is what creating and starting a container returned.
+type startResult struct {
+	container testcontainers.Container
+	err       error
+}
+
+// failure returns the error of an attempt that failed with the given error,
+// and tells whether to replace its container with a new one, which is the
+// case only if the startup timeout ran out.
+func (c *Container) failure(ctx context.Context, attemptCtx *attemptContext, err error) (bool, error) {
+	switch {
+	case errors.Is(err, errExited):
+		// The error names the end of the log of the container already.
+		return false, err
+	case ctx.Err() != nil:
+		return false, fmt.Errorf("failed to start the container: %w", ctx.Err())
+	case errors.Is(context.Cause(attemptCtx), errStartupTimedOut):
+		// This includes a container that Docker is still creating or
+		// starting when the time runs out.
+		return true, fmt.Errorf("failed to start the container, the database did not become reachable within %s", formatSeconds(c.startupTimeout))
+	default:
+		return false, fmt.Errorf("failed to start the container: %w", err)
+	}
+}
+
+// removeAttempt removes the containers of a failed attempt, even if the
+// context of Start ended. A container that Testcontainers handed out is
+// terminated, so that Testcontainers releases what it holds for it. Beyond
+// that, the containers of the attempt are found by their label, as a start
+// that fails while Docker starts a container may not hand it out.
+func removeAttempt(ctx context.Context, container testcontainers.Container, attemptID string) error {
+	return errors.Join(
+		testcontainers.TerminateContainer(container),
+		removeContainers(context.WithoutCancel(ctx), attemptID),
+	)
+}
+
+// removeAbandonedAttempt removes the containers of an attempt that stopped
+// waiting for Docker to create its container: once the call to create it
+// returns, and a final time after the grace period, in case Docker creates
+// the container only after the call was cut short. As nobody waits for it, it
+// logs what fails.
+func removeAbandonedAttempt(started <-chan startResult, attemptID string) {
+	var err error
+
+	gracePeriod := time.After(createGracePeriod)
+	select {
+	case result := <-started:
+		err = errors.Join(
+			testcontainers.TerminateContainer(result.container),
+			removeContainersOfAttempt(context.Background(), attemptID),
+		)
+		<-gracePeriod
+	case <-gracePeriod:
+	}
+
+	err = errors.Join(err, removeContainersOfAttempt(context.Background(), attemptID))
+	if err != nil {
+		log.Printf("failed to remove the container of a start that Docker did not finish in time: %s", err)
+	}
+}
+
+// attemptContext is the context of an attempt. It ends once the context of
+// Start ended, or once the startup timeout ran out, which starts once Docker
+// is about to create the container, so that pulling the image does not count.
+//
+// If it would end while Docker creates the container, it ends only once Docker
+// created it, as Docker might otherwise create the container only after the
+// attempt looked for it to remove it. It waits for that for the grace period
+// at most, and closes abandoned once the grace period ran out.
+type attemptContext struct {
+	context.Context
+
+	cancel         context.CancelCauseFunc
+	startupTimeout time.Duration
+	stopParent     func() bool
+	abandoned      chan struct{}
+
+	mu          sync.Mutex
+	isCreating  bool
+	cause       error
+	clock       *time.Timer
+	gracePeriod *time.Timer
+	released    bool
+}
+
+func newAttemptContext(parent context.Context, startupTimeout time.Duration) *attemptContext {
+	ctx, cancel := context.WithCancelCause(context.WithoutCancel(parent))
+
+	attemptCtx := &attemptContext{
+		Context:        ctx,
+		cancel:         cancel,
+		startupTimeout: startupTimeout,
+		abandoned:      make(chan struct{}),
+	}
+	attemptCtx.stopParent = context.AfterFunc(parent, func() {
+		attemptCtx.end(context.Cause(parent))
+	})
+
+	return attemptCtx
+}
+
+// creating tells that Docker is about to create the container, which starts
+// the clock. It returns an error if the context ended already, so that Docker
+// does not create the container at all.
+func (a *attemptContext) creating() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if a.cause != nil {
+		return a.cause
+	}
+
+	a.isCreating = true
+	a.startClock()
+	return nil
+}
+
+// created tells that Docker created the container, or failed to. It starts
+// the clock if it has not started yet.
+func (a *attemptContext) created() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	a.isCreating = false
+	if a.cause != nil {
+		a.cancel(a.cause)
+	}
+	a.startClock()
+}
+
+// startClock starts the clock, unless it started already. It must be called
+// with the lock held.
+func (a *attemptContext) startClock() {
+	if a.clock != nil || a.released {
+		return
+	}
+
+	a.clock = time.AfterFunc(a.startupTimeout, func() {
+		a.end(errStartupTimedOut)
+	})
+}
+
+// end ends the context with the given cause, unless it ended already, at once
+// if Docker does not create the container right now, and once Docker created
+// it, but within the grace period, otherwise.
+func (a *attemptContext) end(cause error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if a.cause != nil || a.released {
+		return
+	}
+
+	a.cause = cause
+	if !a.isCreating {
+		a.cancel(cause)
+	}
+
+	a.gracePeriod = time.AfterFunc(createGracePeriod, func() {
+		a.cancel(cause)
+		close(a.abandoned)
+	})
+}
+
+// release stops the clock and the grace period, and ends the context.
+func (a *attemptContext) release() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	a.released = true
+	a.stopParent()
+	if a.clock != nil {
+		a.clock.Stop()
+	}
+	if a.gracePeriod != nil {
+		a.gracePeriod.Stop()
+	}
+	a.cancel(nil)
 }
 
 // newRequest returns a request for a container with the database, as it is

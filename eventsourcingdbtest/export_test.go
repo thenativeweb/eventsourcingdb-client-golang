@@ -12,6 +12,10 @@ import (
 // id of the attempt as its value.
 const StartLabel = startLabel
 
+// CreateGracePeriod is how long an attempt waits at most for Docker to finish
+// creating a container once its context ended.
+const CreateGracePeriod = createGracePeriod
+
 // SetStartContainer replaces how Start creates and starts a container until
 // the test t ends, so that a test can decide what happens on each attempt.
 func SetStartContainer(
