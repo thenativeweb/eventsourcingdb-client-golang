@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/containerd/errdefs"
+	dockercontainer "github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
 	"github.com/stretchr/testify/assert"
@@ -169,12 +171,55 @@ func TestContainerStart(t *testing.T) {
 		}
 	})
 
+	t.Run("does not count the time before Docker creates the container, such as pulling the image", func(t *testing.T) {
+		const startupTimeout = 200 * time.Millisecond
+		errStop := errors.New("stop")
+
+		var errBeforeStart, errBeforeCreate error
+		attempts := replaceStart(t, func(ctx context.Context, attempt int, request testcontainers.GenericContainerRequest) (testcontainers.Container, error) {
+			time.Sleep(3 * startupTimeout)
+			errBeforeStart = ctx.Err()
+
+			request.LifecycleHooks = append(request.LifecycleHooks, testcontainers.ContainerLifecycleHooks{
+				PreCreates: []testcontainers.ContainerRequestHook{
+					func(context.Context, testcontainers.ContainerRequest) error {
+						time.Sleep(3 * startupTimeout)
+						errBeforeCreate = ctx.Err()
+						return nil
+					},
+				},
+				// Ends the attempt at once, once Docker created the container.
+				PostCreates: []testcontainers.ContainerHook{
+					func(context.Context, testcontainers.Container) error {
+						return errStop
+					},
+				},
+			})
+			return testcontainers.GenericContainer(ctx, request)
+		})
+
+		container := eventsourcingdbtest.NewContainer().
+			WithImageTag(imageTag).
+			WithStartupTimeout(startupTimeout)
+
+		err := container.Start(t.Context())
+		defer container.Stop(t.Context())
+
+		assert.NoError(t, errBeforeStart)
+		assert.NoError(t, errBeforeCreate)
+		assert.ErrorIs(t, err, errStop)
+		assert.Len(t, attempts.ids, 1)
+		assertRemoved(t, attempts.ids)
+		assertTerminated(t, attempts)
+	})
+
 	t.Run("reads the port of the database anew for each ping", func(t *testing.T) {
-		// A stale port, on which something else answers, but not with 200 OK.
+		// A stale port, on which something else answers with a status code
+		// of success, but not with 200 OK.
 		var stalePings atomic.Int32
 		stale := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			stalePings.Add(1)
-			w.WriteHeader(http.StatusServiceUnavailable)
+			w.WriteHeader(http.StatusNoContent)
 		}))
 		defer stale.Close()
 
@@ -313,6 +358,7 @@ func TestContainerStart(t *testing.T) {
 				assertDistinct(t, attempts.ids)
 				assert.False(t, container.IsRunning())
 				assertRemoved(t, attempts.ids)
+				assertTerminated(t, attempts)
 
 				// Each container got the startup timeout that was set, and not
 				// the default.
@@ -347,6 +393,7 @@ func TestContainerStart(t *testing.T) {
 			assert.Len(t, attempts.ids, 1)
 			assert.False(t, container.IsRunning())
 			assertRemoved(t, attempts.ids)
+			assertTerminated(t, attempts)
 		})
 
 		t.Run("with exactly the last 20 lines of its log", func(t *testing.T) {
@@ -369,6 +416,7 @@ func TestContainerStart(t *testing.T) {
 			assert.Len(t, attempts.ids, 1)
 			assert.False(t, container.IsRunning())
 			assertRemoved(t, attempts.ids)
+			assertTerminated(t, attempts)
 		})
 	})
 
@@ -388,17 +436,43 @@ func TestContainerStart(t *testing.T) {
 		assertRemoved(t, attempts.ids)
 	})
 
+	t.Run("fails at once if Docker fails while it waits for the database", func(t *testing.T) {
+		errDocker := errors.New("Docker failed")
+
+		attempts := replaceStart(t, func(ctx context.Context, attempt int, request testcontainers.GenericContainerRequest) (testcontainers.Container, error) {
+			container, err := testcontainers.GenericContainer(ctx, request)
+			if err != nil {
+				return container, err
+			}
+			return failingStateContainer{Container: container, err: errDocker}, nil
+		})
+
+		container := eventsourcingdbtest.NewContainer().
+			WithImageTag(imageTag).
+			WithStartupTimeout(2 * time.Second)
+
+		err := container.Start(t.Context())
+		defer container.Stop(t.Context())
+
+		assert.EqualError(t, err, "failed to start the container: Docker failed")
+		assert.ErrorIs(t, err, errDocker)
+		assert.Len(t, attempts.ids, 1)
+		assert.False(t, container.IsRunning())
+		assertRemoved(t, attempts.ids)
+		assertTerminated(t, attempts)
+	})
+
 	t.Run("removes the container once the context of Start ends", func(t *testing.T) {
 		ends := []struct {
 			name  string
 			start func(ctx context.Context, cancel context.CancelFunc, request testcontainers.GenericContainerRequest) (testcontainers.Container, error)
 		}{
 			{
-				name: "while Docker creates or starts it, so that it is not handed out",
+				name: "once Docker created it, but before it was handed out",
 				start: func(ctx context.Context, cancel context.CancelFunc, request testcontainers.GenericContainerRequest) (testcontainers.Container, error) {
 					_, _ = testcontainers.GenericContainer(ctx, request)
 					cancel()
-					return nil, ctx.Err()
+					return nil, context.Canceled
 				},
 			},
 			{
@@ -431,42 +505,136 @@ func TestContainerStart(t *testing.T) {
 				require.Len(t, attempts.ids, 1)
 				assert.False(t, container.IsRunning())
 				assertRemoved(t, attempts.ids)
+				assertTerminated(t, attempts)
 			})
 		}
+
+		t.Run("while Docker creates it", func(t *testing.T) {
+			// If the context ended the call that creates the container, Docker
+			// could still create the container after Start looked for it, so
+			// the call must not be cut short.
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+
+			created := false
+			attempts := replaceStart(t, func(ctx context.Context, attempt int, request testcontainers.GenericContainerRequest) (testcontainers.Container, error) {
+				request.LifecycleHooks = append(request.LifecycleHooks, testcontainers.ContainerLifecycleHooks{
+					PreCreates: []testcontainers.ContainerRequestHook{
+						func(context.Context, testcontainers.ContainerRequest) error {
+							cancel()
+							return nil
+						},
+					},
+					PostCreates: []testcontainers.ContainerHook{
+						func(context.Context, testcontainers.Container) error {
+							created = true
+							return nil
+						},
+					},
+				})
+				return testcontainers.GenericContainer(ctx, request)
+			})
+
+			container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
+
+			err := container.Start(ctx)
+			defer container.Stop(t.Context())
+
+			assert.True(t, created, "the context cut creating the container short")
+			assert.EqualError(t, err, "failed to start the container: context canceled")
+			require.Len(t, attempts.ids, 1)
+			assert.False(t, container.IsRunning())
+			assertRemoved(t, attempts.ids)
+			assertTerminated(t, attempts)
+		})
+
+		t.Run("at any time, within a deadline", func(t *testing.T) {
+			for _, deadline := range []time.Duration{25, 50, 75, 100, 150, 200, 300, 400} {
+				ctx, cancel := context.WithTimeout(t.Context(), deadline*time.Millisecond)
+
+				attempts := replaceStart(t, startUnchanged)
+				container := eventsourcingdbtest.NewContainer().WithImageTag(imageTag)
+
+				err := container.Start(ctx)
+				cancel()
+
+				// A start that is faster than the deadline is fine, too.
+				if err == nil {
+					err = container.Stop(t.Context())
+					require.NoError(t, err)
+				} else {
+					assert.EqualError(t, err, "failed to start the container: context deadline exceeded", "deadline %s", deadline*time.Millisecond)
+				}
+				assert.False(t, container.IsRunning())
+				assertRemoved(t, attempts.ids)
+			}
+		})
 	})
 
-	t.Run("returns at once if it can not remove a container", func(t *testing.T) {
-		errRemove := errors.New("failed to remove container")
-		eventsourcingdbtest.SetRemoveContainers(t, func(ctx context.Context, attemptID string) error {
-			err := eventsourcingdbtest.RemoveContainers(ctx, attemptID)
-			require.NoError(t, err)
-			return errRemove
-		})
+	t.Run("returns at once if it can not remove a container, and names that after the error of the attempt", func(t *testing.T) {
+		failures := []struct {
+			name           string
+			imageTag       string
+			change         func(request *testcontainers.GenericContainerRequest)
+			startupTimeout time.Duration
+			message        func(attempts *attempts) string
+		}{
+			{
+				name:           "as the database does not become reachable",
+				imageTag:       imageTag,
+				change:         withoutNetwork,
+				startupTimeout: time.Second,
+				message: func(*attempts) string {
+					return "failed to start the container, the database did not become reachable within 1s"
+				},
+			},
+			{
+				name:           "as Docker fails",
+				imageTag:       "does-not-exist",
+				change:         func(*testcontainers.GenericContainerRequest) {},
+				startupTimeout: time.Second,
+				message: func(attempts *attempts) string {
+					return "failed to start the container: " + attempts.errs[0].Error()
+				},
+			},
+		}
 
-		attempts := replaceStart(t, func(ctx context.Context, attempt int, request testcontainers.GenericContainerRequest) (testcontainers.Container, error) {
-			withoutNetwork(&request)
-			return testcontainers.GenericContainer(ctx, request)
-		})
+		for _, failure := range failures {
+			t.Run(failure.name, func(t *testing.T) {
+				errRemove := errors.New("failed to remove container")
+				eventsourcingdbtest.SetRemoveContainers(t, func(ctx context.Context, attemptID string) error {
+					err := eventsourcingdbtest.RemoveContainers(ctx, attemptID)
+					require.NoError(t, err)
+					return errRemove
+				})
 
-		container := eventsourcingdbtest.NewContainer().
-			WithImageTag(imageTag).
-			WithStartupTimeout(time.Second)
+				attempts := replaceStart(t, func(ctx context.Context, attempt int, request testcontainers.GenericContainerRequest) (testcontainers.Container, error) {
+					failure.change(&request)
+					return testcontainers.GenericContainer(ctx, request)
+				})
 
-		err := container.Start(t.Context())
-		defer container.Stop(t.Context())
+				container := eventsourcingdbtest.NewContainer().
+					WithImageTag(failure.imageTag).
+					WithStartupTimeout(failure.startupTimeout)
 
-		assert.EqualError(t, err, "failed to start the container, the database did not become reachable within 1s, and failed to remove the container: failed to remove container")
-		assert.ErrorIs(t, err, errRemove)
-		assert.Len(t, attempts.ids, 1)
-		assert.False(t, container.IsRunning())
+				err := container.Start(t.Context())
+				defer container.Stop(t.Context())
+
+				require.Len(t, attempts.ids, 1)
+				assert.EqualError(t, err, failure.message(attempts)+"\nfailed to remove the container: failed to remove container")
+				assert.ErrorIs(t, err, errRemove)
+				assert.False(t, container.IsRunning())
+			})
+		}
 	})
 }
 
 // attempts records the id of each attempt of Start to start a container, and
 // what creating and starting the container returned.
 type attempts struct {
-	ids  []string
-	errs []error
+	ids        []string
+	containers []*trackedContainer
+	errs       []error
 }
 
 // replaceStart makes Start call start for each attempt to create and start a
@@ -492,7 +660,15 @@ func replaceStart(
 		recorded.ids = append(recorded.ids, attemptID)
 		container, err := start(ctx, len(recorded.ids), request)
 		recorded.errs = append(recorded.errs, err)
-		return container, err
+
+		if container == nil {
+			recorded.containers = append(recorded.containers, nil)
+			return nil, err
+		}
+
+		tracked := &trackedContainer{Container: container}
+		recorded.containers = append(recorded.containers, tracked)
+		return tracked, err
 	})
 
 	return recorded
@@ -545,12 +721,46 @@ func (c *latePortContainer) MappedPort(ctx context.Context, port string) (networ
 
 	switch {
 	case c.lookups <= 3:
-		return network.Port{}, fmt.Errorf("port %q not found", port)
+		return network.Port{}, errdefs.ErrNotFound.WithMessage(fmt.Sprintf("port %q not found", port))
 	case c.lookups <= 6:
 		stalePort, _ := network.PortFrom(c.stalePort, network.TCP)
 		return stalePort, nil
 	default:
 		return c.Container.MappedPort(ctx, port)
+	}
+}
+
+// failingStateContainer is a container for which Docker fails to tell its
+// state.
+type failingStateContainer struct {
+	testcontainers.Container
+	err error
+}
+
+func (c failingStateContainer) State(context.Context) (*dockercontainer.State, error) {
+	return nil, c.err
+}
+
+// trackedContainer is a container that counts how often it was terminated.
+type trackedContainer struct {
+	testcontainers.Container
+	terminations int
+}
+
+func (c *trackedContainer) Terminate(ctx context.Context, options ...testcontainers.TerminateOption) error {
+	c.terminations++
+	return c.Container.Terminate(ctx, options...)
+}
+
+// assertTerminated asserts that each container that was handed out to Start
+// was terminated once, so that Testcontainers released what it holds for it.
+func assertTerminated(t *testing.T, attempts *attempts) {
+	t.Helper()
+
+	for _, container := range attempts.containers {
+		if container != nil {
+			assert.Equal(t, 1, container.terminations, "a container was not terminated")
+		}
 	}
 }
 

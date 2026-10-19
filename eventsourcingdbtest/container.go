@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/containerd/errdefs"
@@ -168,14 +169,40 @@ func (c *Container) startAttempt(ctx context.Context) (testcontainers.Container,
 		return nil, false, err
 	}
 
-	attemptCtx, cancel := context.WithCancelCause(ctx)
+	// The context of the attempt ends once the startup timeout ran out, or
+	// once the context of Start ended. If the context of Start ends while
+	// Docker creates the container, the context of the attempt ends only once
+	// Docker created it, as Docker might otherwise create it only after the
+	// attempt looked for it to remove it.
+	attemptCtx, cancel := context.WithCancelCause(context.WithoutCancel(ctx))
 	defer cancel(nil)
+
+	var mu sync.Mutex
+	creating, ended := false, false
+	stopEnding := context.AfterFunc(ctx, func() {
+		mu.Lock()
+		defer mu.Unlock()
+
+		ended = true
+		if !creating {
+			cancel(context.Cause(ctx))
+		}
+	})
+	defer stopEnding()
 
 	// The clock starts once Docker created the container, so that neither
 	// pulling the image nor starting the reaper of Testcontainers counts. It
-	// starts at the latest once the container was started.
+	// starts at the latest once the call to create and start the container
+	// returned.
 	var clock *time.Timer
-	startClock := func() {
+	created := func() {
+		mu.Lock()
+		defer mu.Unlock()
+
+		creating = false
+		if ended {
+			cancel(context.Cause(ctx))
+		}
 		if clock == nil {
 			clock = time.AfterFunc(c.startupTimeout, func() {
 				cancel(errStartupTimedOut)
@@ -183,24 +210,38 @@ func (c *Container) startAttempt(ctx context.Context) (testcontainers.Container,
 		}
 	}
 	defer func() {
+		mu.Lock()
+		defer mu.Unlock()
+
 		if clock != nil {
 			clock.Stop()
 		}
 	}()
 
 	request.LifecycleHooks = append(request.LifecycleHooks, testcontainers.ContainerLifecycleHooks{
+		PreCreates: []testcontainers.ContainerRequestHook{
+			func(context.Context, testcontainers.ContainerRequest) error {
+				mu.Lock()
+				defer mu.Unlock()
+
+				if ended {
+					return context.Cause(ctx)
+				}
+				creating = true
+				return nil
+			},
+		},
 		PostCreates: []testcontainers.ContainerHook{
 			func(context.Context, testcontainers.Container) error {
-				startClock()
+				created()
 				return nil
 			},
 		},
 	})
 
 	container, err := startContainer(attemptCtx, request)
+	created()
 	if err == nil {
-		startClock()
-
 		err = c.waitUntilReachable(ctx, attemptCtx, container)
 		if err == nil {
 			return container, false, nil
@@ -214,20 +255,26 @@ func (c *Container) startAttempt(ctx context.Context) (testcontainers.Container,
 	case ctx.Err() != nil:
 		err = fmt.Errorf("failed to start the container: %w", ctx.Err())
 	case errors.Is(context.Cause(attemptCtx), errStartupTimedOut):
-		// This includes a container that Docker is still creating or
-		// starting when the time runs out.
+		// This includes a container that Docker is still starting when the
+		// time runs out.
 		replace = true
 		err = fmt.Errorf("failed to start the container, the database did not become reachable within %s", formatSeconds(c.startupTimeout))
 	default:
 		err = fmt.Errorf("failed to start the container: %w", err)
 	}
 
-	// The containers of the attempt are found by their label, since a start
-	// that fails while Docker creates or starts a container may not hand it
-	// out. They are removed even if the context of Start ended.
-	removeErr := removeContainers(context.WithoutCancel(ctx), attemptID)
+	// A container that Testcontainers handed out is terminated, so that
+	// Testcontainers releases what it holds for it. Beyond that, the
+	// containers of the attempt are found by their label, as a start that
+	// fails while Docker starts a container may not hand it out. Both happen
+	// even if the context of Start ended. If they fail, that is named after
+	// the error of the attempt, which stays as it is.
+	removeErr := errors.Join(
+		testcontainers.TerminateContainer(container),
+		removeContainers(context.WithoutCancel(ctx), attemptID),
+	)
 	if removeErr != nil {
-		return nil, false, fmt.Errorf("%w, and failed to remove the container: %w", err, removeErr)
+		return nil, false, errors.Join(err, fmt.Errorf("failed to remove the container: %w", removeErr))
 	}
 
 	return nil, replace, err
@@ -282,11 +329,11 @@ func (c *Container) newRequest(attemptID string) (testcontainers.GenericContaine
 }
 
 // waitUntilReachable pings the database in a container until it answers with
-// 200 OK, until the context of the attempt ends, or until the container
-// exits. It reads the port that Docker published for the database anew for
-// each ping, as Docker may publish it only a while after it started the
-// container. The log of a container that exited is read with the context of
-// Start, which the startup timeout does not end.
+// 200 OK, until the context of the attempt ends, until the container exits, or
+// until Docker fails. It reads the port that Docker published for the
+// database anew for each ping, as Docker may publish it only a while after it
+// started the container. The log of a container that exited is read with the
+// context of Start, which the startup timeout does not end.
 func (c *Container) waitUntilReachable(ctx, attemptCtx context.Context, container testcontainers.Container) error {
 	port := fmt.Sprintf("%d/tcp", c.internalPort)
 	httpClient := &http.Client{
@@ -296,11 +343,20 @@ func (c *Container) waitUntilReachable(ctx, attemptCtx context.Context, containe
 
 	for {
 		state, err := container.State(attemptCtx)
-		if err == nil && (state.Status == dockercontainer.StateExited || state.Status == dockercontainer.StateDead) {
+		if err != nil {
+			return err
+		}
+		if state.Status == dockercontainer.StateExited || state.Status == dockercontainer.StateDead {
 			return exited(ctx, container)
 		}
-		if err == nil && state.Running && answersPing(attemptCtx, httpClient, container, port) {
-			return nil
+		if state.Running {
+			reachable, err := answersPing(attemptCtx, httpClient, container, port)
+			if err != nil {
+				return err
+			}
+			if reachable {
+				return nil
+			}
 		}
 
 		select {
@@ -312,31 +368,35 @@ func (c *Container) waitUntilReachable(ctx, attemptCtx context.Context, containe
 }
 
 // answersPing tells whether the database in a container answers a ping with
-// 200 OK on the host port that Docker published for its port, if it did.
-func answersPing(ctx context.Context, httpClient *http.Client, container testcontainers.Container, port string) bool {
+// 200 OK on the host port that Docker published for its port, if it did. It
+// returns an error only if Docker fails.
+func answersPing(ctx context.Context, httpClient *http.Client, container testcontainers.Container, port string) (bool, error) {
 	host, err := container.Host(ctx)
 	if err != nil {
-		return false
+		return false, err
 	}
 	mappedPort, err := container.MappedPort(ctx, port)
+	if errdefs.IsNotFound(err) {
+		return false, nil
+	}
 	if err != nil {
-		return false
+		return false, err
 	}
 
 	pingURL := fmt.Sprintf("http://%s/api/v1/ping", net.JoinHostPort(host, strconv.Itoa(int(mappedPort.Num()))))
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, pingURL, nil)
 	if err != nil {
-		return false
+		return false, err
 	}
 
 	response, err := httpClient.Do(request)
 	if err != nil {
-		return false
+		return false, nil
 	}
 	defer response.Body.Close()
 	_, _ = io.Copy(io.Discard, response.Body)
 
-	return response.StatusCode == http.StatusOK
+	return response.StatusCode == http.StatusOK, nil
 }
 
 // exited returns the error for a container that exited, which names the last
