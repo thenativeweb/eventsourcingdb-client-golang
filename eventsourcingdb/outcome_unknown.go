@@ -21,7 +21,8 @@ import (
 //
 // Any other error of WriteEvents and RegisterEventSchema means that the server
 // certainly did not store anything: either the client could not connect to
-// it at all, or the server refused the request.
+// it at all, or did not send the request, e.g. because the server can not
+// check a recursive precondition, or the server refused the request.
 var ErrOutcomeUnknown = errors.New("outcome unknown")
 
 // outcomeUnknownError reports a write that may have been stored, with
@@ -53,12 +54,14 @@ const (
 
 // failureOfWrite returns the error with which a write fails because of err:
 // err itself if the write was certainly not stored, and an error that wraps
-// it with ErrOutcomeUnknown otherwise. A write was certainly not stored only
-// if the client could not connect to the server at all, or if the server
-// refused it, as refused tells for an error that the server reported. The
-// rule is the same in every SDK of EventSourcingDB, so it does not count a
-// request that fails after connecting, but before all of it was sent, as not
-// stored.
+// it with ErrOutcomeUnknown otherwise. A write that the client sends was
+// certainly not stored only if the client could not connect to the server at
+// all, or if the server refused it, as refused tells for an error that the
+// server reported. A write that the client refuses before sending it, e.g.
+// one with a recursive precondition that the server can not check, fails
+// before it gets here, and was not stored either. The rule is the same in
+// every SDK of EventSourcingDB, so it does not count a request that fails
+// after connecting, but before all of it was sent, as not stored.
 func failureOfWrite(guard *stallGuard, err error, refused func(dbAPIError *DBAPIError) bool, what string) error {
 	if err == nil || !guard.isConnected() {
 		return err

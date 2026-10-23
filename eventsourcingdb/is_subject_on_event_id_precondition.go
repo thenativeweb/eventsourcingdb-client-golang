@@ -3,14 +3,20 @@ package eventsourcingdb
 type isSubjectOnEventIDPrecondition struct {
 	subject string
 	eventID string
+	options *PreconditionOptions
 }
 
 func (isSubjectOnEventIDPrecondition) discriminator() {}
 
-func NewIsSubjectOnEventIDPrecondition(subject string, eventID string) Precondition {
+// NewIsSubjectOnEventIDPrecondition returns a precondition that holds if the
+// latest event of the given subject has the given ID, or, if the given
+// options make it recursive, if the latest event among the subject and all
+// subjects below it has that ID.
+func NewIsSubjectOnEventIDPrecondition(subject string, eventID string, options ...PreconditionOptions) Precondition {
 	return isSubjectOnEventIDPrecondition{
-		subject,
-		eventID,
+		subject: subject,
+		eventID: eventID,
+		options: preconditionOptionsOf(options),
 	}
 }
 

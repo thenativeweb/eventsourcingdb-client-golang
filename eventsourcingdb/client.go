@@ -16,7 +16,12 @@ import (
 // client finds out which API the server offers, and the client remembers that
 // for the requests after it. If the server answers a path of the v2 API with
 // 404 or 405, e.g. after it was rolled back to a version without it, the
-// client asks again on the next request.
+// client asks again on the next request. If the client found out that the
+// server does not offer the v2 API, a write with a recursive precondition asks
+// again as well, since only the v2 API can check such a precondition, and the
+// server may have been upgraded since (see PreconditionOptions). Every other
+// request goes on with the v1 API meanwhile, and the client keeps it unless
+// the server answers clearly that it offers the v2 API now.
 type Client struct {
 	baseURL      *url.URL
 	apiToken     string

@@ -66,7 +66,7 @@ if err != nil {
 
 ### Talking to Servers With and Without the v2 API
 
-The client works with servers that offer the v2 API of EventSourcingDB, and with servers that offer the v1 API only. Creating a client sends no request. On its first request, the client asks the server whether it offers the v2 API, and remembers the answer: it speaks the v2 API if the server offers it, and the v1 API otherwise. If the server gives no clear answer, e.g. because it can not be reached, that first request fails with the error, and the next request asks again. Since the client asks with `GET /api/v2/system/ping`, the error of that first request then names that path, whatever the request was, e.g. `Get "http://localhost:3000/api/v2/system/ping": dial tcp [::1]:3000: connect: connection refused`. If the server answers a path of the v2 API with 404 or 405, e.g. after it was rolled back to a version without it, the client asks again on the next request.
+The client works with servers that offer the v2 API of EventSourcingDB, and with servers that offer the v1 API only. Creating a client sends no request. On its first request, the client asks the server whether it offers the v2 API, and remembers the answer: it speaks the v2 API if the server offers it, and the v1 API otherwise. If the server gives no clear answer, e.g. because it can not be reached, that first request fails with the error, and the next request asks again. Since the client asks with `GET /api/v2/system/ping`, the error of that first request then names that path, whatever the request was, e.g. `Get "http://localhost:3000/api/v2/system/ping": dial tcp [::1]:3000: connect: connection refused`. If the server answers a path of the v2 API with 404 or 405, e.g. after it was rolled back to a version without it, the client asks again on the next request. If the client found out that the server does not offer the v2 API, a write with a recursive precondition makes it ask again as well, since only the v2 API can check such a precondition, and the server may have been upgraded since (see [Using Preconditions on Subjects Recursively](#using-preconditions-on-subjects-recursively)). Every other request goes on with the v1 API meanwhile, without waiting for the answer. The client remembers the new answer if it is a clear one. Otherwise, it goes on with the v1 API, and only that write fails with the error.
 
 *Note that with the v2 API, the client reads with the HTTP method `QUERY` ([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008)). If a proxy runs in front of the database, it has to let `QUERY` through. The client does not fall back to `POST`.*
 
@@ -191,6 +191,31 @@ writtenEvents, err := client.WriteEvents(
 ```
 
 *Note that the query must return a single row with a single value, which is interpreted as a boolean.*
+
+#### Using Preconditions on Subjects Recursively
+
+The `isSubjectPristine`, `isSubjectPopulated`, and `isSubjectOnEventId` preconditions look at the given subject alone. If you want them to look at the subject together with all of its nested subjects, pass a `PreconditionOptions` value as the last argument, and set its `Recursive` option to `true`:
+
+```go
+writtenEvents, err := client.WriteEvents(
+  context.TODO(),
+  []eventsourcingdb.EventCandidate{
+    // ...
+  },
+  []eventsourcingdb.Precondition{
+    eventsourcingdb.NewIsSubjectPristinePrecondition(
+      "/books/42",
+      eventsourcingdb.PreconditionOptions{
+        Recursive: true,
+      },
+    ),
+  },
+)
+```
+
+Then `isSubjectPristine` holds if neither the subject nor any of its nested subjects has an event, `isSubjectPopulated` holds if any of them has one, and `isSubjectOnEventId` holds if the latest event among all of them has the given ID.
+
+*Note that only a server that offers the v2 API can check a recursive precondition. If the client found out before that the server does not offer it, it asks the server again before it writes, as the server may have been upgraded since. With a server that does not offer the v2 API, the client does not send the write, so nothing is written, and returns `ErrIncompatibleServer` (see [Handling Errors](#handling-errors)). A precondition whose `Recursive` option is `false` works with every server.*
 
 #### Aborting Writing
 
@@ -752,6 +777,29 @@ if errors.Is(err, eventsourcingdb.ErrInvalidServerHeader) {
 }
 ```
 
+If you write events with a recursive precondition (see [Using Preconditions on Subjects Recursively](#using-preconditions-on-subjects-recursively)), and the server does not offer the v2 API, the client does not send the write, and returns `ErrIncompatibleServer`, since only the v2 API can check such a precondition. Use `errors.Is` to check for it:
+
+```golang
+_, err := client.WriteEvents(
+  context.TODO(),
+  []eventsourcingdb.EventCandidate{
+    // ...
+  },
+  []eventsourcingdb.Precondition{
+    eventsourcingdb.NewIsSubjectPristinePrecondition(
+      "/books/42",
+      eventsourcingdb.PreconditionOptions{
+        Recursive: true,
+      },
+    ),
+  },
+)
+
+if errors.Is(err, eventsourcingdb.ErrIncompatibleServer) {
+  // ...
+}
+```
+
 If nothing arrives from the server for the stall timeout, 30 seconds by default (see [Configuring the Stall Timeout](#configuring-the-stall-timeout)), e.g. because the server can not be reached, or because a proxy keeps the connection open but no longer passes anything on, the client closes the connection, and the request ends with `ErrConnectionStalled`. This applies to every request, also to streams once the server has begun to answer, on which heartbeats count as something that arrives. Its message names the stall timeout. Use `errors.Is` to check for it:
 
 ```golang
@@ -770,13 +818,13 @@ for event, err := range client.ObserveEvents(
 }
 ```
 
-*Note that a write that stalls once the client has connected to the server wraps `ErrConnectionStalled` with `ErrOutcomeUnknown`, since the server may have stored it nevertheless. A write that stalls before that, e.g. while the client connects, or while it asks the server which API it offers on its first request, returns `ErrConnectionStalled` itself, since the server certainly did not store it.*
+*Note that a write that stalls once the client has connected to the server wraps `ErrConnectionStalled` with `ErrOutcomeUnknown`, since the server may have stored it nevertheless. A write that stalls before that, e.g. while the client connects, or while it asks the server which API it offers, as on its first request, returns `ErrConnectionStalled` itself, since the server certainly did not store it.*
 
 Since a stalled connection is a timeout, `errors.Is` also finds `context.DeadlineExceeded` in the error, as it does for a timeout of an `http.Client`. To tell a stall from a deadline of your context, check for `ErrConnectionStalled`, or check whether your context has ended.
 
 #### Knowing Whether a Write Was Stored
 
-If writing events or registering an event schema fails in a way that leaves open whether the server stored it nevertheless, the error wraps its cause with `ErrOutcomeUnknown`. This is the case, e.g., if the connection stalls or breaks after the client has connected, if your context ends after that, if a stream breaks off, or if the server fails unexpectedly. Every other error of a write means that the server certainly did not store anything: either the client could not connect to it at all, or the server refused the write, e.g. because a precondition does not hold. Use `errors.Is` to check for it, which also finds the cause, as does `errors.As`:
+If writing events or registering an event schema fails in a way that leaves open whether the server stored it nevertheless, the error wraps its cause with `ErrOutcomeUnknown`. This is the case, e.g., if the connection stalls or breaks after the client has connected, if your context ends after that, if a stream breaks off, or if the server fails unexpectedly. Every other error of a write means that the server certainly did not store anything: either the client could not connect to it at all, or did not send the write, e.g. because the server can not check a recursive precondition, or the server refused the write, e.g. because a precondition does not hold. Use `errors.Is` to check for it, which also finds the cause, as does `errors.As`:
 
 ```golang
 _, err := client.WriteEvents(

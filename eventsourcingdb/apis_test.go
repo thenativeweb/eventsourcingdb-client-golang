@@ -133,6 +133,35 @@ func TestTheAPIs(t *testing.T) {
 				assert.NotContains(t, body, "preconditions")
 			})
 
+			t.Run("sends the fields of a precondition also if they are empty, so that the server reports them", func(t *testing.T) {
+				var body string
+				client := clientOf(t, api, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					bodyBytes, err := io.ReadAll(r.Body)
+					require.NoError(t, err)
+					body = string(bodyBytes)
+
+					answerAsServer(w, r)
+				}))
+
+				_, err := client.WriteEvents(context.Background(), []eventsourcingdb.EventCandidate{candidate()}, []eventsourcingdb.Precondition{
+					eventsourcingdb.NewIsSubjectPristinePrecondition(""),
+					eventsourcingdb.NewIsSubjectPopulatedPrecondition(""),
+					eventsourcingdb.NewIsSubjectOnEventIDPrecondition("", ""),
+					eventsourcingdb.NewIsEventQLQueryTruePrecondition(""),
+				})
+				require.NoError(t, err)
+
+				assert.JSONEq(t, `{
+					"events": [{"source":"https://www.eventsourcingdb.io","subject":"/test","type":"io.eventsourcingdb.test","data":{"value":23}}],
+					"preconditions": [
+						{"type":"isSubjectPristine","payload":{"subject":""}},
+						{"type":"isSubjectPopulated","payload":{"subject":""}},
+						{"type":"isSubjectOnEventId","payload":{"subject":"","eventId":""}},
+						{"type":"isEventQlQueryTrue","payload":{"query":""}}
+					]
+				}`, body)
+			})
+
 			t.Run("sends an empty list of events as such, rather than as null", func(t *testing.T) {
 				var body string
 				client := clientOf(t, api, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -344,6 +373,45 @@ func TestTheAPIs(t *testing.T) {
 
 			assertDBAPIError(t, err, http.StatusConflict, "", "state conflict: precondition failed")
 		})
+
+		t.Run("sends the options of a precondition on a subject if they are given, and the precondition as before otherwise", func(t *testing.T) {
+			var body string
+			client := clientOf(t, apiV2, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				bodyBytes, err := io.ReadAll(r.Body)
+				require.NoError(t, err)
+				body = string(bodyBytes)
+
+				answerAsServer(w, r)
+			}))
+
+			_, err := client.WriteEvents(context.Background(), []eventsourcingdb.EventCandidate{candidate()}, []eventsourcingdb.Precondition{
+				eventsourcingdb.NewIsSubjectPristinePrecondition("/test"),
+				eventsourcingdb.NewIsSubjectPristinePrecondition("/test", eventsourcingdb.PreconditionOptions{Recursive: false}),
+				eventsourcingdb.NewIsSubjectPristinePrecondition("/test", eventsourcingdb.PreconditionOptions{Recursive: true}),
+				eventsourcingdb.NewIsSubjectPopulatedPrecondition("/test"),
+				eventsourcingdb.NewIsSubjectPopulatedPrecondition("/test", eventsourcingdb.PreconditionOptions{Recursive: false}),
+				eventsourcingdb.NewIsSubjectPopulatedPrecondition("/test", eventsourcingdb.PreconditionOptions{Recursive: true}),
+				eventsourcingdb.NewIsSubjectOnEventIDPrecondition("/test", "0"),
+				eventsourcingdb.NewIsSubjectOnEventIDPrecondition("/test", "0", eventsourcingdb.PreconditionOptions{Recursive: false}),
+				eventsourcingdb.NewIsSubjectOnEventIDPrecondition("/test", "0", eventsourcingdb.PreconditionOptions{Recursive: true}),
+			})
+			require.NoError(t, err)
+
+			assert.JSONEq(t, `{
+				"events": [{"source":"https://www.eventsourcingdb.io","subject":"/test","type":"io.eventsourcingdb.test","data":{"value":23}}],
+				"preconditions": [
+					{"type":"isSubjectPristine","payload":{"subject":"/test"}},
+					{"type":"isSubjectPristine","payload":{"subject":"/test","options":{"recursive":false}}},
+					{"type":"isSubjectPristine","payload":{"subject":"/test","options":{"recursive":true}}},
+					{"type":"isSubjectPopulated","payload":{"subject":"/test"}},
+					{"type":"isSubjectPopulated","payload":{"subject":"/test","options":{"recursive":false}}},
+					{"type":"isSubjectPopulated","payload":{"subject":"/test","options":{"recursive":true}}},
+					{"type":"isSubjectOnEventId","payload":{"subject":"/test","eventId":"0"}},
+					{"type":"isSubjectOnEventId","payload":{"subject":"/test","eventId":"0","options":{"recursive":false}}},
+					{"type":"isSubjectOnEventId","payload":{"subject":"/test","eventId":"0","options":{"recursive":true}}}
+				]
+			}`, body)
+		})
 	})
 
 	t.Run("v1", func(t *testing.T) {
@@ -399,6 +467,81 @@ func TestTheAPIs(t *testing.T) {
 
 				require.NoError(t, err)
 				assert.Equal(t, eventsourcingdb.EventType{Type: "io.eventsourcingdb.test", HasEvents: hasEvents}, eventType)
+			}
+		})
+
+		t.Run("sends a precondition on a subject that is not recursive as one without options", func(t *testing.T) {
+			var body string
+			client := clientOf(t, apiV1, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				bodyBytes, err := io.ReadAll(r.Body)
+				require.NoError(t, err)
+				body = string(bodyBytes)
+
+				answerAsServer(w, r)
+			}))
+
+			_, err := client.WriteEvents(context.Background(), []eventsourcingdb.EventCandidate{candidate()}, []eventsourcingdb.Precondition{
+				eventsourcingdb.NewIsSubjectPristinePrecondition("/test"),
+				eventsourcingdb.NewIsSubjectPristinePrecondition("/test", eventsourcingdb.PreconditionOptions{Recursive: false}),
+				eventsourcingdb.NewIsSubjectPopulatedPrecondition("/test"),
+				eventsourcingdb.NewIsSubjectPopulatedPrecondition("/test", eventsourcingdb.PreconditionOptions{Recursive: false}),
+				eventsourcingdb.NewIsSubjectOnEventIDPrecondition("/test", "0"),
+				eventsourcingdb.NewIsSubjectOnEventIDPrecondition("/test", "0", eventsourcingdb.PreconditionOptions{Recursive: false}),
+			})
+			require.NoError(t, err)
+
+			assert.JSONEq(t, `{
+				"events": [{"source":"https://www.eventsourcingdb.io","subject":"/test","type":"io.eventsourcingdb.test","data":{"value":23}}],
+				"preconditions": [
+					{"type":"isSubjectPristine","payload":{"subject":"/test"}},
+					{"type":"isSubjectPristine","payload":{"subject":"/test"}},
+					{"type":"isSubjectPopulated","payload":{"subject":"/test"}},
+					{"type":"isSubjectPopulated","payload":{"subject":"/test"}},
+					{"type":"isSubjectOnEventId","payload":{"subject":"/test","eventId":"0"}},
+					{"type":"isSubjectOnEventId","payload":{"subject":"/test","eventId":"0"}}
+				]
+			}`, body)
+		})
+
+		t.Run("refuses a write with a recursive precondition on a subject without sending it", func(t *testing.T) {
+			recursive := eventsourcingdb.PreconditionOptions{Recursive: true}
+
+			for name, precondition := range map[string]eventsourcingdb.Precondition{
+				"isSubjectPristine":  eventsourcingdb.NewIsSubjectPristinePrecondition("/test", recursive),
+				"isSubjectPopulated": eventsourcingdb.NewIsSubjectPopulatedPrecondition("/test", recursive),
+				"isSubjectOnEventId": eventsourcingdb.NewIsSubjectOnEventIDPrecondition("/test", "0", recursive),
+			} {
+				t.Run(name, func(t *testing.T) {
+					var mu sync.Mutex
+					var received []string
+
+					// The client has not asked the server for its API yet, so
+					// that the write is refused as well where the client has
+					// to ask first.
+					client := newClientOf(t, answeringTheProbe(apiV1, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						mu.Lock()
+						received = append(received, r.Method+" "+r.URL.Path)
+						mu.Unlock()
+
+						answerAsServer(w, r)
+					})))
+
+					// A precondition that is not recursive comes first, so that
+					// the client has to look beyond it.
+					_, err := client.WriteEvents(context.Background(), []eventsourcingdb.EventCandidate{candidate()}, []eventsourcingdb.Precondition{
+						eventsourcingdb.NewIsSubjectPristinePrecondition("/test", eventsourcingdb.PreconditionOptions{Recursive: false}),
+						precondition,
+					})
+
+					assert.ErrorIs(t, err, eventsourcingdb.ErrIncompatibleServer)
+					assert.NotErrorIs(t, err, eventsourcingdb.ErrOutcomeUnknown)
+					assert.EqualError(t, err, "the server does not offer the v2 API, which a recursive precondition needs")
+					assert.Equal(t, "v1", eventsourcingdb.APIOf(client))
+
+					mu.Lock()
+					defer mu.Unlock()
+					assert.Empty(t, received)
+				})
 			}
 		})
 	})
