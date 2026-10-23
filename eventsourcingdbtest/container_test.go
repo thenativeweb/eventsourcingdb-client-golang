@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -340,13 +341,13 @@ func TestContainerStart(t *testing.T) {
 			default:
 				// The container that replaces the others is ready before the
 				// clock starts, so that how fast Docker starts it does not
-				// matter. Whether it is ready is decided as Start decides it,
-				// so that this works whichever API the server offers.
+				// matter. Whether it is ready is told by the ping of a client,
+				// rather than by the wait of Start, which is under test here.
 				container, err := startBeforeTheClock(ctx, request)
 				if err != nil {
 					return container, err
 				}
-				return container, eventsourcingdbtest.AwaitReachable(ctx, container, time.Minute)
+				return container, awaitClientPing(ctx, container, request.ExposedPorts[0], time.Minute)
 			}
 			return startBeforeTheClock(ctx, request)
 		})
@@ -865,6 +866,53 @@ func startBeforeTheClock(ctx context.Context, request testcontainers.GenericCont
 // startUnchanged creates and starts a container as Start does.
 func startUnchanged(ctx context.Context, _ int, request testcontainers.GenericContainerRequest) (testcontainers.Container, error) {
 	return testcontainers.GenericContainer(ctx, request)
+}
+
+// awaitClientPing waits until the database in a container answers the ping of
+// a client on the host port that Docker published for the given port, for the
+// given time at most. It tells whether the database is up independently of
+// the wait of Start, so that a wait that takes the database for up too early
+// can not make the database look up here, too.
+func awaitClientPing(ctx context.Context, container testcontainers.Container, port string, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	for {
+		err := pingWithClient(ctx, container, port)
+		if err == nil {
+			return nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("the database did not answer the ping of a client within %s: %w", timeout, err)
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+}
+
+// pingWithClient pings the database in a container with a client of its own,
+// on the host port that Docker published for the given port.
+func pingWithClient(ctx context.Context, container testcontainers.Container, port string) error {
+	host, err := container.Host(ctx)
+	if err != nil {
+		return err
+	}
+	mappedPort, err := container.MappedPort(ctx, port)
+	if err != nil {
+		return err
+	}
+
+	baseURL, err := url.Parse("http://" + net.JoinHostPort(host, strconv.Itoa(int(mappedPort.Num()))))
+	if err != nil {
+		return err
+	}
+	databaseClient, err := eventsourcingdb.NewClient(baseURL, eventsourcingdbtest.NewContainer().GetAPIToken())
+	if err != nil {
+		return err
+	}
+
+	return databaseClient.Ping(ctx)
 }
 
 // createdButNotHandedOut creates and starts a container, but behaves as if
