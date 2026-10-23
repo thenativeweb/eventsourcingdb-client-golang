@@ -1,10 +1,13 @@
 package eventsourcingdb
 
+import "fmt"
+
 // PreconditionOptions configures a precondition on a subject, as created by
 // NewIsSubjectPristinePrecondition, NewIsSubjectPopulatedPrecondition and
 // NewIsSubjectOnEventIDPrecondition. Passing them is optional: a precondition
-// without them applies to the subject alone. Pass them at most once, since a
-// precondition takes the first and ignores every other.
+// without them applies to the subject alone. Pass them at most once: a
+// constructor panics if it is given more than one, since that is a mistake in
+// the code that calls it rather than something to handle at run time.
 type PreconditionOptions struct {
 	// Recursive tells whether the precondition applies to the subject
 	// together with all subjects nested below it, or to the subject alone.
@@ -17,15 +20,18 @@ type PreconditionOptions struct {
 
 // preconditionOptionsOf returns the options that a precondition on a subject
 // was given, or nil if it was given none, so that it is sent as one without
-// options.
+// options. It panics if the precondition was given more than one.
 func preconditionOptionsOf(options []PreconditionOptions) *PreconditionOptions {
-	if len(options) == 0 {
+	switch len(options) {
+	case 0:
 		return nil
+	case 1:
+		// A copy, so that the precondition does not change if the caller
+		// changes the slice it passed.
+		given := options[0]
+
+		return &given
+	default:
+		panic(fmt.Sprintf("eventsourcingdb: a precondition takes at most one PreconditionOptions, got %d", len(options)))
 	}
-
-	// A copy, so that the precondition does not change if the caller changes
-	// the slice it passed.
-	first := options[0]
-
-	return &first
 }

@@ -412,31 +412,6 @@ func TestTheAPIs(t *testing.T) {
 				]
 			}`, body)
 		})
-
-		t.Run("takes the first options of a precondition on a subject, and ignores every other", func(t *testing.T) {
-			var body string
-			client := clientOf(t, apiV2, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				bodyBytes, err := io.ReadAll(r.Body)
-				require.NoError(t, err)
-				body = string(bodyBytes)
-
-				answerAsServer(w, r)
-			}))
-
-			_, err := client.WriteEvents(context.Background(), []eventsourcingdb.EventCandidate{candidate()}, []eventsourcingdb.Precondition{
-				eventsourcingdb.NewIsSubjectPristinePrecondition("/test", eventsourcingdb.PreconditionOptions{Recursive: true}, eventsourcingdb.PreconditionOptions{Recursive: false}),
-				eventsourcingdb.NewIsSubjectPopulatedPrecondition("/test", eventsourcingdb.PreconditionOptions{Recursive: false}, eventsourcingdb.PreconditionOptions{Recursive: true}),
-			})
-			require.NoError(t, err)
-
-			assert.JSONEq(t, `{
-				"events": [{"source":"https://www.eventsourcingdb.io","subject":"/test","type":"io.eventsourcingdb.test","data":{"value":23}}],
-				"preconditions": [
-					{"type":"isSubjectPristine","payload":{"subject":"/test","options":{"recursive":true}}},
-					{"type":"isSubjectPopulated","payload":{"subject":"/test","options":{"recursive":false}}}
-				]
-			}`, body)
-		})
 	})
 
 	t.Run("v1", func(t *testing.T) {
