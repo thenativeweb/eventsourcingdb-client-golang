@@ -207,6 +207,7 @@ func TestVerifyHashOfFixtures(t *testing.T) {
 		for name, verificationKey := range map[string]ed25519.PublicKey{
 			"missing":   nil,
 			"too short": verificationKeyOfFixtures(t)[:ed25519.PublicKeySize-1],
+			"too long":  append(append(ed25519.PublicKey{}, verificationKeyOfFixtures(t)...), 0),
 		} {
 			t.Run(name, func(t *testing.T) {
 				var err error
@@ -216,6 +217,19 @@ func TestVerifyHashOfFixtures(t *testing.T) {
 				assert.EqualError(t, err, fmt.Sprintf("verification key must be an Ed25519 public key of %d bytes", ed25519.PublicKeySize))
 			})
 		}
+	})
+
+	t.Run("checks the verification key before anything else", func(t *testing.T) {
+		// An event without a signature and with a changed hash would fail either
+		// of the later checks, so only a check of the key that comes first
+		// reports the key.
+		event := eventOf(t, fixtureOfVersion2)
+		event.Hash = changedHash(event.Hash)
+		event.Signature = nil
+
+		err := event.VerifySignature(nil)
+
+		assert.EqualError(t, err, fmt.Sprintf("verification key must be an Ed25519 public key of %d bytes", ed25519.PublicKeySize))
 	})
 
 	t.Run("signs the hash of version 2 with its prefix", func(t *testing.T) {
