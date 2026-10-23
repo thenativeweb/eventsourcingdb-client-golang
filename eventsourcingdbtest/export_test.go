@@ -16,6 +16,10 @@ const StartLabel = startLabel
 // creating a container once its context ended.
 const CreateGracePeriod = createGracePeriod
 
+// PingTimeout is how long Start waits for the answer to a ping of the
+// database.
+const PingTimeout = pingTimeout
+
 // SetStartContainer replaces how Start creates and starts a container until
 // the test t ends, so that a test can decide what happens on each attempt.
 func SetStartContainer(

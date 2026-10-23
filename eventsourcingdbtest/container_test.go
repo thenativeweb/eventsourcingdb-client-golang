@@ -243,6 +243,86 @@ func TestContainerStart(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	t.Run("pings the database through the v2 API, and through the v1 API only where the server answers that with 404 or 405", func(t *testing.T) {
+		pings := []struct {
+			name      string
+			v2Answers []int
+			v1Answers []int
+			asked     []string
+		}{
+			{
+				name:      "is ready once the v2 ping is answered with 200, without asking the v1 ping",
+				v2Answers: []int{http.StatusOK},
+				v1Answers: []int{http.StatusOK},
+				asked:     []string{pathOfV2Ping},
+			},
+			{
+				name:      "is ready once the v2 ping is answered with 200, even if the server has no v1 API",
+				v2Answers: []int{http.StatusOK},
+				v1Answers: []int{http.StatusNotFound},
+				asked:     []string{pathOfV2Ping},
+			},
+			{
+				name:      "asks the v1 ping at once where the v2 ping is answered with 404",
+				v2Answers: []int{http.StatusNotFound},
+				v1Answers: []int{http.StatusOK},
+				asked:     []string{pathOfV2Ping, pathOfV1Ping},
+			},
+			{
+				name:      "asks the v1 ping at once where the v2 ping is answered with 405",
+				v2Answers: []int{http.StatusMethodNotAllowed},
+				v1Answers: []int{http.StatusOK},
+				asked:     []string{pathOfV2Ping, pathOfV1Ping},
+			},
+			{
+				name:      "does not ask the v1 ping where the v2 ping is answered with another status, but the v2 ping again",
+				v2Answers: []int{http.StatusServiceUnavailable, http.StatusOK},
+				v1Answers: []int{http.StatusOK},
+				asked:     []string{pathOfV2Ping, pathOfV2Ping},
+			},
+			{
+				name:      "does not ask the v1 ping where the v2 ping runs into the bound per request, but the v2 ping again",
+				v2Answers: []int{noAnswer, http.StatusOK},
+				v1Answers: []int{http.StatusOK},
+				asked:     []string{pathOfV2Ping, pathOfV2Ping},
+			},
+			{
+				name:      "asks the v2 ping first each time, also after the v1 ping was answered with another status than 200",
+				v2Answers: []int{http.StatusNotFound},
+				v1Answers: []int{http.StatusServiceUnavailable, http.StatusOK},
+				asked:     []string{pathOfV2Ping, pathOfV1Ping, pathOfV2Ping, pathOfV1Ping},
+			},
+		}
+
+		for _, ping := range pings {
+			t.Run(ping.name, func(t *testing.T) {
+				server := newPingServer(t, ping.v2Answers, ping.v1Answers)
+
+				// The server answers the pings in place of the database, so
+				// that no container is started, and none has to be removed.
+				serverContainer := newServerContainer(t, server.Server)
+				eventsourcingdbtest.SetStartContainer(t, func(context.Context, testcontainers.GenericContainerRequest) (testcontainers.Container, error) {
+					return serverContainer, nil
+				})
+				eventsourcingdbtest.SetRemoveContainers(t, func(context.Context, string) error {
+					return nil
+				})
+
+				// The startup timeout leaves room for a ping that runs into the
+				// bound per request, and for the pings after it.
+				container := eventsourcingdbtest.NewContainer().
+					WithStartupTimeout(5 * eventsourcingdbtest.PingTimeout)
+
+				err := container.Start(t.Context())
+				defer container.Stop(t.Context())
+
+				assert.NoError(t, err)
+				assert.True(t, container.IsRunning())
+				assert.Equal(t, ping.asked, server.Asked())
+			})
+		}
+	})
+
 	t.Run("replaces a container in which the database does not become reachable", func(t *testing.T) {
 		attempts := replaceStart(t, func(ctx context.Context, attempt int, request testcontainers.GenericContainerRequest) (testcontainers.Container, error) {
 			switch attempt {
@@ -838,6 +918,122 @@ func (c *latePortContainer) MappedPort(ctx context.Context, port string) (networ
 	default:
 		return c.Container.MappedPort(ctx, port)
 	}
+}
+
+// pathOfV2Ping and pathOfV1Ping are the paths of the pings of the v2 and the
+// v1 API.
+const (
+	pathOfV2Ping = "/api/v2/system/ping"
+	pathOfV1Ping = "/api/v1/ping"
+)
+
+// noAnswer is an answer of a pingServer that is none: the server holds the
+// ping until the client gives up on it.
+const noAnswer = 0
+
+// pingServer is a server that answers the pings of the v2 and the v1 API in
+// place of the database, and records which pings it was asked, in order. It
+// answers the nth ping of each API with the nth of the answers for it, and
+// every ping after the last answer with the last one again.
+type pingServer struct {
+	*httptest.Server
+
+	mu    sync.Mutex
+	asked []string
+}
+
+func newPingServer(t *testing.T, v2Answers, v1Answers []int) *pingServer {
+	t.Helper()
+
+	answers := map[string][]int{
+		pathOfV2Ping: v2Answers,
+		pathOfV1Ping: v1Answers,
+	}
+	pings := map[string]int{}
+
+	server := &pingServer{}
+	server.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server.mu.Lock()
+		server.asked = append(server.asked, r.URL.Path)
+		answersOfPath := answers[r.URL.Path]
+		ping := pings[r.URL.Path]
+		pings[r.URL.Path]++
+		server.mu.Unlock()
+
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Empty(t, r.Header.Get("Authorization"), "a ping carried a token")
+
+		if len(answersOfPath) == 0 {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		answer := answersOfPath[min(ping, len(answersOfPath)-1)]
+		if answer == noAnswer {
+			// The ping ends once the client gives up on it, which closes the
+			// connection. Should it not, the server stops holding the ping
+			// after a while, so that the test fails, rather than hangs.
+			select {
+			case <-r.Context().Done():
+			case <-time.After(10 * eventsourcingdbtest.PingTimeout):
+				t.Errorf("the client did not give up on a ping that the server does not answer")
+				w.WriteHeader(http.StatusServiceUnavailable)
+			}
+			return
+		}
+
+		w.WriteHeader(answer)
+	}))
+	t.Cleanup(server.Close)
+
+	return server
+}
+
+// Asked returns the paths of the pings that the server was asked, in order.
+func (s *pingServer) Asked() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return slices.Clone(s.asked)
+}
+
+// serverContainer is a container that runs, and whose port Docker published
+// as the port of a server, so that the server answers the pings of Start in
+// place of the database. Terminating it does nothing, as there is no
+// container to terminate.
+type serverContainer struct {
+	testcontainers.Container
+	host string
+	port network.Port
+}
+
+func newServerContainer(t *testing.T, server *httptest.Server) serverContainer {
+	t.Helper()
+
+	serverURL, err := url.Parse(server.URL)
+	require.NoError(t, err)
+	portNumber, err := strconv.ParseUint(serverURL.Port(), 10, 16)
+	require.NoError(t, err)
+	port, ok := network.PortFrom(uint16(portNumber), network.TCP)
+	require.True(t, ok)
+
+	return serverContainer{host: serverURL.Hostname(), port: port}
+}
+
+func (c serverContainer) State(context.Context) (*dockercontainer.State, error) {
+	return &dockercontainer.State{Status: dockercontainer.StateRunning, Running: true}, nil
+}
+
+func (c serverContainer) Host(context.Context) (string, error) {
+	return c.host, nil
+}
+
+func (c serverContainer) MappedPort(context.Context, string) (network.Port, error) {
+	return c.port, nil
+}
+
+func (c serverContainer) Terminate(context.Context, ...testcontainers.TerminateOption) error {
+	return nil
 }
 
 // failingStateContainer is a container for which Docker fails to tell its

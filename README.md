@@ -876,7 +876,7 @@ To check if the test container is running, call the `IsRunning` function:
 isRunning := container.IsRunning()
 ```
 
-`Start` waits until the database answers a ping, for up to 30 seconds from creating the container. Pulling the image does not count. If the container runs, but the database does not become reachable in time, `Start` replaces the container with a new one, up to 3 containers in total. If Docker fails, or if the container exits, `Start` returns an error at once, which in the latter case names the last lines of the container's log. Whenever a container fails to start, `Start` removes it.
+`Start` waits until the database answers a ping, for up to 30 seconds from creating the container. Pulling the image does not count. For the ping, it asks `GET /api/v2/system/ping`, and `GET /api/v1/ping` only if the server answers that with 404 or 405, as a server without the v2 API does. If the container runs, but the database does not become reachable in time, `Start` replaces the container with a new one, up to 3 containers in total. If Docker fails, or if the container exits, `Start` returns an error at once, which in the latter case names the last lines of the container's log. Whenever a container fails to start, `Start` removes it.
 
 #### Configuring the Container Instance
 
