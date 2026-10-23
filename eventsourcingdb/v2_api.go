@@ -39,7 +39,7 @@ func (a v2API) open(guard *stallGuard, action string, method string, path string
 	// the client asks, that holds also if the answer does not come from
 	// EventSourcingDB, e.g. from a proxy that passes on nothing but the
 	// paths of the v1 API. The request itself fails as with any other status.
-	if response.StatusCode == http.StatusNotFound || response.StatusCode == http.StatusMethodNotAllowed {
+	if isAnswerWithoutV2API(response.StatusCode) {
 		a.client.apiChoice.forget(a.generation)
 	}
 
