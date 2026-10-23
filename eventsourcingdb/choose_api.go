@@ -48,7 +48,9 @@ const pathOfV2Ping = "/api/v2/system/ping"
 // fails with the error of asking, and the next one asks again. Requests that
 // start while the server is asked wait for its answer, rather than asking as
 // well. Once the server answers a request through the v2 API with 404 or 405,
-// the client forgets the answer, and the next request asks again.
+// the client forgets the answer, and the next request asks again. A write
+// with a recursive precondition forgets an answer that says the server offers
+// the v1 API only before it chooses (see forgetV1), so it asks again as well.
 func (c *Client) chooseAPI(ctx context.Context, action string) (api, error) {
 	version, generation, err := c.apiChoice.choose(ctx, c.probeAPI)
 	if err != nil {
@@ -173,6 +175,23 @@ func (a *apiChoice) forget(generation uint64) {
 	defer a.mu.Unlock()
 
 	if a.version == apiVersionV2 && a.generation == generation {
+		a.version = apiVersionUnknown
+	}
+}
+
+// forgetV1 forgets that the server offers the v1 API only, so that the next
+// request asks the server again. A write with a recursive precondition calls
+// it before it chooses, since only the v2 API can check such a precondition,
+// and the server may have been upgraded since the client asked, e.g. while the
+// application runs. Unlike forget, it needs no generation: it runs before the
+// request chooses, so whatever answer it finds predates the request. Requests
+// that start while the server is asked again wait for its answer, as on the
+// first request.
+func (a *apiChoice) forgetV1() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if a.version == apiVersionV1 {
 		a.version = apiVersionUnknown
 	}
 }

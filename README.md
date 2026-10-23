@@ -66,7 +66,7 @@ if err != nil {
 
 ### Talking to Servers With and Without the v2 API
 
-The client works with servers that offer the v2 API of EventSourcingDB, and with servers that offer the v1 API only. Creating a client sends no request. On its first request, the client asks the server whether it offers the v2 API, and remembers the answer: it speaks the v2 API if the server offers it, and the v1 API otherwise. If the server gives no clear answer, e.g. because it can not be reached, that first request fails with the error, and the next request asks again. Since the client asks with `GET /api/v2/system/ping`, the error of that first request then names that path, whatever the request was, e.g. `Get "http://localhost:3000/api/v2/system/ping": dial tcp [::1]:3000: connect: connection refused`. If the server answers a path of the v2 API with 404 or 405, e.g. after it was rolled back to a version without it, the client asks again on the next request.
+The client works with servers that offer the v2 API of EventSourcingDB, and with servers that offer the v1 API only. Creating a client sends no request. On its first request, the client asks the server whether it offers the v2 API, and remembers the answer: it speaks the v2 API if the server offers it, and the v1 API otherwise. If the server gives no clear answer, e.g. because it can not be reached, that first request fails with the error, and the next request asks again. Since the client asks with `GET /api/v2/system/ping`, the error of that first request then names that path, whatever the request was, e.g. `Get "http://localhost:3000/api/v2/system/ping": dial tcp [::1]:3000: connect: connection refused`. If the server answers a path of the v2 API with 404 or 405, e.g. after it was rolled back to a version without it, the client asks again on the next request. If the client found out that the server does not offer the v2 API, a write with a recursive precondition makes it ask again as well, since only the v2 API can check such a precondition, and the server may have been upgraded since (see [Using Preconditions on Subjects Recursively](#using-preconditions-on-subjects-recursively)). If the server gives no clear answer then, that write fails with the error, as the first request does.
 
 *Note that with the v2 API, the client reads with the HTTP method `QUERY` ([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008)). If a proxy runs in front of the database, it has to let `QUERY` through. The client does not fall back to `POST`.*
 
@@ -215,7 +215,7 @@ writtenEvents, err := client.WriteEvents(
 
 Then `isSubjectPristine` holds if neither the subject nor any of its nested subjects has an event, `isSubjectPopulated` holds if any of them has one, and `isSubjectOnEventId` holds if the latest event among all of them has the given ID.
 
-*Note that only a server that offers the v2 API can check a recursive precondition. With any other server, the client does not send the write, so nothing is written, and returns `ErrIncompatibleServer` (see [Handling Errors](#handling-errors)). A precondition whose `Recursive` option is `false` works with every server.*
+*Note that only a server that offers the v2 API can check a recursive precondition. If the client found out before that the server does not offer it, it asks the server again before it writes, as the server may have been upgraded since. With a server that does not offer the v2 API, the client does not send the write, so nothing is written, and returns `ErrIncompatibleServer` (see [Handling Errors](#handling-errors)). A precondition whose `Recursive` option is `false` works with every server.*
 
 #### Aborting Writing
 
@@ -818,7 +818,7 @@ for event, err := range client.ObserveEvents(
 }
 ```
 
-*Note that a write that stalls once the client has connected to the server wraps `ErrConnectionStalled` with `ErrOutcomeUnknown`, since the server may have stored it nevertheless. A write that stalls before that, e.g. while the client connects, or while it asks the server which API it offers on its first request, returns `ErrConnectionStalled` itself, since the server certainly did not store it.*
+*Note that a write that stalls once the client has connected to the server wraps `ErrConnectionStalled` with `ErrOutcomeUnknown`, since the server may have stored it nevertheless. A write that stalls before that, e.g. while the client connects, or while it asks the server which API it offers, as on its first request, returns `ErrConnectionStalled` itself, since the server certainly did not store it.*
 
 Since a stalled connection is a timeout, `errors.Is` also finds `context.DeadlineExceeded` in the error, as it does for a timeout of an `http.Client`. To tell a stall from a deadline of your context, check for `ErrConnectionStalled`, or check whether your context has ended.
 

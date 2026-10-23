@@ -13,6 +13,14 @@ func (c *Client) WriteEvents(ctx context.Context, events []EventCandidate, preco
 		return nil, err
 	}
 
+	// Only the v2 API can check a recursive precondition, so the client asks
+	// the server again if it found out before that it does not offer it,
+	// rather than refusing the write because of an answer that may be
+	// outdated.
+	if body.hasRecursivePrecondition() {
+		c.apiChoice.forgetV1()
+	}
+
 	api, err := c.chooseAPI(ctx, actionWriteEvents)
 	if err != nil {
 		return nil, err
@@ -54,13 +62,12 @@ type writeEventsRequestBodyPreconditionOptions struct {
 // it means the same there, while a recursive one fails with
 // ErrIncompatibleServer, since the v1 API can not check it.
 func (b writeEventsRequestBody) forV1() (writeEventsRequestBody, error) {
+	if b.hasRecursivePrecondition() {
+		return writeEventsRequestBody{}, ErrIncompatibleServer
+	}
+
 	preconditions := make([]writeEventsRequestBodyPrecondition, 0, len(b.Preconditions))
 	for _, precondition := range b.Preconditions {
-		options := precondition.Payload.Options
-		if options != nil && options.Recursive {
-			return writeEventsRequestBody{}, ErrIncompatibleServer
-		}
-
 		precondition.Payload.Options = nil
 		preconditions = append(preconditions, precondition)
 	}
@@ -69,6 +76,19 @@ func (b writeEventsRequestBody) forV1() (writeEventsRequestBody, error) {
 		Events:        b.Events,
 		Preconditions: preconditions,
 	}, nil
+}
+
+// hasRecursivePrecondition tells whether any precondition of the body is
+// recursive, which only the v2 API can check.
+func (b writeEventsRequestBody) hasRecursivePrecondition() bool {
+	for _, precondition := range b.Preconditions {
+		options := precondition.Payload.Options
+		if options != nil && options.Recursive {
+			return true
+		}
+	}
+
+	return false
 }
 
 type writeEventsRequestBodyEvent struct {

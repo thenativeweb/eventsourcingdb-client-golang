@@ -3,11 +3,13 @@ package eventsourcingdb_test
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -763,6 +765,167 @@ func TestChoosingTheAPI(t *testing.T) {
 		err = client.Ping(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, int32(5), pings.Load())
+	})
+
+	// Only the v2 API can check a recursive precondition, and a server that
+	// did not offer it when the client asked may have been upgraded since,
+	// e.g. while the application runs.
+	t.Run("asks again before it refuses a write with a recursive precondition, and writes it through the v2 API if the server offers it now", func(t *testing.T) {
+		server := newChangingServer(t, answerAsRolledBack(http.StatusNotFound))
+		client := server.client(t)
+
+		err := client.Ping(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, "v1", eventsourcingdb.APIOf(client))
+
+		// The server is upgraded to a version with the v2 API.
+		bodies := make(chan string, 10)
+		server.answerWith(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/api/v2/data/write-events" {
+				body, err := io.ReadAll(r.Body)
+				assert.NoError(t, err)
+				bodies <- string(body)
+			}
+
+			answerAsServer(w, r)
+		})
+		before := len(server.paths())
+
+		writtenEvents, err := client.WriteEvents(context.Background(), []eventsourcingdb.EventCandidate{candidate()}, []eventsourcingdb.Precondition{
+			eventsourcingdb.NewIsSubjectPristinePrecondition("/test", eventsourcingdb.PreconditionOptions{Recursive: true}),
+		})
+
+		require.NoError(t, err)
+		assert.Len(t, writtenEvents, 1)
+		assert.Equal(t, []string{"GET /api/v2/system/ping", "POST /api/v2/data/write-events"}, server.paths()[before:])
+		assert.JSONEq(t, `{
+			"events": [{"source":"https://www.eventsourcingdb.io","subject":"/test","type":"io.eventsourcingdb.test","data":{"value":23}}],
+			"preconditions": [{"type":"isSubjectPristine","payload":{"subject":"/test","options":{"recursive":true}}}]
+		}`, <-bodies)
+		assert.Equal(t, "v2", eventsourcingdb.APIOf(client))
+
+		// The requests after it speak the v2 API, without asking again.
+		before = len(server.paths())
+		_, err = client.WriteEvents(context.Background(), []eventsourcingdb.EventCandidate{candidate()}, nil)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"POST /api/v2/data/write-events"}, server.paths()[before:])
+	})
+
+	t.Run("asks again before it refuses a write with a recursive precondition, and refuses it without sending it if the server still does not offer the v2 API", func(t *testing.T) {
+		server := newChangingServer(t, answerAsRolledBack(http.StatusNotFound))
+		client := server.client(t)
+
+		err := client.Ping(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, "v1", eventsourcingdb.APIOf(client))
+		before := len(server.paths())
+
+		_, err = client.WriteEvents(context.Background(), []eventsourcingdb.EventCandidate{candidate()}, []eventsourcingdb.Precondition{
+			eventsourcingdb.NewIsSubjectPopulatedPrecondition("/test", eventsourcingdb.PreconditionOptions{Recursive: true}),
+		})
+
+		assert.ErrorIs(t, err, eventsourcingdb.ErrIncompatibleServer)
+		assert.EqualError(t, err, "the server does not offer the v2 API, which a recursive precondition needs")
+		assert.Equal(t, []string{"GET /api/v2/system/ping"}, server.paths()[before:])
+		assert.Equal(t, "v1", eventsourcingdb.APIOf(client))
+
+		// A write without a recursive precondition goes on with the answer,
+		// without asking again.
+		before = len(server.paths())
+		_, err = client.WriteEvents(context.Background(), []eventsourcingdb.EventCandidate{candidate()}, []eventsourcingdb.Precondition{
+			eventsourcingdb.NewIsSubjectPopulatedPrecondition("/test", eventsourcingdb.PreconditionOptions{Recursive: false}),
+		})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"POST /api/v1/write-events"}, server.paths()[before:])
+	})
+
+	t.Run("asks again once for writes with a recursive precondition that start while it asks, and sends each of them once", func(t *testing.T) {
+		const writes = 5
+
+		released, release := newRelease()
+		var isUpgraded atomic.Bool
+		var probes atomic.Int32
+		probeReceived := make(chan struct{}, 10)
+
+		server := newChangingServer(t, func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodGet && r.URL.Path == "/api/v2/system/ping" {
+				probes.Add(1)
+				if !isUpgraded.Load() {
+					answerAsV1(w, r)
+					return
+				}
+
+				// Once upgraded, the server answers the request with which the
+				// client asks for its API only when the test releases it.
+				probeReceived <- struct{}{}
+				select {
+				case <-released:
+				case <-r.Context().Done():
+					return
+				}
+				answerAsV2(w, r)
+				return
+			}
+
+			if !isUpgraded.Load() && strings.HasPrefix(r.URL.Path, "/api/v2/") {
+				answerAsV1(w, r)
+				return
+			}
+
+			answerAsServer(w, r)
+		})
+		client := server.client(t)
+		// The server waits for its handlers when it closes, so they have to be
+		// released first, also if the test fails.
+		t.Cleanup(release)
+
+		err := client.Ping(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, "v1", eventsourcingdb.APIOf(client))
+
+		isUpgraded.Store(true)
+
+		waiting := make(chan struct{}, writes)
+		eventsourcingdb.SetWaitingForProbe(client, func() {
+			waiting <- struct{}{}
+		})
+
+		writeRecursively := func() error {
+			_, err := client.WriteEvents(context.Background(), []eventsourcingdb.EventCandidate{candidate()}, []eventsourcingdb.Precondition{
+				eventsourcingdb.NewIsSubjectOnEventIDPrecondition("/test", "0", eventsourcingdb.PreconditionOptions{Recursive: true}),
+			})
+			return err
+		}
+
+		errs := make(chan error, writes)
+		go func() {
+			errs <- writeRecursively()
+		}()
+		receive(t, probeReceived, "the client did not ask again")
+
+		for range writes - 1 {
+			go func() {
+				errs <- writeRecursively()
+			}()
+		}
+		for range writes - 1 {
+			receive(t, waiting, "a write did not wait for the answer")
+		}
+		release()
+
+		for range writes {
+			assert.NoError(t, <-errs)
+		}
+		assert.Equal(t, int32(2), probes.Load())
+		assert.Equal(t, "v2", eventsourcingdb.APIOf(client))
+
+		sentWrites := []string{}
+		for _, path := range server.paths() {
+			if strings.HasSuffix(path, "/write-events") {
+				sentWrites = append(sentWrites, path)
+			}
+		}
+		assert.Equal(t, slices.Repeat([]string{"POST /api/v2/data/write-events"}, writes), sentWrites)
 	})
 }
 

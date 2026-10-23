@@ -12,9 +12,11 @@ type PreconditionOptions struct {
 	// Recursive tells whether the precondition applies to the subject
 	// together with all subjects nested below it, or to the subject alone.
 	//
-	// Only the v2 API of the server can check a recursive precondition, so
-	// against a server without it, WriteEvents fails with
-	// ErrIncompatibleServer before it sends anything, and writes nothing.
+	// Only the v2 API of the server can check a recursive precondition. If
+	// the client found out before that the server does not offer it, it asks
+	// the server again before it writes, as the server may have been upgraded
+	// since. Against a server without it, WriteEvents then fails with
+	// ErrIncompatibleServer before it sends the write, and writes nothing.
 	Recursive bool
 }
 
