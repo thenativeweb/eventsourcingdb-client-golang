@@ -59,10 +59,9 @@ const (
 // all, or if the server refused it, as refused tells for an error that the
 // server reported. A write that the client refuses before sending it, e.g.
 // one with a recursive precondition that the server can not check, fails
-// before it gets here, and was not stored either. The
-// rule is the same in every SDK of EventSourcingDB, so it does not count a
-// request that fails after connecting, but before all of it was sent, as not
-// stored.
+// before it gets here, and was not stored either. The rule is the same in
+// every SDK of EventSourcingDB, so it does not count a request that fails
+// after connecting, but before all of it was sent, as not stored.
 func failureOfWrite(guard *stallGuard, err error, refused func(dbAPIError *DBAPIError) bool, what string) error {
 	if err == nil || !guard.isConnected() {
 		return err
