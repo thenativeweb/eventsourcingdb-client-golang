@@ -178,8 +178,14 @@ func versionOfHash(hash string) string {
 // its prefix, if it has one.
 //
 // It returns the error of VerifyHash if verifying the hash fails, and
-// ErrSignatureVerificationFailed if the signature does not match.
+// ErrSignatureVerificationFailed if the signature does not match. A
+// verification key that is missing, or of another size than an Ed25519 public
+// key, fails with an error before anything is verified, since ed25519.Verify
+// panics on such a key.
 func (event Event) VerifySignature(verificationKey ed25519.PublicKey) error {
+	if len(verificationKey) != ed25519.PublicKeySize {
+		return fmt.Errorf("verification key must be an Ed25519 public key of %d bytes", ed25519.PublicKeySize)
+	}
 	if event.Signature == nil {
 		return errors.New("signature must not be nil")
 	}
