@@ -42,6 +42,12 @@ const (
 // server offers the v2 API. A server without it answers with 404 or 405.
 const pathOfV2Ping = "/api/v2/system/ping"
 
+// isAnswerWithoutV2API tells whether the given status is how a server without
+// the v2 API answers a path of it, which is with 404 or 405.
+func isAnswerWithoutV2API(statusCode int) bool {
+	return statusCode == http.StatusNotFound || statusCode == http.StatusMethodNotAllowed
+}
+
 // chooseAPI returns the API to send a request for the given action through.
 // On the first request, it asks the server whether it offers the v2 API, and
 // remembers the answer, if it is a definitive one. Otherwise, the request
@@ -103,7 +109,7 @@ func (c *Client) probeAPI(ctx context.Context) (apiVersion, error) {
 	}
 	defer response.Body.Close()
 
-	if response.StatusCode == http.StatusNotFound || response.StatusCode == http.StatusMethodNotAllowed {
+	if isAnswerWithoutV2API(response.StatusCode) {
 		return apiVersionV1, nil
 	}
 
