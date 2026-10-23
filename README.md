@@ -192,6 +192,31 @@ writtenEvents, err := client.WriteEvents(
 
 *Note that the query must return a single row with a single value, which is interpreted as a boolean.*
 
+#### Using Preconditions on Subjects Recursively
+
+The `isSubjectPristine`, `isSubjectPopulated`, and `isSubjectOnEventId` preconditions look at the given subject alone. If you want them to look at the subject together with all of its nested subjects, pass a `PreconditionOptions` value as the last argument, and set its `Recursive` option to `true`:
+
+```go
+writtenEvents, err := client.WriteEvents(
+  context.TODO(),
+  []eventsourcingdb.EventCandidate{
+    // ...
+  },
+  []eventsourcingdb.Precondition{
+    eventsourcingdb.NewIsSubjectPristinePrecondition(
+      "/books/42",
+      eventsourcingdb.PreconditionOptions{
+        Recursive: true,
+      },
+    ),
+  },
+)
+```
+
+Then `isSubjectPristine` holds if neither the subject nor any of its nested subjects has an event, `isSubjectPopulated` holds if any of them has one, and `isSubjectOnEventId` holds if the latest event among all of them has the given ID.
+
+*Note that only a server that offers the v2 API can check a recursive precondition. With any other server, the client does not send the write, so nothing is written, and returns `ErrIncompatibleServer` (see [Handling Errors](#handling-errors)). A precondition whose `Recursive` option is `false` works with every server.*
+
 #### Aborting Writing
 
 To abort writing, e.g. if the server does not answer in time, cancel the context you provided, or give it a deadline:
@@ -752,6 +777,29 @@ if errors.Is(err, eventsourcingdb.ErrInvalidServerHeader) {
 }
 ```
 
+If you write events with a recursive precondition (see [Using Preconditions on Subjects Recursively](#using-preconditions-on-subjects-recursively)), and the server does not offer the v2 API, the client does not send the write, and returns `ErrIncompatibleServer`, since only the v2 API can check such a precondition. Use `errors.Is` to check for it:
+
+```golang
+_, err := client.WriteEvents(
+  context.TODO(),
+  []eventsourcingdb.EventCandidate{
+    // ...
+  },
+  []eventsourcingdb.Precondition{
+    eventsourcingdb.NewIsSubjectPristinePrecondition(
+      "/books/42",
+      eventsourcingdb.PreconditionOptions{
+        Recursive: true,
+      },
+    ),
+  },
+)
+
+if errors.Is(err, eventsourcingdb.ErrIncompatibleServer) {
+  // ...
+}
+```
+
 If nothing arrives from the server for the stall timeout, 30 seconds by default (see [Configuring the Stall Timeout](#configuring-the-stall-timeout)), e.g. because the server can not be reached, or because a proxy keeps the connection open but no longer passes anything on, the client closes the connection, and the request ends with `ErrConnectionStalled`. This applies to every request, also to streams once the server has begun to answer, on which heartbeats count as something that arrives. Its message names the stall timeout. Use `errors.Is` to check for it:
 
 ```golang
@@ -776,7 +824,7 @@ Since a stalled connection is a timeout, `errors.Is` also finds `context.Deadlin
 
 #### Knowing Whether a Write Was Stored
 
-If writing events or registering an event schema fails in a way that leaves open whether the server stored it nevertheless, the error wraps its cause with `ErrOutcomeUnknown`. This is the case, e.g., if the connection stalls or breaks after the client has connected, if your context ends after that, if a stream breaks off, or if the server fails unexpectedly. Every other error of a write means that the server certainly did not store anything: either the client could not connect to it at all, or the server refused the write, e.g. because a precondition does not hold. Use `errors.Is` to check for it, which also finds the cause, as does `errors.As`:
+If writing events or registering an event schema fails in a way that leaves open whether the server stored it nevertheless, the error wraps its cause with `ErrOutcomeUnknown`. This is the case, e.g., if the connection stalls or breaks after the client has connected, if your context ends after that, if a stream breaks off, or if the server fails unexpectedly. Every other error of a write means that the server certainly did not store anything: either the client could not connect to it at all, or did not send the write, e.g. because the server can not check a recursive precondition, or the server refused the write, e.g. because a precondition does not hold. Use `errors.Is` to check for it, which also finds the cause, as does `errors.As`:
 
 ```golang
 _, err := client.WriteEvents(

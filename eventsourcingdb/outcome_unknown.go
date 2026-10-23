@@ -21,7 +21,8 @@ import (
 //
 // Any other error of WriteEvents and RegisterEventSchema means that the server
 // certainly did not store anything: either the client could not connect to
-// it at all, or the server refused the request.
+// it at all, or did not send the request, e.g. because the server can not
+// check a recursive precondition, or the server refused the request.
 var ErrOutcomeUnknown = errors.New("outcome unknown")
 
 // outcomeUnknownError reports a write that may have been stored, with

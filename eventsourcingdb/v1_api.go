@@ -78,10 +78,17 @@ func (a v1API) verifyAPIToken(ctx context.Context) error {
 }
 
 func (a v1API) writeEvents(ctx context.Context, body writeEventsRequestBody) ([]Event, error) {
+	// A write that the v1 API can not take fails before it is sent, so that
+	// nothing is written.
+	v1Body, err := body.forV1()
+	if err != nil {
+		return nil, err
+	}
+
 	guard := a.client.guard(ctx)
 	defer guard.end()
 
-	writtenEvents, err := a.sendWriteEvents(guard, body)
+	writtenEvents, err := a.sendWriteEvents(guard, v1Body)
 	if err != nil {
 		return nil, failureOfWrite(guard, err, v1RefusesWrite, eventsMayHaveBeenWritten)
 	}

@@ -22,10 +22,53 @@ func (c *Client) WriteEvents(ctx context.Context, events []EventCandidate, preco
 }
 
 // writeEventsRequestBody is the body of a request that writes events, which
-// both APIs take alike.
+// both APIs take alike, but for the options of a precondition, which only the
+// v2 API knows (see forV1).
 type writeEventsRequestBody struct {
-	Events        []writeEventsRequestBodyEvent `json:"events"`
-	Preconditions []any                         `json:"preconditions,omitempty"`
+	Events        []writeEventsRequestBodyEvent        `json:"events"`
+	Preconditions []writeEventsRequestBodyPrecondition `json:"preconditions,omitempty"`
+}
+
+type writeEventsRequestBodyPrecondition struct {
+	Type    string                                    `json:"type"`
+	Payload writeEventsRequestBodyPreconditionPayload `json:"payload"`
+}
+
+// writeEventsRequestBodyPreconditionPayload is the payload of a precondition,
+// with the fields that its type takes, and without every other one. The
+// fields are pointers, so that a field that a precondition takes is sent also
+// if it is empty, while options are sent only if the caller gave them.
+type writeEventsRequestBodyPreconditionPayload struct {
+	Subject *string                                    `json:"subject,omitempty"`
+	EventID *string                                    `json:"eventId,omitempty"`
+	Query   *string                                    `json:"query,omitempty"`
+	Options *writeEventsRequestBodyPreconditionOptions `json:"options,omitempty"`
+}
+
+type writeEventsRequestBodyPreconditionOptions struct {
+	Recursive bool `json:"recursive"`
+}
+
+// forV1 returns the body as the v1 API takes it, which knows no options of a
+// precondition. A precondition that is not recursive goes without them, since
+// it means the same there, while a recursive one fails with
+// ErrIncompatibleServer, since the v1 API can not check it.
+func (b writeEventsRequestBody) forV1() (writeEventsRequestBody, error) {
+	preconditions := make([]writeEventsRequestBodyPrecondition, 0, len(b.Preconditions))
+	for _, precondition := range b.Preconditions {
+		options := precondition.Payload.Options
+		if options != nil && options.Recursive {
+			return writeEventsRequestBody{}, ErrIncompatibleServer
+		}
+
+		precondition.Payload.Options = nil
+		preconditions = append(preconditions, precondition)
+	}
+
+	return writeEventsRequestBody{
+		Events:        b.Events,
+		Preconditions: preconditions,
+	}, nil
 }
 
 type writeEventsRequestBodyEvent struct {
@@ -49,32 +92,35 @@ func newWriteEventsRequestBody(events []EventCandidate, preconditions []Precondi
 	for _, precondition := range preconditions {
 		switch precondition := precondition.(type) {
 		case isSubjectPristinePrecondition:
-			requestBody.Preconditions = append(requestBody.Preconditions, map[string]any{
-				"type": "isSubjectPristine",
-				"payload": map[string]any{
-					"subject": precondition.Subject(),
+			requestBody.Preconditions = append(requestBody.Preconditions, writeEventsRequestBodyPrecondition{
+				Type: "isSubjectPristine",
+				Payload: writeEventsRequestBodyPreconditionPayload{
+					Subject: new(precondition.Subject()),
+					Options: (*writeEventsRequestBodyPreconditionOptions)(precondition.options),
 				},
 			})
 		case isSubjectPopulatedPrecondition:
-			requestBody.Preconditions = append(requestBody.Preconditions, map[string]any{
-				"type": "isSubjectPopulated",
-				"payload": map[string]any{
-					"subject": precondition.Subject(),
+			requestBody.Preconditions = append(requestBody.Preconditions, writeEventsRequestBodyPrecondition{
+				Type: "isSubjectPopulated",
+				Payload: writeEventsRequestBodyPreconditionPayload{
+					Subject: new(precondition.Subject()),
+					Options: (*writeEventsRequestBodyPreconditionOptions)(precondition.options),
 				},
 			})
 		case isSubjectOnEventIDPrecondition:
-			requestBody.Preconditions = append(requestBody.Preconditions, map[string]any{
-				"type": "isSubjectOnEventId",
-				"payload": map[string]any{
-					"subject": precondition.Subject(),
-					"eventId": precondition.EventID(),
+			requestBody.Preconditions = append(requestBody.Preconditions, writeEventsRequestBodyPrecondition{
+				Type: "isSubjectOnEventId",
+				Payload: writeEventsRequestBodyPreconditionPayload{
+					Subject: new(precondition.Subject()),
+					EventID: new(precondition.EventID()),
+					Options: (*writeEventsRequestBodyPreconditionOptions)(precondition.options),
 				},
 			})
 		case isEventQLQueryTruePrecondition:
-			requestBody.Preconditions = append(requestBody.Preconditions, map[string]any{
-				"type": "isEventQlQueryTrue",
-				"payload": map[string]any{
-					"query": precondition.Query(),
+			requestBody.Preconditions = append(requestBody.Preconditions, writeEventsRequestBodyPrecondition{
+				Type: "isEventQlQueryTrue",
+				Payload: writeEventsRequestBodyPreconditionPayload{
+					Query: new(precondition.Query()),
 				},
 			})
 		default:
