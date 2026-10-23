@@ -48,11 +48,29 @@ const pathOfV2Ping = "/api/v2/system/ping"
 // fails with the error of asking, and the next one asks again. Requests that
 // start while the server is asked wait for its answer, rather than asking as
 // well. Once the server answers a request through the v2 API with 404 or 405,
-// the client forgets the answer, and the next request asks again. A write
-// with a recursive precondition forgets an answer that says the server offers
-// the v1 API only before it chooses (see forgetV1), so it asks again as well.
+// the client forgets the answer, and the next request asks again.
 func (c *Client) chooseAPI(ctx context.Context, action string) (api, error) {
-	version, generation, err := c.apiChoice.choose(ctx, c.probeAPI)
+	version, generation, err := c.apiChoice.choose(ctx, c.probeAPI, false)
+
+	return c.apiOf(version, generation, err, action)
+}
+
+// chooseAPIAskingAgainIfV1 returns the API to send a request for the given
+// action through, as chooseAPI does, but asks the server again if the client
+// found out that it offers the v1 API only, rather than taking that answer
+// (see apiChoice.choose). A write with a recursive precondition chooses so,
+// since only the v2 API can check such a precondition, and the server may
+// have been upgraded since the client asked, e.g. while the application runs.
+func (c *Client) chooseAPIAskingAgainIfV1(ctx context.Context, action string) (api, error) {
+	version, generation, err := c.apiChoice.choose(ctx, c.probeAPI, true)
+
+	return c.apiOf(version, generation, err, action)
+}
+
+// apiOf returns the API of the given version, which was chosen with the given
+// generation, or the given error of choosing it, as an error of a request for
+// the given action.
+func (c *Client) apiOf(version apiVersion, generation uint64, err error, action string) (api, error) {
 	if err != nil {
 		return nil, errorOfProbeFor(err, action)
 	}
@@ -155,6 +173,12 @@ type apiChoice struct {
 	version apiVersion
 	running *probe
 
+	// askingAgain is the probe that asks the server again while it is known
+	// to offer the v1 API only, for the requests that do not take that answer
+	// (see choose). It is apart from running, since every other request goes
+	// on with the known answer meanwhile, rather than waiting for it.
+	askingAgain *probe
+
 	// generation counts the answers that probes remembered, so that forget
 	// forgets only the answer that a request was sent by, and never a newer
 	// one.
@@ -179,27 +203,11 @@ func (a *apiChoice) forget(generation uint64) {
 	}
 }
 
-// forgetV1 forgets that the server offers the v1 API only, so that the next
-// request asks the server again. A write with a recursive precondition calls
-// it before it chooses, since only the v2 API can check such a precondition,
-// and the server may have been upgraded since the client asked, e.g. while the
-// application runs. Unlike forget, it needs no generation: it runs before the
-// request chooses, so whatever answer it finds predates the request. Requests
-// that start while the server is asked again wait for its answer, as on the
-// first request.
-func (a *apiChoice) forgetV1() {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
-	if a.version == apiVersionV1 {
-		a.version = apiVersionUnknown
-	}
-}
-
 // run runs the given probe with find, remembers its outcome if it tells which
-// API the server offers, and lets the requests that wait for it go on, also if
-// find panics, in which case they ask themselves.
-func (a *apiChoice) run(ctx context.Context, running *probe, find func(ctx context.Context) (apiVersion, error)) {
+// API the server offers, and otherwise keeps what it knew, empties the given
+// slot that holds the probe, and lets the requests that wait for it go on,
+// also if find panics, in which case they ask themselves.
+func (a *apiChoice) run(ctx context.Context, slot **probe, running *probe, find func(ctx context.Context) (apiVersion, error)) {
 	hasReturned := false
 	defer func() {
 		if !hasReturned {
@@ -212,7 +220,7 @@ func (a *apiChoice) run(ctx context.Context, running *probe, find func(ctx conte
 			a.version = running.version
 			running.generation = a.generation
 		}
-		a.running = nil
+		*slot = nil
 		a.mu.Unlock()
 		close(running.done)
 	}()
@@ -238,7 +246,14 @@ type probe struct {
 // answer, as the given function finds out with the given context, unless it
 // is known already, or unless another request is finding it out right now, in
 // which case it waits for that.
-func (a *apiChoice) choose(ctx context.Context, find func(ctx context.Context) (apiVersion, error)) (apiVersion, uint64, error) {
+//
+// If asksAgainIfV1 is set, a known answer that the server offers the v1 API
+// only does not count: the request asks again, in a probe of its own, which
+// only the requests that ask again share. Every other request goes on with
+// the known answer meanwhile, and the answer of the probe replaces it only if
+// it tells for sure which API the server offers. A request whose context has
+// already ended asks nothing, and so keeps the known answer as well.
+func (a *apiChoice) choose(ctx context.Context, find func(ctx context.Context) (apiVersion, error), asksAgainIfV1 bool) (apiVersion, uint64, error) {
 	for {
 		err := ctx.Err()
 		if err != nil {
@@ -246,20 +261,24 @@ func (a *apiChoice) choose(ctx context.Context, find func(ctx context.Context) (
 		}
 
 		a.mu.Lock()
-		if a.version != apiVersionUnknown {
+		slot := &a.running
+		switch {
+		case a.version == apiVersionV1 && asksAgainIfV1:
+			slot = &a.askingAgain
+		case a.version != apiVersionUnknown:
 			version, generation := a.version, a.generation
 			a.mu.Unlock()
 
 			return version, generation, nil
 		}
 
-		running := a.running
+		running := *slot
 		if running == nil {
 			running = &probe{done: make(chan struct{})}
-			a.running = running
+			*slot = running
 			a.mu.Unlock()
 
-			a.run(ctx, running, find)
+			a.run(ctx, slot, running, find)
 
 			return running.version, running.generation, running.err
 		}

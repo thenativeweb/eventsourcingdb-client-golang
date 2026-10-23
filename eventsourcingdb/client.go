@@ -19,7 +19,9 @@ import (
 // client asks again on the next request. If the client found out that the
 // server does not offer the v2 API, a write with a recursive precondition asks
 // again as well, since only the v2 API can check such a precondition, and the
-// server may have been upgraded since (see PreconditionOptions).
+// server may have been upgraded since (see PreconditionOptions). Every other
+// request goes on with the v1 API meanwhile, and the client keeps it unless
+// the server answers clearly that it offers the v2 API now.
 type Client struct {
 	baseURL      *url.URL
 	apiToken     string

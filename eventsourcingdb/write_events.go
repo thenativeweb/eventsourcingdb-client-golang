@@ -17,11 +17,12 @@ func (c *Client) WriteEvents(ctx context.Context, events []EventCandidate, preco
 	// the server again if it found out before that it does not offer it,
 	// rather than refusing the write because of an answer that may be
 	// outdated.
+	chooseAPI := c.chooseAPI
 	if body.hasRecursivePrecondition() {
-		c.apiChoice.forgetV1()
+		chooseAPI = c.chooseAPIAskingAgainIfV1
 	}
 
-	api, err := c.chooseAPI(ctx, actionWriteEvents)
+	api, err := chooseAPI(ctx, actionWriteEvents)
 	if err != nil {
 		return nil, err
 	}

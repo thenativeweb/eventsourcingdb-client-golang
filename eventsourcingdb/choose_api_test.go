@@ -851,37 +851,10 @@ func TestChoosingTheAPI(t *testing.T) {
 		const writes = 5
 
 		released, release := newRelease()
-		var isUpgraded atomic.Bool
-		var probes atomic.Int32
 		probeReceived := make(chan struct{}, 10)
+		var isUpgraded atomic.Bool
 
-		server := newChangingServer(t, func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == http.MethodGet && r.URL.Path == "/api/v2/system/ping" {
-				probes.Add(1)
-				if !isUpgraded.Load() {
-					answerAsV1(w, r)
-					return
-				}
-
-				// Once upgraded, the server answers the request with which the
-				// client asks for its API only when the test releases it.
-				probeReceived <- struct{}{}
-				select {
-				case <-released:
-				case <-r.Context().Done():
-					return
-				}
-				answerAsV2(w, r)
-				return
-			}
-
-			if !isUpgraded.Load() && strings.HasPrefix(r.URL.Path, "/api/v2/") {
-				answerAsV1(w, r)
-				return
-			}
-
-			answerAsServer(w, r)
-		})
+		server := newChangingServer(t, answerAsUpgradable(&isUpgraded, heldAnswer(probeReceived, released)))
 		client := server.client(t)
 		// The server waits for its handlers when it closes, so they have to be
 		// released first, also if the test fails.
@@ -898,22 +871,15 @@ func TestChoosingTheAPI(t *testing.T) {
 			waiting <- struct{}{}
 		})
 
-		writeRecursively := func() error {
-			_, err := client.WriteEvents(context.Background(), []eventsourcingdb.EventCandidate{candidate()}, []eventsourcingdb.Precondition{
-				eventsourcingdb.NewIsSubjectOnEventIDPrecondition("/test", "0", eventsourcingdb.PreconditionOptions{Recursive: true}),
-			})
-			return err
-		}
-
 		errs := make(chan error, writes)
 		go func() {
-			errs <- writeRecursively()
+			errs <- writeWithRecursivePrecondition(context.Background(), client)
 		}()
 		receive(t, probeReceived, "the client did not ask again")
 
 		for range writes - 1 {
 			go func() {
-				errs <- writeRecursively()
+				errs <- writeWithRecursivePrecondition(context.Background(), client)
 			}()
 		}
 		for range writes - 1 {
@@ -924,7 +890,7 @@ func TestChoosingTheAPI(t *testing.T) {
 		for range writes {
 			assert.NoError(t, <-errs)
 		}
-		assert.Equal(t, int32(2), probes.Load())
+		assert.Empty(t, probeReceived, "the client asked again more than once")
 		assert.Equal(t, "v2", eventsourcingdb.APIOf(client))
 
 		sentWrites := []string{}
@@ -935,6 +901,153 @@ func TestChoosingTheAPI(t *testing.T) {
 		}
 		assert.Equal(t, slices.Repeat([]string{"POST /api/v2/data/write-events"}, writes), sentWrites)
 	})
+
+	t.Run("goes on with the v1 API, without waiting, for every request without a recursive precondition while it asks again", func(t *testing.T) {
+		released, release := newRelease()
+		probeReceived := make(chan struct{}, 10)
+		var isUpgraded atomic.Bool
+
+		server := newChangingServer(t, answerAsUpgradable(&isUpgraded, heldAnswer(probeReceived, released)))
+		client := server.client(t)
+		// The server waits for its handlers when it closes, so they have to be
+		// released first, also if the test fails.
+		t.Cleanup(release)
+
+		err := client.Ping(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, "v1", eventsourcingdb.APIOf(client))
+
+		isUpgraded.Store(true)
+
+		waiting := make(chan struct{}, 10)
+		eventsourcingdb.SetWaitingForProbe(client, func() {
+			waiting <- struct{}{}
+		})
+
+		recursiveErrs := make(chan error, 1)
+		go func() {
+			recursiveErrs <- writeWithRecursivePrecondition(context.Background(), client)
+		}()
+		receive(t, probeReceived, "the client did not ask again")
+		before := len(server.paths())
+
+		// The client is held while it asks again, so a request that waited
+		// for the answer would not end before the test releases it.
+		errs := make(chan error, 1)
+		go func() {
+			_, err := client.WriteEvents(context.Background(), []eventsourcingdb.EventCandidate{candidate()}, nil)
+			errs <- err
+		}()
+		select {
+		case err := <-errs:
+			require.NoError(t, err)
+		case <-time.After(5 * time.Second):
+			require.FailNow(t, "a request without a recursive precondition waited for the client to ask again")
+		}
+		assert.Empty(t, waiting)
+		assert.Equal(t, []string{"POST /api/v1/write-events"}, server.paths()[before:])
+		assert.Equal(t, "v1", eventsourcingdb.APIOf(client))
+
+		release()
+		assert.NoError(t, <-recursiveErrs)
+		assert.Equal(t, "v2", eventsourcingdb.APIOf(client))
+	})
+
+	t.Run("keeps the v1 API if asking again tells nothing for sure, and fails only the write with a recursive precondition", func(t *testing.T) {
+		server := newChangingServer(t, answerAsRolledBack(http.StatusNotFound))
+		client := server.client(t)
+
+		err := client.Ping(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, "v1", eventsourcingdb.APIOf(client))
+
+		// The server answers the request with which the client asks for its
+		// API with an error, e.g. while it restarts.
+		server.answerWith(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodGet && r.URL.Path == "/api/v2/system/ping" {
+				answerWithStatus(http.StatusServiceUnavailable)(w, r)
+				return
+			}
+
+			answerAsRolledBack(http.StatusNotFound)(w, r)
+		})
+		before := len(server.paths())
+
+		err = writeWithRecursivePrecondition(context.Background(), client)
+
+		assertDBAPIError(t, err, http.StatusServiceUnavailable, "", "failed")
+		assert.NotErrorIs(t, err, eventsourcingdb.ErrIncompatibleServer)
+		assert.Equal(t, []string{"GET /api/v2/system/ping"}, server.paths()[before:])
+		assert.Equal(t, "v1", eventsourcingdb.APIOf(client))
+
+		// Every other request goes on with the v1 API, without asking.
+		before = len(server.paths())
+		_, err = client.WriteEvents(context.Background(), []eventsourcingdb.EventCandidate{candidate()}, nil)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"POST /api/v1/write-events"}, server.paths()[before:])
+	})
+
+	t.Run("keeps the v1 API, and asks nothing, for a write with a recursive precondition whose context has already ended", func(t *testing.T) {
+		server := newChangingServer(t, answerAsRolledBack(http.StatusNotFound))
+		client := server.client(t)
+
+		err := client.Ping(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, "v1", eventsourcingdb.APIOf(client))
+		before := len(server.paths())
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		err = writeWithRecursivePrecondition(ctx, client)
+
+		assert.ErrorIs(t, err, context.Canceled)
+		assert.Empty(t, server.paths()[before:])
+		assert.Equal(t, "v1", eventsourcingdb.APIOf(client))
+	})
+}
+
+// answerAsUpgradable answers as a server with the v1 API only, as
+// answerAsRolledBack does with status 404, until isUpgraded is set, and from
+// then on as a server with both APIs, which answers the request with which a
+// client asks for its API with answer.
+func answerAsUpgradable(isUpgraded *atomic.Bool, answer probeAnswer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case !isUpgraded.Load():
+			answerAsRolledBack(http.StatusNotFound)(w, r)
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v2/system/ping":
+			answer(w, r)
+		default:
+			answerAsServer(w, r)
+		}
+	}
+}
+
+// heldAnswer answers as a server with the v2 API, with the event of a ping,
+// but only once released is closed. It reports every request it receives on
+// received first.
+func heldAnswer(received chan<- struct{}, released <-chan struct{}) probeAnswer {
+	return func(w http.ResponseWriter, r *http.Request) bool {
+		received <- struct{}{}
+
+		select {
+		case <-released:
+		case <-r.Context().Done():
+			return false
+		}
+
+		return answerAsV2(w, r)
+	}
+}
+
+// writeWithRecursivePrecondition writes an event with a recursive
+// precondition, and returns the error the write fails with.
+func writeWithRecursivePrecondition(ctx context.Context, client *eventsourcingdb.Client) error {
+	_, err := client.WriteEvents(ctx, []eventsourcingdb.EventCandidate{candidate()}, []eventsourcingdb.Precondition{
+		eventsourcingdb.NewIsSubjectOnEventIDPrecondition("/test", "0", eventsourcingdb.PreconditionOptions{Recursive: true}),
+	})
+
+	return err
 }
 
 // answerAsRolledBack answers as a server that was rolled back to a version
