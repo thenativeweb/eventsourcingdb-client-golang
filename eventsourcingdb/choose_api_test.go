@@ -798,10 +798,18 @@ func TestChoosingTheAPI(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, writtenEvents, 1)
 		assert.Equal(t, []string{"GET /api/v2/system/ping", "POST /api/v2/data/write-events"}, server.paths()[before:])
-		assert.JSONEq(t, `{
-			"events": [{"source":"https://www.eventsourcingdb.io","subject":"/test","type":"io.eventsourcingdb.test","data":{"value":23}}],
-			"preconditions": [{"type":"isSubjectPristine","payload":{"subject":"/test","options":{"recursive":true}}}]
-		}`, <-bodies)
+		// The server takes the body before it answers, so a write that went
+		// through the v2 API has left its body by now, and a write that did
+		// not has to fail the test rather than keep it waiting.
+		select {
+		case body := <-bodies:
+			assert.JSONEq(t, `{
+				"events": [{"source":"https://www.eventsourcingdb.io","subject":"/test","type":"io.eventsourcingdb.test","data":{"value":23}}],
+				"preconditions": [{"type":"isSubjectPristine","payload":{"subject":"/test","options":{"recursive":true}}}]
+			}`, body)
+		default:
+			assert.Fail(t, "the write did not go through the v2 API")
+		}
 		assert.Equal(t, "v2", eventsourcingdb.APIOf(client))
 
 		// The requests after it speak the v2 API, without asking again.
