@@ -708,7 +708,7 @@ if errors.Is(err, eventsourcingdb.ErrUnsupportedHashVersion) {
 
 ### Verifying an Event's Signature
 
-To verify the authenticity of an event, call the `VerifySignature` function on the event instance. This requires the public key that matches the private key used for signing on the server.
+To verify the authenticity of an event, call the `VerifySignature` function on the event instance. This requires the public key that matches the private key used for signing on the server. Without a key, or with one that is not an Ed25519 public key of 32 bytes, the function returns an error before it verifies anything.
 
 The function first verifies the event's hash, and then checks the signature. If any verification step fails, it returns an error: `ErrHashVerificationFailed` if the hash does not match, `ErrUnsupportedHashVersion` if the hash is of a version the client does not know, and `ErrSignatureVerificationFailed` if the signature does not match. Use `errors.Is` to check for them:
 
