@@ -132,7 +132,10 @@ func (c *Container) WithStartupTimeout(startupTimeout time.Duration) *Container 
 }
 
 // Start starts a container with the database, and waits until the database
-// answers a ping with 200 OK, for the startup timeout at most.
+// answers a ping with 200 OK, for the startup timeout at most. It asks the
+// ping of the v2 API, GET /api/v2/system/ping, and the one of the v1 API,
+// GET /api/v1/ping, only if the server answers that with 404 or 405, as a
+// server without the v2 API does.
 //
 // If the container runs, but the database does not become reachable in time,
 // e.g. because Docker did not publish its port, Start replaces the container
@@ -504,7 +507,17 @@ func (c *Container) waitUntilReachable(ctx, attemptCtx context.Context, containe
 
 // answersPing tells whether the database in a container answers a ping with
 // 200 OK on the host port that Docker published for its port, if it did. It
-// returns an error only if Docker fails.
+// asks the ping of the v2 API, and the one of the v1 API only if the database
+// answers that with 404 or 405, as a server without the v2 API does, so that
+// it works against servers with and without either API. Any other outcome of
+// the ping of the v2 API, e.g. a refused connection while the database starts,
+// does not lead to the ping of the v1 API, but to the next ping, which asks
+// the v2 API again. It returns an error only if Docker fails, or if no ping
+// can be built from the host and the port that Docker tells.
+//
+// It does not ping with the client of this module, so that a defect in how the
+// client chooses the API fails the tests that pin it, rather than every test
+// that starts a container.
 func answersPing(ctx context.Context, httpClient *http.Client, container testcontainers.Container, port string) (bool, error) {
 	host, err := container.Host(ctx)
 	if err != nil {
@@ -518,20 +531,40 @@ func answersPing(ctx context.Context, httpClient *http.Client, container testcon
 		return false, err
 	}
 
-	pingURL := fmt.Sprintf("http://%s/api/v1/ping", net.JoinHostPort(host, strconv.Itoa(int(mappedPort.Num()))))
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, pingURL, nil)
+	baseURL := "http://" + net.JoinHostPort(host, strconv.Itoa(int(mappedPort.Num())))
+
+	statusCode, err := pingStatus(ctx, httpClient, baseURL+"/api/v2/system/ping")
 	if err != nil {
 		return false, err
+	}
+	if statusCode == http.StatusNotFound || statusCode == http.StatusMethodNotAllowed {
+		statusCode, err = pingStatus(ctx, httpClient, baseURL+"/api/v1/ping")
+		if err != nil {
+			return false, err
+		}
+	}
+
+	return statusCode == http.StatusOK, nil
+}
+
+// pingStatus asks the database for the ping at the given URL, and returns the
+// status code of its answer, or 0 if it does not answer, e.g. as it is still
+// starting, or as it did not answer within the bound per request. It returns
+// an error only if the request can not be built.
+func pingStatus(ctx context.Context, httpClient *http.Client, pingURL string) (int, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, pingURL, nil)
+	if err != nil {
+		return 0, err
 	}
 
 	response, err := httpClient.Do(request)
 	if err != nil {
-		return false, nil
+		return 0, nil
 	}
 	defer response.Body.Close()
 	_, _ = io.Copy(io.Discard, response.Body)
 
-	return response.StatusCode == http.StatusOK, nil
+	return response.StatusCode, nil
 }
 
 // exited returns the error for a container that exited, which names the last
