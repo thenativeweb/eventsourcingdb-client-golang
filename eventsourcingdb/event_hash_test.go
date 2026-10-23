@@ -201,6 +201,23 @@ func TestVerifyHashOfFixtures(t *testing.T) {
 		}
 	})
 
+	t.Run("fails with an error rather than a panic if the verification key is missing or of another size", func(t *testing.T) {
+		event := eventOf(t, fixtureOfVersion2)
+
+		for name, verificationKey := range map[string]ed25519.PublicKey{
+			"missing":   nil,
+			"too short": verificationKeyOfFixtures(t)[:ed25519.PublicKeySize-1],
+		} {
+			t.Run(name, func(t *testing.T) {
+				var err error
+				assert.NotPanics(t, func() {
+					err = event.VerifySignature(verificationKey)
+				})
+				assert.EqualError(t, err, fmt.Sprintf("verification key must be an Ed25519 public key of %d bytes", ed25519.PublicKeySize))
+			})
+		}
+	})
+
 	t.Run("signs the hash of version 2 with its prefix", func(t *testing.T) {
 		// The signature of an event with a hash of version 2 does not match the
 		// hash without its prefix, so the prefix is part of what is signed.
