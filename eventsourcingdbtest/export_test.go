@@ -77,6 +77,15 @@ func AwaitEnded(ctx context.Context) bool {
 	return false
 }
 
+// AwaitReachable waits until the database in a container answers a ping on
+// the default port, the way Start waits for it, for the given time at most.
+func AwaitReachable(ctx context.Context, container testcontainers.Container, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	return NewContainer().waitUntilReachable(ctx, ctx, container)
+}
+
 // GetStartupTimeout returns the startup timeout of a container.
 func GetStartupTimeout(c *Container) time.Duration {
 	return c.startupTimeout

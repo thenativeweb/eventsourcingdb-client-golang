@@ -22,7 +22,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdb"
 	"github.com/thenativeweb/eventsourcingdb-client-golang/v2/eventsourcingdbtest"
 )
@@ -333,10 +332,13 @@ func TestContainerStart(t *testing.T) {
 			default:
 				// The container that replaces the others is ready before the
 				// clock starts, so that how fast Docker starts it does not
-				// matter.
-				request.WaitingFor = wait.ForHTTP("/api/v1/ping").
-					WithPort("3000/tcp").
-					WithStartupTimeout(time.Minute)
+				// matter. Whether it is ready is decided as Start decides it,
+				// so that this works whichever API the server offers.
+				container, err := startBeforeTheClock(ctx, request)
+				if err != nil {
+					return container, err
+				}
+				return container, eventsourcingdbtest.AwaitReachable(ctx, container, time.Minute)
 			}
 			return startBeforeTheClock(ctx, request)
 		})
