@@ -299,8 +299,15 @@ func TestContainerStart(t *testing.T) {
 
 				// The server answers the pings in place of the database, so
 				// that no container is started, and none has to be removed.
+				// Each container that Start starts is counted, as a container
+				// that replaces another one gets the same server, so that the
+				// pings alone could not tell whether a ping that failed was
+				// followed by the next ping, or only by a new container once
+				// the startup timeout ran out.
 				serverContainer := newServerContainer(t, server.Server)
+				var starts atomic.Int32
 				eventsourcingdbtest.SetStartContainer(t, func(context.Context, testcontainers.GenericContainerRequest) (testcontainers.Container, error) {
+					starts.Add(1)
 					return serverContainer, nil
 				})
 				eventsourcingdbtest.SetRemoveContainers(t, func(context.Context, string) error {
@@ -318,6 +325,7 @@ func TestContainerStart(t *testing.T) {
 				assert.NoError(t, err)
 				assert.True(t, container.IsRunning())
 				assert.Equal(t, ping.asked, server.Asked())
+				assert.Equal(t, int32(1), starts.Load(), "Start did not wait in a single container")
 			})
 		}
 	})
