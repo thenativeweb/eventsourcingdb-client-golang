@@ -235,14 +235,16 @@ func (a v2API) registerEventSchema(ctx context.Context, eventType string, schema
 }
 
 // v2RefusesWrite tells whether a server with the v2 API refused a write with
-// the given error, so that it certainly did not store it: with any error item
-// but one that says that storing failed, or with a status of 400, 401, 408,
-// 413, 429 or 503.
+// the given error, so that it certainly did not store it: with any error item,
+// which has status 200, or with a status of 400, 401, 408, 413, 429 or 503.
+// This includes store-failed, which the server reports once its store has
+// failed before, as it refuses every write until it is restarted. A write
+// during which storing fails gets an error without a code instead, either
+// status 500 or a stream that ends without its terminal item, so its outcome
+// is unknown.
 func v2RefusesWrite(dbAPIError *DBAPIError) bool {
 	switch dbAPIError.Status {
-	case http.StatusOK:
-		return dbAPIError.Code != CodeStoreFailed
-	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusRequestTimeout, http.StatusRequestEntityTooLarge, http.StatusTooManyRequests, http.StatusServiceUnavailable:
+	case http.StatusOK, http.StatusBadRequest, http.StatusUnauthorized, http.StatusRequestTimeout, http.StatusRequestEntityTooLarge, http.StatusTooManyRequests, http.StatusServiceUnavailable:
 		return true
 	default:
 		return false

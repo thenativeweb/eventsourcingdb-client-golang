@@ -188,20 +188,12 @@ func TestErrOutcomeUnknown(t *testing.T) {
 				assert.ErrorContains(t, err, "the stream broke off")
 			},
 		},
-		{
-			name:      "the server reports that storing failed",
-			apis:      []apiOfServer{apiV2},
-			client:    answering(http.StatusOK, apiV2.heartbeat(), errorItem(eventsourcingdb.CodeStoreFailed), apiV2.end()),
-			isUnknown: true,
-			check: func(t *testing.T, err error) {
-				assertDBAPIError(t, err, http.StatusOK, eventsourcingdb.CodeStoreFailed, "failed")
-			},
-		},
 	}
 
-	// Every error item but the one that says that storing failed refuses the
-	// write.
-	for _, code := range []string{eventsourcingdb.CodePreconditionViolated, eventsourcingdb.CodeEventSchemaViolated, eventsourcingdb.CodeStoreReadOnly, eventsourcingdb.CodeServerShuttingDown, eventsourcingdb.CodeLicenseInvalid} {
+	// Every error item refuses the write, store-failed as well, which the
+	// server reports once its store has failed before, as it refuses every
+	// write until it is restarted.
+	for _, code := range []string{eventsourcingdb.CodePreconditionViolated, eventsourcingdb.CodeEventSchemaViolated, eventsourcingdb.CodeStoreReadOnly, eventsourcingdb.CodeStoreFailed, eventsourcingdb.CodeServerShuttingDown, eventsourcingdb.CodeLicenseInvalid} {
 		failures = append(failures, failure{
 			name:   "the server refuses the write with " + code,
 			apis:   []apiOfServer{apiV2},
