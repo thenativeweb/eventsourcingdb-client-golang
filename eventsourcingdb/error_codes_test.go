@@ -14,12 +14,14 @@ import (
 
 // slugsOfServer are the slugs of every error code that the server knows, in
 // the order of cmd/server/api/error.go on main of
-// github.com/thenativeweb/eventsourcingdb (as of commit 36fa8821). When the
+// github.com/thenativeweb/eventsourcingdb (as of commit 63877b24). When the
 // server adds a code, add its slug here, and the test tells which constant is
 // missing.
 var slugsOfServer = []string{
 	"subject-missing",
 	"subject-malformed",
+	"subject-too-long",
+	"subject-too-deep",
 	"order-unknown",
 	"event-id-missing",
 	"event-id-malformed",
@@ -49,6 +51,7 @@ var slugsOfServer = []string{
 	"event-schema-missing",
 	"event-schema-malformed",
 	"event-schema-not-object",
+	"event-schema-too-complex",
 	"event-schema-already-registered",
 	"last-audited-event-missing",
 	"last-audited-event-mismatched",
@@ -68,10 +71,16 @@ var slugsOfServer = []string{
 	"backup-increment-disconnected",
 	"backup-failed",
 	"backup-unreadable",
+	"backup-ahead-of-clock",
+	"import-ahead-of-clock",
+	"import-malformed",
+	"import-unreadable",
 	"event-too-large",
 	"data-malformed",
 	"query-missing",
 	"query-malformed",
+	"query-too-deep",
+	"query-too-long",
 	"query-unevaluable",
 	"query-not-boolean",
 	"precondition-violated",
@@ -82,6 +91,7 @@ var slugsOfServer = []string{
 	"store-failed",
 	"indexes-rebuilding",
 	"server-shutting-down",
+	"file-unreadable",
 }
 
 // A caller has to be able to tell errors apart by their code without
