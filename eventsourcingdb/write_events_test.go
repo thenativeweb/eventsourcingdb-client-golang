@@ -476,7 +476,9 @@ func TestWriteEvents(t *testing.T) {
 		)
 
 		assertCodeOfServer(t, err, "write events", eventsourcingdb.CodeEventSchemaViolated)
-		assert.ErrorContains(t, err, "additionalProperties 'extra' not allowed")
+		// The server words the reason itself, and the wording differs between
+		// its versions, but each of them names the property that is not allowed.
+		assert.ErrorContains(t, err, "'extra'")
 	})
 }
 
